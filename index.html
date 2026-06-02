@@ -145,6 +145,20 @@
   .mbody .fr{display:flex;gap:8px;padding:6px 0;font-size:13px}
   .mbody .fr .k{color:var(--text3);min-width:74px}
   .mbody .lbl{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;color:#fff}
+
+  /* 会社カレンダー設定＋カレンダーの定休/祝日表示 */
+  .cell.closed{ background:repeating-linear-gradient(45deg, rgba(120,120,120,.10), rgba(120,120,120,.10) 7px, transparent 7px, transparent 14px); }
+  .cell.holiday .dnum{ color:#dc2626; }
+  .cell .hol-name{ font-size:9px;color:#dc2626;font-weight:600;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px; }
+  .cell .closed-badge{ position:absolute;top:5px;right:6px;font-size:9px;font-weight:700;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:0 5px; }
+  .cal-date{ background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 9px;font-size:13px;font-family:inherit; }
+  .chips{ display:flex;gap:6px;flex-wrap:wrap; }
+  .cal-chip{ display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--bg3);border:1px solid var(--border); }
+  .cal-chip.closed{ color:#dc2626;border-color:rgba(220,38,38,.4); }
+  .cal-chip.open{ color:#16a34a;border-color:rgba(22,163,74,.4); }
+  .cal-chip button{ background:none;border:0;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px; }
+  .cal-chip button:hover{ color:var(--text); }
+  .empty{ color:var(--text3);font-size:12px; }
 </style>
 </head>
 <body>
@@ -158,14 +172,14 @@
     <button class="btn" onclick="sfLogin()">サンプルとして入る（開発用）</button>
     <button class="btn ghost" disabled title="後日対応します">Google でログイン（後日対応）</button>
     <div class="note">これは構想段階の見せ方モックです。表示中のデータはすべてサンプル（架空）です。各アプリの予定をFirestoreから読んで重ねる統合ビューや、Claudeによる週次配車提案は、これから本実装します。</div>
-    <div class="ver">ScheduleFlow v0.1.0 (mock)</div>
+    <div class="ver">ScheduleFlow v0.2.0 (mock)</div>
   </div>
 </div>
 
 <div id="app">
   <!-- ===== トップバー ===== -->
   <div id="topbar">
-    <div class="logo"><span>📅</span><span><span class="sf">Schedule</span>Flow</span><span class="ver">v0.1.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">Schedule</span>Flow</span><span class="ver">v0.2.0</span></div>
     <span class="dev-badge">🚧 開発中サンプル</span>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="alert('社内予定の追加は本実装フェーズ（Phase 1）で作ります。\n\n※他アプリの予定（納車・整備・納品）は各アプリ側で編集します。')">＋ 社内予定</button>
@@ -178,6 +192,8 @@
     <div class="si-item active" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
     <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>月カレンダー</span></div>
     <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">🔀</span><span>多軸ビュー</span></div>
+    <div class="si-title">マスター</div>
+    <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>会社カレンダー設定</span></div>
     <div class="si-title">情報</div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このモックについて</span></div>
 
@@ -231,6 +247,15 @@
       <div class="layers" id="layers-axis" style="margin-bottom:12px"></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 10px">縦＝<span id="axis-name">メンバー</span>／横＝今週の各日。1つの予定をどの軸からでも同じデータとして見られる、というのがこのビューの狙い（Excelのピボット感覚）。</p>
       <div class="axis-wrap"><div class="axis" id="axis-grid"></div></div>
+    </section>
+
+    <!-- 会社カレンダー設定（マスター） -->
+    <section id="view-calset" class="view">
+      <div class="vhead"><div class="vtitle">⚙️ 会社カレンダー設定 <span class="dev-badge">マスター</span></div></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 14px;line-height:1.7">
+        ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は ScheduleFlow に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
+      </p>
+      <div id="calset-body"></div>
     </section>
 
     <!-- About -->
@@ -295,6 +320,30 @@ function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function startOfWeek(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;} // 日曜起点
 const DOW=['日','月','火','水','木','金','土'];
 
+/* ---------- 祝日（holidays-jp API・7日キャッシュ） ---------- */
+const SF_HOL={map:{}};
+(function(){
+  try{const o=JSON.parse(localStorage.getItem('sf_holidays')||'null'); if(o&&o.map)SF_HOL.map=o.map;}catch(e){}
+  fetch('https://holidays-jp.github.io/api/v1/date.json',{cache:'no-cache'})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{ if(d){ SF_HOL.map=d; try{localStorage.setItem('sf_holidays',JSON.stringify({map:d}))}catch(e){} if(typeof showView==='function'&&curView)showView(curView); } })
+    .catch(()=>{});
+})();
+const holName=s=>SF_HOL.map[s]||null;
+
+/* ---------- 会社カレンダー設定（マスター・将来は共有Firestoreへ） ---------- */
+const CAL_DEFAULT={closedDow:[],holidaysClosed:false,closedDates:[],openDates:[]};
+function loadCal(){ try{const o=JSON.parse(localStorage.getItem('sf_company_calendar')||'null'); if(o)return Object.assign({},CAL_DEFAULT,o);}catch(e){} return Object.assign({},CAL_DEFAULT); }
+let CAL=loadCal();
+function saveCal(){ try{localStorage.setItem('sf_company_calendar',JSON.stringify(CAL));}catch(e){} }
+function isClosedDay(dateStr,dateObj){
+  if(CAL.openDates.indexOf(dateStr)>=0) return false;            // 特別営業が最優先
+  if(CAL.closedDow.indexOf(dateObj.getDay())>=0) return true;    // 定休曜日
+  if(CAL.holidaysClosed && holName(dateStr)) return true;        // 祝日を休業に
+  if(CAL.closedDates.indexOf(dateStr)>=0) return true;           // 臨時休業
+  return false;
+}
+
 /* ---------- サンプル予定（架空） ---------- */
 // layer / date / time / title / who[] / vehicle / place
 function rel(n){return ymd(addDays(TODAY,n));}
@@ -344,15 +393,18 @@ function visibleEvents(){ return EVENTS.filter(e=>layerOn[e.layer]); }
 let curMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
 let curWeek=startOfWeek(TODAY);
 let curAxis='member';
+let curView='brief';
 
 function showView(v){
+  curView=v;
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.si-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(i=>i.classList.add('active'));
-  if(v==='brief') renderBrief();
-  if(v==='month') renderMonth();
-  if(v==='axis')  renderAxis();
+  if(v==='brief')  renderBrief();
+  if(v==='month')  renderMonth();
+  if(v==='axis')   renderAxis();
+  if(v==='calset') renderCalSet();
 }
 
 /* ---------- レイヤートグル描画 ---------- */
@@ -384,9 +436,13 @@ function renderMonth(){
   for(let i=0;i<42;i++){
     const d=addDays(start,i), key=ymd(d), inMonth=d.getMonth()===curMonth.getMonth();
     const isToday=key===ymd(TODAY);
+    const hol=holName(key);
+    const closed=isClosedDay(key,d);
     const evs=(byDate[key]||[]).sort((a,b)=>(a.time>b.time?1:-1));
-    let cell='<div class="cell'+(inMonth?'':' other')+(isToday?' today':'')+'">';
+    let cell='<div class="cell'+(inMonth?'':' other')+(isToday?' today':'')+(closed?' closed':'')+(hol?' holiday':'')+'">';
     cell+='<div class="dnum">'+d.getDate()+'</div>';
+    if(closed) cell+='<div class="closed-badge">休</div>';
+    if(hol) cell+='<div class="hol-name" title="'+hol+'">'+hol+'</div>';
     evs.slice(0,3).forEach(e=>{cell+='<div class="ev" style="background:'+hexOf(e.layer)+'" onclick=\'openEv('+JSON.stringify(JSON.stringify(e))+')\'><span class="et">'+(e.time==='終日'||e.time==='—'?'':e.time)+'</span>'+e.title+'</div>';});
     if(evs.length>3) cell+='<div class="more">＋'+(evs.length-3)+'件</div>';
     cell+='</div>';
@@ -421,72 +477,4 @@ function renderAxis(){
   days.forEach(d=>{const t=ymd(d)===ymd(TODAY); h+='<div class="ah'+(t?' col-today':'')+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</div>';});
   const evs=visibleEvents();
   rows.forEach(r=>{
-    h+='<div class="rh">'+rowLabel(r)+'</div>';
-    days.forEach(d=>{
-      const t=ymd(d)===ymd(TODAY);
-      const cell=evs.filter(e=>e.date===ymd(d)&&matcher(e,r)).sort((a,b)=>(a.time>b.time?1:-1));
-      h+='<div class="acell'+(t?' col-today':'')+'">';
-      cell.forEach(e=>{h+='<div class="achip" style="background:'+hexOf(e.layer)+'" onclick=\'openEv('+JSON.stringify(JSON.stringify(e))+')\'>'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+e.title+'</div>';});
-      h+='</div>';
-    });
-  });
-  grid.innerHTML=h;
-}
-
-/* ---------- 朝礼カード ---------- */
-function renderBrief(){
-  document.getElementById('brief-date').textContent='（'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+' '+DOW[TODAY.getDay()]+'）';
-  const td=ymd(TODAY), tm=ymd(addDays(TODAY,1));
-  const fill=(elId,nId,dateKey)=>{
-    const list=visibleEvents().filter(e=>e.date===dateKey).sort((a,b)=>(a.time>b.time?1:-1));
-    document.getElementById(nId).textContent=list.length+'件';
-    const el=document.getElementById(elId);
-    if(!list.length){el.innerHTML='<div class="empty">予定なし</div>';return;}
-    el.innerHTML=list.map(e=>(
-      '<div class="brow"><div class="tm">'+e.time+'</div><div class="bd">'+
-      '<div class="bt"><span class="tag" style="background:'+hexOf(e.layer)+'"></span>'+e.title+'</div>'+
-      '<div class="bm">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.join('、'):'')+(e.place?'・'+e.place:'')+'</div>'+
-      '</div></div>'
-    )).join('');
-  };
-  fill('brief-today','brief-today-n',td);
-  fill('brief-tom','brief-tom-n',tm);
-
-  // 警告（サンプルロジック）
-  const w=[];
-  const todayDeliveries=visibleEvents().filter(e=>e.date===td&&e.layer==='carflow'&&/納車/.test(e.title));
-  if(todayDeliveries.length>=2) w.push('🚗 今日は納車が'+todayDeliveries.length+'件。配車と洗車の段取りを確認。');
-  const dlSoon=visibleEvents().filter(e=>e.layer==='deadline'&&(e.date===td||e.date===tm));
-  dlSoon.forEach(e=>w.push('⏰ 締切が近い：'+e.title+'（'+(e.date===td?'今日':'明日')+'）'));
-  const rikuun=visibleEvents().filter(e=>e.date===tm&&/陸運局/.test(e.place||''));
-  if(!rikuun.length){
-    const futureRikuun=visibleEvents().filter(e=>/陸運局/.test(e.place||'')&&e.date>td);
-    if(futureRikuun.length) w.push('📋 今週の車検配車（陸運局行き）が'+futureRikuun.length+'件。誰が乗るか未確定の枠あり → ＡＩ提案の出番（本実装後）。');
-  }
-  const wc=document.getElementById('brief-warns');
-  wc.innerHTML=w.length?('<div class="warns"><h3>⚠️ 今日の注意</h3>'+w.map(x=>'<div>'+x+'</div>').join('')+'</div>'):'';
-}
-
-/* ---------- 予定モーダル ---------- */
-function openEv(json){
-  const e=JSON.parse(json);
-  document.getElementById('ev-title').textContent=e.title;
-  document.getElementById('ev-body').innerHTML=
-    '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+hexOf(e.layer)+'">'+nameOf(e.layer)+'</span></div>'+
-    '<div class="fr"><span class="k">日付</span><span>'+e.date+'</span></div>'+
-    '<div class="fr"><span class="k">時間</span><span>'+e.time+'</span></div>'+
-    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span>'+e.who.join('、')+'</span></div>':'')+
-    (e.vehicle&&e.vehicle!=='—'?'<div class="fr"><span class="k">車両</span><span>'+e.vehicle+'</span></div>':'')+
-    (e.place?'<div class="fr"><span class="k">場所</span><span>'+e.place+'</span></div>':'')+
-    '<div class="fr" style="margin-top:8px;color:var(--text3);font-size:11.5px">※サンプルデータです。'+(e.layer!=='company'&&e.layer!=='deadline'?'本来この予定は <b>'+nameOf(e.layer).replace(/納車|整備|納品/,'')+'</b> 側で編集します（ScheduleFlowは閲覧）。':'社内予定はScheduleFlowで編集できる想定です。')+'</div>';
-  document.getElementById('ev-modal').classList.add('show');
-}
-function closeEv(){document.getElementById('ev-modal').classList.remove('show');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEv();});
-
-/* ---------- 起動 ---------- */
-renderLayers('layers-month'); renderLayers('layers-axis');
-showView('brief');
-</script>
-</body>
-</html>
+    h+='<div clas
