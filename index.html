@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ScheduleFlow - 社内スケジュール統合（開発中サンプル）</title>
-<link rel="stylesheet" href="css/launcher.css?v=2">
+<title>MasterHub Schedule (MHS) - 全社時間マスター（開発中サンプル）</title>
+<link rel="stylesheet" href="css/launcher.css?v=3">
 <style>
   :root{
     --acc:#dc2626; --acc2:#ef4444;
@@ -159,20 +159,20 @@
 <!-- ===== サンプルログイン ===== -->
 <div id="sf-login">
   <div class="lc">
-    <div class="lg">📅 <span class="sf">Schedule</span>Flow</div>
-    <div class="sub">社内スケジュール統合（小林モータース）</div>
+    <div class="lg">📅 <span class="sf">MasterHub</span> Schedule</div>
+    <div class="sub">MHS ─ 全社時間マスター・社内スケジュール統合（小林モータース）</div>
     <div class="badge dev-badge">🚧 開発中サンプル</div>
     <button class="btn" onclick="sfLogin()">サンプルとして入る（開発用）</button>
     <button class="btn ghost" disabled title="後日対応します">Google でログイン（後日対応）</button>
     <div class="note">これは構想段階の見せ方モックです。表示中のデータはすべてサンプル（架空）です。各アプリの予定をFirestoreから読んで重ねる統合ビューや、Claudeによる週次配車提案は、これから本実装します。</div>
-    <div class="ver">ScheduleFlow v0.2.1 (mock)</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.3.0 (mock)</div>
   </div>
 </div>
 
 <div id="app">
   <!-- ===== トップバー ===== -->
   <div id="topbar">
-    <div class="logo"><span>📅</span><span><span class="sf">Schedule</span>Flow</span><span class="ver">v0.2.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">MHS v0.3.0</span></div>
     <span class="dev-badge">🚧 開発中サンプル</span>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="alert('社内予定の追加は本実装フェーズ（Phase 1）で作ります。\n\n※他アプリの予定（納車・整備・納品）は各アプリ側で編集します。')">＋ 社内予定</button>
@@ -191,7 +191,7 @@
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このモックについて</span></div>
 
     <!-- CoreFlow アプリランチャー（共通） -->
-    <div data-cf-launcher data-current="scheduleflow"></div>
+    <div data-cf-launcher data-current="mhs"></div>
   </div>
 
   <!-- ===== メイン ===== -->
@@ -246,7 +246,7 @@
     <section id="view-calset" class="view">
       <div class="vhead"><div class="vtitle">⚙️ 会社カレンダー設定 <span class="dev-badge">マスター</span></div></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 14px;line-height:1.7">
-        ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は ScheduleFlow に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
+        ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は MasterHub Schedule に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
       </p>
       <div id="calset-body"></div>
     </section>
@@ -256,8 +256,8 @@
       <div class="vhead"><div class="vtitle">ℹ️ このモックについて</div></div>
       <div class="note-card">
         <h4>🚧 開発中サンプル（構想段階モック）</h4>
-        <p>ScheduleFlow は「社内カレンダー（チームウェア代替）＋全アプリの予定を俯瞰で重ねる統合ビュー＋Claudeによる週次配車提案」を1本にした“会社の段取りハブ”です。これはその<b>見せ方を共有するためのモック</b>で、表示データはすべてサンプル（架空）です。<br><br>
-        役割分担の鉄則：<b>編集は各アプリで完結</b>（納車＝CarFlow／整備＝PitFlow／納品＝StockFlow）。ScheduleFlow は<b>俯瞰閲覧＋社内予定の編集＋会社カレンダーのマスター管理</b>を担います。</p>
+        <p>MasterHub Schedule（MHS・通称マス）は「社内カレンダー（チームウェア代替）＋全アプリの予定を俯瞰で重ねる統合ビュー＋Claudeによる週次配車提案」を1本にした“会社の段取りハブ”です。命名階層では<b>最上級（全アプリが従う時間の基準マスター）</b>に位置します（旧名：ScheduleFlow）。これはその<b>見せ方を共有するためのモック</b>で、表示データはすべてサンプル（架空）です。<br><br>
+        役割分担の鉄則：<b>編集は各アプリで完結</b>（納車＝CarFlow／整備＝PitFlow／納品＝StockFlow）。MHS は<b>俯瞰閲覧＋社内予定の編集＋会社カレンダーのマスター管理</b>を担います。</p>
       </div>
       <div class="note-card devtools">
         <h4>開発用</h4>
@@ -277,9 +277,9 @@
   </div>
 </div>
 
-<script src="js/launcher.js?v=3"></script>
+<script src="js/launcher.js?v=4"></script>
 <script>
-/* ScheduleFlow モック v0.2.1 — データはすべてサンプル */
+/* MasterHub Schedule (MHS・旧ScheduleFlow) モック v0.3.0 — データはすべてサンプル */
 function sfLogin(){ try{localStorage.setItem('sf_authed','1')}catch(e){} document.getElementById('sf-login').style.display='none'; }
 function sfLogout(){ try{localStorage.removeItem('sf_authed')}catch(e){} document.getElementById('sf-login').style.display='flex'; }
 (function(){ let a=false; try{a=localStorage.getItem('sf_authed')==='1'}catch(e){} if(a)document.getElementById('sf-login').style.display='none'; })();
