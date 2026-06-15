@@ -175,6 +175,11 @@
   .pick{font-size:12.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
   .pick:hover{border-color:var(--acc)}
   .pick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .mpick{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 11px 4px 5px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
+  .mpick:hover{border-color:var(--acc)}
+  .mpick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
+  .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
   .mfoot .grow{flex:1}
   .btn-save{background:var(--acc);border:0;color:#fff;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer}
@@ -271,7 +276,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.7.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.8.0</div>
   </div>
 </div>
 
@@ -289,7 +294,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.7.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.8.0</span></div>
     <div class="spacer"></div>
     <div class="tb-user"><span class="tb-av" id="u-av"></span><span class="tb-uname" id="me-name"></span></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 社内予定</button>
@@ -474,6 +479,7 @@ async function enterApp(member,user){
   if(av){ var ph=member&&(member.photo||member.photoURL||member.customPhotoURL); av.innerHTML = ph ? ('<img src="'+ph+'" alt="">') : esc((member&&member.ini)||String(nm).charAt(0)||'？'); }
   try{ await window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc(user.uid).set({memberId:member.id, memberEmail:(member.email||user.email||'')},{merge:true}); }catch(e){ console.warn('[MHS] userPrefs記録失敗',e); }
   await loadCalRemote();
+  subscribeMembers();
   subscribeSchedule();
   renderLayers('layers-month'); renderLayers('layers-axis');
   showView('brief');
@@ -579,9 +585,26 @@ function isClosedDay(dateStr,dateObj){ return evalDay(dateStr,dateObj).closed; }
 /* 他アプリ（CarFlow納車/PitFlow整備/StockFlow納品）の予定は Phase 3 で Firestore から重ねる。
    いまは社内予定（scheduleEvents）と締切・行事のみ。EVENTS は将来の他アプリ読み取り用の器（現状は空）。 */
 const EVENTS=[];
-const STAFF=['社長','椎名','壱谷','福光','蓮沼','箱崎','菅谷','林','高橋'];
+const STAFF=['社長','椎名','壱谷','福光','蓮沼','箱崎','菅谷','林','高橋']; // フォールバック（portalMembers未読込時のみ）
 const PLACES=['店頭','PIT1','PIT2','陸運局A','陸運局B','部品屋','配送','本社','整備'];
 const TAGS=['顧客来店','支払日','休日','MTG','出張','その他'];
+
+/* ===== メンバー枠組み（CoreFlow名簿 portalMembers を生で参照・スタッフ増減は自動反映） ===== */
+let MEMBERS=[];
+function membersColMHS(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
+let _memUnsub=null;
+function subscribeMembers(){
+  if(_memUnsub) return;
+  _memUnsub=membersColMHS().onSnapshot(function(snap){
+    var arr=[]; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false) arr.push(m); });
+    arr.sort(function(a,b){ var sa=(typeof a.sortOrder==='number')?a.sortOrder:999999, sb=(typeof b.sortOrder==='number')?b.sortOrder:999999; if(sa!==sb)return sa-sb; return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+    MEMBERS=arr; if(curView) showView(curView);
+  }, function(err){ console.warn('[MHS] メンバー購読エラー',err); });
+}
+function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){return {id:n,name:n,ini:String(n).charAt(0)};}); }
+function memberById(id){ for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } return null; }
+function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
+function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -611,7 +634,7 @@ function expandRecurring(start,end){
       let m=false;
       if(r.freq==='weekly') m=(d.getDay()===r.dow);
       else if(r.freq==='monthlyNth') m=(d.getDay()===r.dow && nthOfMonth(d)===r.nth);
-      if(m) out.push({layer:r.layer||'company',kind:'all',date:ymd(d),time:r.time||'終日',title:r.title,prefix:r.prefix||'',who:[],source:'recurring'});
+      if(m) out.push({layer:r.layer||'company',kind:'all',date:ymd(d),time:r.time||'終日',title:r.title,prefix:r.prefix||'',who:(r.who||[]),source:'recurring'});
     });
   }
   return out;
@@ -780,7 +803,7 @@ function renderDayGrid(){
   let h='<div class="dayview"><div class="dv-h">'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'+(hol?'<span style="color:#dc2626;font-size:12px">'+hol+'</span>':'')+(ev.closed?'<span class="cb">休業</span>':(ev.openWin?'<span class="ob">特別営業</span>':''))+'</div>';
   if(ev.warns.length) h+='<div style="padding:8px 14px;font-size:12px;color:#eab308;border-top:1px solid var(--border)">📝 '+ev.warns.map(esc).join(' / ')+'</div>';
   if(!list.length){ h+='<div class="dv-row" style="cursor:default;color:var(--text3)">予定なし</div>'; }
-  else list.forEach(function(e){ h+='<div class="dv-row" onclick="'+openEvAttr(e)+'"><div class="dv-tm">'+(e.time==='終日'||e.time==='—'?'終日':e.time)+'</div><div class="dv-bd"><div style="font-weight:600"><span class="dv-tag" style="background:'+hexOf(e.layer)+'"></span>'+dispTitle(e)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.join('、'):'')+(e.place?'・'+esc(e.place):'')+'</div></div></div>'; });
+  else list.forEach(function(e){ h+='<div class="dv-row" onclick="'+openEvAttr(e)+'"><div class="dv-tm">'+(e.time==='終日'||e.time==='—'?'終日':e.time)+'</div><div class="dv-bd"><div style="font-weight:600"><span class="dv-tag" style="background:'+hexOf(e.layer)+'"></span>'+dispTitle(e)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.map(memberLabel).join('、'):'')+(e.place?'・'+esc(e.place):'')+'</div></div></div>'; });
   h+='<div class="dv-add" onclick="openEventForm(null,\''+key+'\')">＋ この日に社内予定を追加</div>';
   h+='</div>';
   document.getElementById('cal-host').innerHTML=h;
@@ -836,7 +859,7 @@ function renderAxis(){
   document.getElementById('week-label').textContent=(curWeek.getMonth()+1)+'/'+curWeek.getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
   const evs=getEvents(curWeek,addDays(curWeek,6));
   let rows, rowLabel, axisName, matcher;
-  if(curAxis==='member'){ rows=STAFF; axisName='メンバー'; matcher=(e,r)=>(e.who||[]).includes(r); rowLabel=r=>'<span class="av">'+r.charAt(0)+'</span>'+r; }
+  if(curAxis==='member'){ rows=memberList().map(function(m){return m.id;}); axisName='メンバー'; matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){return w===id||(m&&w===m.name);}); }; rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); }; }
   else if(curAxis==='vehicle'){ const vs=[...new Set(evs.map(e=>e.vehicle).filter(v=>v&&v!=='—'))]; rows=vs.length?vs:['（車両指定の予定なし）']; axisName='車両'; matcher=(e,r)=>e.vehicle===r; rowLabel=r=>'🚗 '+r; }
   else { rows=PLACES; axisName='場所'; matcher=(e,r)=>e.place===r; rowLabel=r=>'📍 '+r; }
   document.getElementById('axis-name').textContent=axisName;
@@ -866,7 +889,7 @@ function renderBrief(){
     document.getElementById(nId).textContent=list.length+'件';
     const el=document.getElementById(elId);
     if(!list.length){el.innerHTML='<div class="empty">予定なし</div>';return;}
-    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+hexOf(e.layer)+'"></span>'+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.join('、'):'')+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
+    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+hexOf(e.layer)+'"></span>'+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.map(memberLabel).join('、'):'')+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
   };
   fill('brief-today','brief-today-n',td);
   fill('brief-tom','brief-tom-n',tm);
@@ -961,24 +984,29 @@ function recurListHTML(){
   const rs=CAL.recurring||[];
   if(!rs.length) return '<div class="empty" style="margin-bottom:12px">なし</div>';
   return '<div style="margin-bottom:14px">'+rs.map(function(r){
-    return '<div class="rec-row"><div class="rt"><b>'+(r.prefix?esc(r.prefix)+'：':'')+esc(r.title)+'</b><span class="rb">'+recurDesc(r)+(r.time?' '+r.time:'')+'</span></div><button class="rec-x" onclick="removeRecur(\''+escA(r.id)+'\')">✕ 削除</button></div>';
+    var whoHtml=(r.who&&r.who.length)?' <span style="display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px">'+r.who.map(function(id){var m=memberById(id);return m?memberAvatar(m,16):'';}).join('')+'</span>':'';
+    return '<div class="rec-row"><div class="rt"><b>'+(r.prefix?esc(r.prefix)+'：':'')+esc(r.title)+'</b><span class="rb">'+recurDesc(r)+(r.time?' '+r.time:'')+'</span>'+whoHtml+'</div><button class="rec-x" onclick="removeRecur(\''+escA(r.id)+'\')">✕ 削除</button></div>';
   }).join('')+'</div>';
 }
+let _recWho=[];
+function recWhoToggle(id,el){ var i=_recWho.indexOf(id); if(i>=0)_recWho.splice(i,1); else _recWho.push(id); el.classList.toggle('on'); }
 function recurAddHTML(){
   const dows=DOW.map(function(d,i){return '<option value="'+i+'">'+d+'</option>';}).join('');
+  const whoChips=memberList().map(function(m){var on=_recWho.indexOf(m.id)>=0;return '<span class="mpick'+(on?' on':'')+'" onclick="recWhoToggle(\''+escA(m.id)+'\',this)">'+memberAvatar(m,18)+'<span>'+esc(m.name)+'</span></span>';}).join('');
   return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
     '<input type="text" id="rec-title" class="cal-date" placeholder="予定名（例：ノー残DAY）" style="flex:1;min-width:150px">'+
     '<select id="rec-freq" class="cal-date" onchange="document.getElementById(\'rec-nth\').style.display=this.value===\'monthlyNth\'?\'\':\'none\'"><option value="weekly">毎週</option><option value="monthlyNth">毎月第n</option></select>'+
     '<select id="rec-nth" class="cal-date" style="display:none"><option value="1">第1</option><option value="2">第2</option><option value="3">第3</option><option value="4">第4</option></select>'+
     '<select id="rec-dow" class="cal-date">'+dows+'</select>'+
     '<input type="time" id="rec-time" class="cal-date" style="width:120px">'+
-    '<button class="vh-btn" onclick="addRecur()">追加</button></div>';
+    '<button class="vh-btn" onclick="addRecur()">追加</button>'+
+    '<div style="width:100%;margin-top:4px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">担当（任意）</div><div class="seg-pick">'+whoChips+'</div></div></div>';
 }
 function addRecur(){
   const t=document.getElementById('rec-title').value.trim(); if(!t){alert('予定名を入力してください。');return;}
   const freq=document.getElementById('rec-freq').value;
-  const r={id:'r'+Date.now(),title:t,freq:freq,dow:+document.getElementById('rec-dow').value,nth:+document.getElementById('rec-nth').value||1,time:document.getElementById('rec-time').value,layer:'company',prefix:''};
-  (CAL.recurring=CAL.recurring||[]).push(r); saveCal(); renderCalSet(); toast('定期予定を追加しました');
+  const r={id:'r'+Date.now(),title:t,freq:freq,dow:+document.getElementById('rec-dow').value,nth:+document.getElementById('rec-nth').value||1,time:document.getElementById('rec-time').value,layer:'company',prefix:'',who:_recWho.slice()};
+  (CAL.recurring=CAL.recurring||[]).push(r); _recWho=[]; saveCal(); renderCalSet(); toast('定期予定を追加しました');
 }
 function removeRecur(id){ if(!confirm('この定期予定を削除しますか？'))return; CAL.recurring=(CAL.recurring||[]).filter(function(r){return r.id!==id;}); saveCal(); renderCalSet(); toast('削除しました'); }
 function calCard(t,sub,inner){return '<div class="bcard" style="margin-bottom:14px"><h3 style="margin-bottom:2px">'+t+'</h3><p style="font-size:12px;color:var(--text3);margin:0 0 12px">'+sub+'</p>'+inner+'</div>';}
@@ -1007,7 +1035,7 @@ function openEv(json){
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+hexOf(e.layer)+'">'+nameOf(e.layer)+'</span></div>'+
     '<div class="fr"><span class="k">日付</span><span>'+e.date+'</span></div>'+
     '<div class="fr"><span class="k">時間</span><span>'+e.time+'</span></div>'+
-    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span>'+e.who.join('、')+'</span></div>':'')+
+    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span>'+e.who.map(memberLabel).join('、')+'</span></div>':'')+
     (e.vehicle&&e.vehicle!=='—'?'<div class="fr"><span class="k">車両</span><span>'+e.vehicle+'</span></div>':'')+
     (e.place?'<div class="fr"><span class="k">場所</span><span>'+esc(e.place)+'</span></div>':'')+
     (e.tags&&e.tags.length?'<div class="fr"><span class="k">タグ</span><span>'+e.tags.map(esc).join('、')+'</span></div>':'')+
@@ -1042,7 +1070,7 @@ function renderEventForm(){
   const layerPick=[['company','🗓 社内予定'],['deadline','🔴 締切・支払']].map(function(a){return pickHTML('layer',a[0],a[1],EF.layer===a[0]);}).join('');
   const kindPick=[['all','全社'],['dept','部署'],['personal','個人']].map(function(a){return pickHTML('kind',a[0],a[1],EF.kind===a[0]);}).join('');
   const deptPick=[['sales','車販'],['reception','受付'],['service','整備']].map(function(a){return pickHTML('dept',a[0],a[1],EF.dept===a[0]);}).join('');
-  const whoPick=STAFF.map(function(s){return pickHTML('who',s,s,EF.who.indexOf(s)>=0);}).join('');
+  const whoPick=memberList().map(function(m){ var on=EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="efWhoToggle(\''+escA(m.id)+'\',this)">'+memberAvatar(m,20)+'<span>'+esc(m.name)+'</span></span>'; }).join('');
   const tagPick=TAGS.map(function(t){return pickHTML('tag',t,t,EF.tags.indexOf(t)>=0);}).join('');
   const placeOpts=PLACES.map(function(p){return '<option value="'+p+'">';}).join('');
   const repeatPick=[['none','なし'],['daily','毎日'],['weekday','平日'],['weekly','毎週'],['biweekly','隔週'],['monthlyDay','毎月(日)'],['monthlyNth','毎月(第n曜)']].map(function(a){return pickHTML('repeat',a[0],a[1],EF.repeat.freq===a[0]);}).join('');
@@ -1068,6 +1096,7 @@ function renderEventForm(){
 }
 function setOnly(gid,el){document.getElementById(gid).querySelectorAll('.pick').forEach(function(p){p.classList.remove('on');}); el.classList.add('on');}
 function toggleArr(a,v){const i=a.indexOf(v); if(i>=0)a.splice(i,1); else a.push(v);}
+function efWhoToggle(id,el){ toggleArr(EF.who,id); el.classList.toggle('on'); }
 function efPick(group,val,el){
   if(group==='layer'){ EF.layer=val; document.getElementById('row-kind').style.display=(val==='company'?'':'none'); document.getElementById('row-dept').style.display=((val==='company'&&EF.kind==='dept')?'':'none'); setOnly('g-layer',el); }
   else if(group==='kind'){ EF.kind=val; document.getElementById('row-dept').style.display=(val==='dept'?'':'none'); setOnly('g-kind',el); }
