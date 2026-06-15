@@ -48,15 +48,23 @@
   .logo .ver{font-size:10px;color:var(--text3);font-weight:600;margin-left:6px;background:var(--bg3);padding:2px 8px;border-radius:8px}
   .sb-toggle{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:15px;line-height:1;cursor:pointer}
   .sb-toggle:hover{border-color:var(--acc)}
-  .tb-user{display:flex;align-items:center;gap:7px;margin-right:2px}
-  .tb-av{width:27px;height:27px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
-  .tb-av img{width:100%;height:100%;object-fit:cover;display:block}
-  .tb-uname{font-size:13px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sync-ind{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);white-space:nowrap}
-  .sync-ind .dot{width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 5px rgba(22,163,74,.7)}
+  /* TOPバー右クラスター（CarFlow準拠：アバター→表示名→同期→？→ログアウト） */
+  .topbar-user{display:flex;align-items:center;gap:8px}
+  .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#1db97a,#378ADD);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;flex:none}
+  .av img{width:100%;height:100%;object-fit:cover}
+  .uname{font-size:13px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .help-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .help-btn:hover{background:var(--carflow);color:#fff;border-color:var(--carflow)}
+  .btn-sm{font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer}
+  .btn-sm:hover{color:var(--text);border-color:var(--text3);background:var(--bg3)}
+  .sync-indicator{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--bg3);border:1px solid var(--border);color:var(--text2);user-select:none;white-space:nowrap}
+  .sync-indicator .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;animation:syncPulse 2.4s infinite}
+  .sync-indicator.sync-offline{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.4);color:#fca5a5}
+  .sync-indicator.sync-offline .sync-dot{background:#ef4444;animation:none}
+  @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.4}}
   body.sb-collapsed #app{grid-template-columns:0 1fr}
   body.sb-collapsed #sidebar{display:none}
-  @media(max-width:820px){.tb-uname{display:none}.sb-toggle{display:none}.sync-ind{display:none}}
+  @media(max-width:820px){.uname{display:none}.sb-toggle{display:none}.sync-indicator .sync-text{display:none}}
   .spacer{flex:1}
   .tb-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
   .tb-btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
@@ -309,7 +317,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.10.5</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.10.6</div>
   </div>
 </div>
 
@@ -327,15 +335,17 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.5</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.6</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
-    <button class="tb-btn" onclick="doLogout()" title="ログアウト">⏻</button>
-    <button class="tb-btn" onclick="showView('about')" title="ヘルプ・アプリについて">？</button>
-    <span class="sync-ind" title="リアルタイム同期中"><span class="dot"></span><span class="txt">同期</span></span>
-    <span class="tb-uname" id="me-name"></span>
-    <span class="tb-av" id="u-av"></span>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
+    <div class="topbar-user">
+      <span class="av" id="u-av"></span>
+      <span class="uname" id="me-name"></span>
+      <span class="sync-indicator sync-online" id="sync-ind" title="リアルタイム同期中"><span class="sync-dot"></span><span class="sync-text">同期</span></span>
+      <button class="help-btn" onclick="showView('about')" title="ヘルプ・アプリについて">？</button>
+      <button class="btn-sm" onclick="doLogout()">ログアウト</button>
+    </div>
   </div>
 
   <!-- ===== サイドバー ===== -->
@@ -478,7 +488,7 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 function escA(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function toast(msg){let t=document.getElementById('sf-toast'); if(!t){t=document.createElement('div');t.id='sf-toast';document.body.appendChild(t);} t.textContent=msg; t.className='show'; clearTimeout(toast._t); toast._t=setTimeout(function(){t.className='';},1600);}
 function _normEmail(s){ try{return String(s||'').normalize('NFKC').trim().toLowerCase();}catch(e){return String(s||'').trim().toLowerCase();} }
-function setSyncState(on){ var el=document.querySelector('.sync-ind'); if(!el)return; var dot=el.querySelector('.dot'), txt=el.querySelector('.txt'); if(on){ if(dot){dot.style.background='#16a34a';dot.style.boxShadow='0 0 5px rgba(22,163,74,.7)';} if(txt)txt.textContent='同期'; el.title='リアルタイム同期中'; } else { if(dot){dot.style.background='#9ca3af';dot.style.boxShadow='none';} if(txt)txt.textContent='未接続'; el.title='オフライン（再接続を待っています）'; } }
+function setSyncState(on){ var el=document.getElementById('sync-ind'); if(!el)return; el.classList.toggle('sync-offline',!on); var txt=el.querySelector('.sync-text'); if(txt)txt.textContent=on?'同期':'未接続'; el.title=on?'リアルタイム同期中':'オフライン（再接続を待っています）'; }
 try{ window.addEventListener('online',function(){setSyncState(true);}); window.addEventListener('offline',function(){setSyncState(false);}); }catch(e){}
 
 /* ---------- 認証（Google）＋ CoreFlow名簿入室 ---------- */
