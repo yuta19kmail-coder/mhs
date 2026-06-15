@@ -309,7 +309,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.10.4</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.10.5</div>
   </div>
 </div>
 
@@ -327,12 +327,12 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.4</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.5</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn" onclick="doLogout()" title="ログアウト">⏻</button>
     <button class="tb-btn" onclick="showView('about')" title="ヘルプ・アプリについて">？</button>
-    <span class="sync-ind" title="リアルタイム同期中"><span class="dot"></span>同期</span>
+    <span class="sync-ind" title="リアルタイム同期中"><span class="dot"></span><span class="txt">同期</span></span>
     <span class="tb-uname" id="me-name"></span>
     <span class="tb-av" id="u-av"></span>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -478,6 +478,8 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 function escA(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function toast(msg){let t=document.getElementById('sf-toast'); if(!t){t=document.createElement('div');t.id='sf-toast';document.body.appendChild(t);} t.textContent=msg; t.className='show'; clearTimeout(toast._t); toast._t=setTimeout(function(){t.className='';},1600);}
 function _normEmail(s){ try{return String(s||'').normalize('NFKC').trim().toLowerCase();}catch(e){return String(s||'').trim().toLowerCase();} }
+function setSyncState(on){ var el=document.querySelector('.sync-ind'); if(!el)return; var dot=el.querySelector('.dot'), txt=el.querySelector('.txt'); if(on){ if(dot){dot.style.background='#16a34a';dot.style.boxShadow='0 0 5px rgba(22,163,74,.7)';} if(txt)txt.textContent='同期'; el.title='リアルタイム同期中'; } else { if(dot){dot.style.background='#9ca3af';dot.style.boxShadow='none';} if(txt)txt.textContent='未接続'; el.title='オフライン（再接続を待っています）'; } }
+try{ window.addEventListener('online',function(){setSyncState(true);}); window.addEventListener('offline',function(){setSyncState(false);}); }catch(e){}
 
 /* ---------- 認証（Google）＋ CoreFlow名簿入室 ---------- */
 function loginWithGoogle(){
@@ -523,9 +525,11 @@ async function enterApp(member,user){
   if(av){ var ph=member&&(member.photo||member.photoURL||member.customPhotoURL); av.innerHTML = ph ? ('<img src="'+ph+'" alt="">') : esc((member&&member.ini)||String(nm).charAt(0)||'？'); }
   try{ await window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc(user.uid).set({memberId:member.id, memberEmail:(member.email||user.email||'')},{merge:true}); }catch(e){ console.warn('[MHS] userPrefs記録失敗',e); }
   await loadCalRemote();
+  subscribeCal();
   subscribeMembers();
   subscribeSchedule();
   renderLayers('layers-month'); renderLayers('layers-axis');
+  setSyncState(navigator.onLine!==false);
   showView('brief');
 }
 function wireAuth(){
@@ -611,6 +615,18 @@ function loadCalRemote(){
     else { CAL=freshCal(); }
   }).catch(function(e){ console.warn('[MHS] 会社カレンダー読込失敗',e); CAL=freshCal(); });
 }
+let _calUnsub=null;
+function subscribeCal(){
+  if(_calUnsub) return;
+  _calUnsub=calDoc().onSnapshot(function(d){
+    if(d.exists){ var base=JSON.parse(JSON.stringify(CAL_DEFAULT)); CAL=migrateRules(Object.assign(base,d.data())); }
+    else { CAL=freshCal(); }
+    setSyncState(true);
+    // 設定画面の編集を邪魔しないよう、calset表示中は自動再描画しない（他ビューと日ポップアップは反映）
+    if(curView && curView!=='calset') showView(curView);
+    refreshDayModal();
+  }, function(e){ console.warn('[MHS] 会社カレンダー購読エラー',e); setSyncState(false); });
+}
 function saveCal(){
   var data={ rules:CAL.rules||[], recurring:CAL.recurring||[], closedDow:CAL.closedDow||[], holidaysClosed:!!CAL.holidaysClosed, closedDates:CAL.closedDates||[], openDates:CAL.openDates||[], bizStart:CAL.bizStart||'09:00', bizEnd:CAL.bizEnd||'18:00', updatedAt:window.fb.serverTimestamp() };
   calDoc().set(data,{merge:true}).catch(function(e){ console.error('[MHS] 会社カレンダー保存失敗',e); toast('⚠ 設定の保存に失敗（権限/通信）'); });
@@ -655,7 +671,7 @@ function subscribeMembers(){
   _memUnsub=membersColMHS().onSnapshot(function(snap){
     var arr=[]; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false) arr.push(m); });
     arr.sort(function(a,b){ var sa=(typeof a.sortOrder==='number')?a.sortOrder:999999, sb=(typeof b.sortOrder==='number')?b.sortOrder:999999; if(sa!==sb)return sa-sb; return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
-    MEMBERS=arr; if(curView) showView(curView);
+    MEMBERS=arr; if(curView) showView(curView); refreshDayModal();
   }, function(err){ console.warn('[MHS] メンバー購読エラー',err); });
 }
 function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){return {id:n,name:n,ini:String(n).charAt(0)};}); }
@@ -683,7 +699,8 @@ function subscribeSchedule(){
     USER_EVENTS=[];
     snap.forEach(function(d){ var e=d.data()||{}; e.id=d.id; e.source='manual'; if(!e.who)e.who=[]; if(!e.tags)e.tags=[]; if(e.secret && e.ownerUid && window.fb.currentUser && e.ownerUid!==window.fb.currentUser.uid) return; USER_EVENTS.push(e); });
     if(curView) showView(curView);
-  }, function(err){ console.error('[MHS] scheduleEvents購読エラー',err); toast('⚠ 予定の読込に失敗'); });
+    refreshDayModal(); setSyncState(true);
+  }, function(err){ console.error('[MHS] scheduleEvents購読エラー',err); setSyncState(false); });
 }
 function schedSave(ev){
   var data=Object.assign({},ev); delete data.id; delete data.source; delete data._occ;
@@ -938,17 +955,20 @@ function dayPopShow(ev,dateStr){
 function dayPopHide(){ const p=document.getElementById('day-pop'); popTimer=setTimeout(function(){ if(!popHold)p.classList.remove('show'); },140); }
 
 /* 日付クリック → 日ビューをポップアップ（画面遷移しない） */
-function openDayModal(dateStr){
-  dayPopHide();
-  var d=new Date(dateStr+'T00:00:00');
+let _dayModalDate=null;
+function renderDayModalBody(){
+  if(!_dayModalDate)return;
+  var dateStr=_dayModalDate, d=new Date(dateStr+'T00:00:00');
   var byDate={}; getEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
   var hol=holName(dateStr), ev=evalDay(dateStr,d);
   document.getElementById('daymodal-title').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'+(hol?' '+hol:'')+(ev.closed?' 休業':(ev.openWin?' 特別営業':''));
   document.getElementById('daymodal-add').setAttribute('onclick','openEventForm(null,\''+dateStr+'\')');
   document.getElementById('daymodal-body').innerHTML=timeGridHTML([d],byDate,1);
-  document.getElementById('day-modal').classList.add('show');
 }
-function closeDayModal(){ document.getElementById('day-modal').classList.remove('show'); }
+function dayModalOpen(){ return _dayModalDate && document.getElementById('day-modal').classList.contains('show'); }
+function refreshDayModal(){ if(dayModalOpen()) renderDayModalBody(); }
+function openDayModal(dateStr){ dayPopHide(); _dayModalDate=dateStr; renderDayModalBody(); document.getElementById('day-modal').classList.add('show'); }
+function closeDayModal(){ _dayModalDate=null; document.getElementById('day-modal').classList.remove('show'); }
 
 document.getElementById('axis-seg').addEventListener('click',e=>{
   if(e.target.dataset.ax){
