@@ -92,22 +92,23 @@
   .cal-dow div{padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--text2)}
   .cal-dow div.sun{color:#f87171}.cal-dow div.sat{color:#60a5fa}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-  .cell{min-height:104px;border-top:1px solid var(--border);border-left:1px solid var(--border);padding:5px 6px;position:relative}
+  .cell{min-height:124px;border-top:1px solid var(--border);border-left:1px solid var(--border);padding:5px 6px;position:relative;cursor:pointer}
   .cell:nth-child(7n+1){border-left:0}
   .cell.other{background:rgba(127,127,127,.05)}
-  .cell .dnum{font-size:12px;color:var(--text2);font-weight:600}
+  .cell .dnum{font-size:13px;color:var(--text2);font-weight:700}
   .cell.sat .dnum{color:#60a5fa}
   .cell.sun .dnum{color:#f87171}
-  .ev{margin-top:3px;font-size:11px;line-height:1.3;padding:2px 6px;border-radius:5px;color:#fff;cursor:pointer;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev{margin-top:3px;font-size:12px;line-height:1.4;padding:3px 7px;border-radius:6px;color:#fff;cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}
   .ev:hover{filter:brightness(1.12)}
   .ev .et{opacity:.85;font-weight:700;margin-right:3px}
-  .more{font-size:10px;color:var(--text3);margin-top:2px;cursor:pointer}
+  .ev .grp{font-weight:700}
+  .more{font-size:11px;color:var(--text3);margin-top:2px;cursor:pointer}
 
   /* 定休/祝日表示 */
   .cell.closed{background:repeating-linear-gradient(45deg, rgba(120,120,120,.10), rgba(120,120,120,.10) 7px, transparent 7px, transparent 14px)}
   .cell.holiday .dnum{color:#dc2626}
-  .cell.today .dnum{background:var(--acc);color:#fff;border-radius:50%;width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center}
+  .cell.today{box-shadow:inset 0 0 0 2px var(--acc);background:rgba(220,38,38,.07)}
   .cell .hol-name{font-size:9px;color:#dc2626;font-weight:600;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
   .cell .closed-badge{position:absolute;top:5px;right:6px;font-size:9px;font-weight:700;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:0 5px}
 
@@ -275,7 +276,7 @@
   .tg2-allday{display:grid;border-bottom:1px solid var(--border)}
   .tg2-allday .lab{font-size:9px;color:var(--text3);display:flex;align-items:center;justify-content:center;text-align:center;border-right:1px solid var(--border);line-height:1.2}
   .tg2-adcell{border-left:1px solid var(--border);padding:3px;display:flex;flex-direction:column;gap:2px;min-height:26px}
-  .tg2-adchip{font-size:10.5px;border-radius:4px;color:#fff;padding:1px 5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}
+  .tg2-adchip{font-size:12px;border-radius:5px;color:#fff;padding:2px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}
   .tg2-addbtn{font-size:11px;color:var(--text3);cursor:pointer;text-align:center;border:1px dashed var(--border);border-radius:5px;line-height:1.4}
   .tg2-addbtn:hover{border-color:var(--acc);color:var(--acc)}
   .tg2-body{display:grid;position:relative}
@@ -286,8 +287,11 @@
   .tg2-col.today{background:rgba(220,38,38,.05)}
   .tg2-col.closed{background:repeating-linear-gradient(45deg,rgba(120,120,120,.08),rgba(120,120,120,.08) 6px,transparent 6px,transparent 12px)}
   .tg2-line{position:absolute;left:0;right:0;border-top:1px solid var(--border);opacity:.45}
-  .tg2-ev{position:absolute;left:2px;right:2px;border-radius:5px;color:#fff;font-size:10.5px;line-height:1.25;padding:2px 4px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.35);display:flex;flex-wrap:wrap;align-items:center;gap:2px}
-  .tg2-ev .et{font-weight:700;font-size:9px;opacity:.9}
+  .tg2-ev{position:absolute;left:2px;right:2px;border-radius:6px;color:#fff;line-height:1.3;padding:3px 6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:1px}
+  .tg2-ev .l1{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}
+  .tg2-ev .l2{font-size:11px;display:flex;align-items:center;gap:3px;opacity:.95}
+  .tg2-ev .l1 .grp,.tg2-adchip .grp,.ev .grp{font-weight:700}
+  .tg2-ev .et{font-weight:700;opacity:.92}
 
   /* トースト */
   #sf-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--acc);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:.2s;z-index:500;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
@@ -303,7 +307,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.10.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.10.1</div>
   </div>
 </div>
 
@@ -321,7 +325,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.1</span></div>
     <div class="spacer"></div>
     <div class="tb-user"><span class="tb-av" id="u-av"></span><span class="tb-uname" id="me-name"></span></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 社内予定</button>
@@ -432,6 +436,14 @@
 
 <!-- ホバー全件ポップ -->
 <div id="day-pop" onmouseenter="dayPopHold(true)" onmouseleave="dayPopHold(false)"></div>
+
+<!-- 日ビュー ポップアップ -->
+<div class="mbg" id="day-modal" style="z-index:150" onclick="if(event.target.id==='day-modal')closeDayModal()">
+  <div class="mbox" style="width:min(96vw,560px);max-height:90vh;display:flex;flex-direction:column">
+    <div class="mhead"><span class="mt" id="daymodal-title">日</span><button class="vh-btn" id="daymodal-add" style="margin-left:auto">＋ 追加</button><button class="x" onclick="closeDayModal()">✕</button></div>
+    <div class="mbody" id="daymodal-body" style="overflow:auto;padding:12px"></div>
+  </div>
+</div>
 
 <!-- 社内予定 追加/編集モーダル -->
 <div class="mbg" id="ef-modal" onclick="if(event.target.id==='ef-modal')closeEf()">
@@ -645,7 +657,16 @@ function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){retur
 function memberById(id){ for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } return null; }
 function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
-function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle;margin-right:3px">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
+function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
+/* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
+function evLead(e,sz){
+  if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
+  if(e.kind==='personal') return whoAvatars(e.who,sz)||'<span class="grp">個人</span>';
+  if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
+  return '<span class="grp">全社</span>';
+}
+function evTitleW(e){ return '「'+esc(e.title||'')+'」'; }
+function evTrail(e,sz){ return (e.kind==='personal')?'':whoAvatars(e.who,sz); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -781,8 +802,7 @@ function evChip(e,cls){
   const rep=!!(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none');
   const span=!!(e.endDate&&e.endDate>(e._spanStart||e.date));
   const manual=e.source==='manual' && !rep && !span && !e._occ;   // 繰り返し・複数日はドラッグ不可（単発のみ）
-  const t=(e.time==='終日'||e.time==='—'?'':e.time);
-  return '<div class="'+cls+'" style="background:'+eventColor(e)+'"'+(manual?' draggable="true" ondragstart="evDragStart(event,\''+escA(e.id)+'\')" ondragend="evDragEnd(event)"':'')+' onclick="'+openEvAttr(e)+'"><span class="et">'+t+'</span>'+(rep?'🔁':'')+(e.secret?'🔒':'')+whoAvatars(e.who,13)+dispTitle(e)+'</div>';
+  return '<div class="'+cls+'" style="background:'+eventColor(e)+'"'+(manual?' draggable="true" ondragstart="evDragStart(event,\''+escA(e.id)+'\')" ondragend="evDragEnd(event)"':'')+' onclick="'+openEvAttr(e)+'">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+evTrail(e,15)+'</div>';
 }
 function setCalMode(m){ calMode=m; document.querySelectorAll('#cal-mode-seg button').forEach(function(b){b.classList.toggle('active',b.dataset.m===m);}); renderCal(); }
 function calMove(n){
@@ -811,7 +831,7 @@ function renderMonthGrid(){
     const d=addDays(start,i), key=ymd(d), inMonth=d.getMonth()===cur.getMonth();
     const isToday=key===ymd(TODAY), hol=holName(key), ev=evalDay(key,d);
     const evs=(byDate[key]||[]).sort(byTime);
-    h+='<div class="cell'+(inMonth?'':' other')+(d.getDay()===0?' sun':(d.getDay()===6?' sat':''))+(isToday?' today':'')+(ev.closed?' closed':'')+(hol?' holiday':'')+'" data-date="'+key+'" ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)" ondrop="cellDrop(event,\''+key+'\')" onmouseenter="dayPopShow(event,\''+key+'\')" onmouseleave="dayPopHide()">';
+    h+='<div class="cell'+(inMonth?'':' other')+(d.getDay()===0?' sun':(d.getDay()===6?' sat':''))+(isToday?' today':'')+(ev.closed?' closed':'')+(hol?' holiday':'')+'" data-date="'+key+'" ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)" ondrop="cellDrop(event,\''+key+'\')" onmouseenter="dayPopShow(event,\''+key+'\')" onmouseleave="dayPopHide()" onclick="openDayModal(\''+key+'\')">';
     h+='<div class="dnum">'+d.getDate()+'</div>';
     if(ev.closed) h+='<div class="closed-badge">休</div>';
     else if(ev.openWin) h+='<div class="closed-badge" style="color:#16a34a;border-color:rgba(22,163,74,.4)">営</div>';
@@ -831,7 +851,7 @@ function parseHM(t){ if(!t||!/^\d{1,2}:\d{2}$/.test(t))return null; var p=t.spli
 function isTimedEvent(e){ return parseHM(e.time)!=null; }
 function evIcons(e){ return (e.repeat&&e.repeat.freq&&e.repeat.freq!=='none'?'🔁':'')+(e.secret?'🔒':''); }
 function timeGridHTML(days,byDate,ncol){
-  var bh=bizHours(), hpx=44, nh=bh.e-bh.s;
+  var bh=bizHours(), hpx=54, nh=bh.e-bh.s;
   var gridCols='var(--tg-axw) repeat('+ncol+',minmax(92px,1fr))';
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
@@ -842,7 +862,7 @@ function timeGridHTML(days,byDate,ncol){
   h+='<div class="tg2-allday" style="grid-template-columns:'+gridCols+'"><div class="lab">終日<br>AM/PM</div>';
   days.forEach(function(d){ var key=ymd(d); var evs=(byDate[key]||[]).filter(function(e){return !isTimedEvent(e);}).sort(byTime);
     h+='<div class="tg2-adcell">';
-    evs.forEach(function(e){ var lab=(e.time==='AM'?'AM ':e.time==='PM'?'PM ':''); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'">'+evIcons(e)+whoAvatars(e.who,12)+lab+dispTitle(e)+'</div>'; });
+    evs.forEach(function(e){ var lab=(e.time==='AM'?'AM':e.time==='PM'?'PM':''); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+(lab?' <b>'+lab+'</b>':'')+evTrail(e,15)+'</div>'; });
     h+='<div class="tg2-addbtn" onclick="openEventForm(null,\''+key+'\')">＋</div>';
     h+='</div>';
   });
@@ -855,8 +875,8 @@ function timeGridHTML(days,byDate,ncol){
     h+='<div class="tg2-col'+(t?' today':'')+(ev.closed?' closed':'')+'" style="height:'+(nh*hpx)+'px" onclick="tgColAdd(event,\''+key+'\','+bh.s+','+hpx+')">';
     for(var i=1;i<nh;i++){ h+='<div class="tg2-line" style="top:'+(i*hpx)+'px"></div>'; }
     var timed=(byDate[key]||[]).filter(isTimedEvent).sort(byTime);
-    timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-bh.s)*hpx, height=Math.max(dur*hpx,16); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
-      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span> '+evIcons(e)+whoAvatars(e.who,12)+dispTitle(e)+'</div>';
+    timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-bh.s)*hpx, height=Math.max(dur*hpx,36); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
+      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15)+'</div></div>';
     });
     h+='</div>';
   });
@@ -911,6 +931,19 @@ function dayPopShow(ev,dateStr){
   p.classList.add('show');
 }
 function dayPopHide(){ const p=document.getElementById('day-pop'); popTimer=setTimeout(function(){ if(!popHold)p.classList.remove('show'); },140); }
+
+/* 日付クリック → 日ビューをポップアップ（画面遷移しない） */
+function openDayModal(dateStr){
+  dayPopHide();
+  var d=new Date(dateStr+'T00:00:00');
+  var byDate={}; getEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  var hol=holName(dateStr), ev=evalDay(dateStr,d);
+  document.getElementById('daymodal-title').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'+(hol?' '+hol:'')+(ev.closed?' 休業':(ev.openWin?' 特別営業':''));
+  document.getElementById('daymodal-add').setAttribute('onclick','openEventForm(null,\''+dateStr+'\')');
+  document.getElementById('daymodal-body').innerHTML=timeGridHTML([d],byDate,1);
+  document.getElementById('day-modal').classList.add('show');
+}
+function closeDayModal(){ document.getElementById('day-modal').classList.remove('show'); }
 
 document.getElementById('axis-seg').addEventListener('click',e=>{
   if(e.target.dataset.ax){
@@ -1215,7 +1248,7 @@ function saveEventForm(){
   schedSave(EF); closeEf(); toast('保存しました');
 }
 function deleteEvent(){ if(!EF||!EF.id)return; if(!confirm('この予定を削除しますか？'))return; schedDelete(EF.id); closeEf(); toast('削除しました'); }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEv();closeEf();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEv();closeEf();closeDayModal();}});
 
 /* ---------- 起動（認証→入室→Firestore購読） ---------- */
 wireAuth();
