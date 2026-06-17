@@ -192,6 +192,12 @@
   .mpick{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 11px 4px 5px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
   .mpick:hover{border-color:var(--acc)}
   .mpick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .mpick-groups{width:100%;display:flex;flex-direction:column;gap:9px}
+  .mpick-grp{display:flex;flex-direction:column;gap:5px}
+  .mpick-gh{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text3)}
+  .mpick-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .mpick-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .rh-grp{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;background:var(--bg3);color:var(--text2)}
   .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
   .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
@@ -318,7 +324,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.10.7</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.13.0</div>
   </div>
 </div>
 
@@ -336,7 +342,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.10.7</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.13.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -434,7 +440,7 @@
       </div>
       <div class="note-card devtools">
         <h4>接続状況</h4>
-        <p>本番接続。Firebase（carflow-9d500 相乗り）に接続し、社内予定は <code>scheduleEvents</code>、会社カレンダーは <code>settings/mhsCompanyCalendar</code> に保存。入室は CoreFlow 名簿（portalMembers）で判定します。他アプリ（CarFlow/PitFlow/StockFlow）の予定重ね合わせと AI配車提案は今後の実装です。</p>
+        <p>本番接続。Firebase（carflow-9d500 相乗り）に接続し、社内予定は <code>scheduleEvents</code>、会社カレンダーは <code>settings/mhsCompanyCalendar</code> に保存。入室は CoreFlow 名簿（<code>portalMembers</code>）で判定。<b>担当・部署は CoreMembers（<code>coreMembers</code>／<code>coreDepts</code>）から取得</b>します（人と組織の真実＝CoreMembers）。他アプリ（CarFlow/PitFlow/StockFlow）の予定重ね合わせと AI配車提案は今後の実装です。</p>
         <button onclick="doLogout()">⏻ ログアウト</button>
       </div>
     </section>
@@ -483,7 +489,8 @@
 <script>
 /* MasterHub Schedule (MHS) v0.6.0 — 本番接続（Firebase / carflow-9d500 相乗り）。
    社内予定＝companies/kobayashi_motors/scheduleEvents、会社カレンダーマスター＝settings/mhsCompanyCalendar。
-   入室判定＝CoreFlow名簿(portalMembers)。編集は各アプリ完結／MHSは社内予定＋会社カレンダーの編集と俯瞰。 */
+   入室判定＝CoreFlow名簿(portalMembers)。担当・部署＝CoreMembers(coreMembers/coreDepts)から取得（v0.11.0〜）。
+   編集は各アプリ完結／MHSは社内予定＋会社カレンダーの編集と俯瞰。 */
 const COMPANY_ID='kobayashi_motors';
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
@@ -537,6 +544,7 @@ async function enterApp(member,user){
   try{ await window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc(user.uid).set({memberId:member.id, memberEmail:(member.email||user.email||'')},{merge:true}); }catch(e){ console.warn('[MHS] userPrefs記録失敗',e); }
   await loadCalRemote();
   subscribeCal();
+  subscribeDepts();
   subscribeMembers();
   subscribeSchedule();
   renderLayers('layers-month'); renderLayers('layers-axis');
@@ -571,9 +579,10 @@ const LAYERS=[
 const layerOn={}; LAYERS.forEach(l=>layerOn[l.key]=true);
 const hexOf=k=>(LAYERS.find(l=>l.key===k)||{}).hex||'#888';
 const nameOf=k=>(LAYERS.find(l=>l.key===k)||{}).name||k;
-/* 部署 → バー色（整備・1課・2課＝緑／車販＝青／受付＝ピンク／デザイン＝紫／全体＝赤）。旧キー(service/sales/reception)も対応 */
-const DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'#378ADD','受付':'#ec4899','デザイン':'#a855f7','service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};
-const DEPTS=['整備','1課','2課','車販','受付','デザイン'];
+/* 部署 → バー色／部署リスト。CoreMembers の coreDepts から動的に上書き（subscribeDepts）。
+   未読込時は下記をフォールバックに使う。旧キー(service/sales/reception)も対応 */
+let DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'#378ADD','受付':'#ec4899','デザイン':'#a855f7','service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};
+let DEPTS=['整備','1課','2課','車販','受付','デザイン'];
 function eventColor(e){
   if(e.layer==='company'){
     if(e.kind==='all') return '#dc2626';                 // 全体＝赤
@@ -673,9 +682,40 @@ const STAFF=['社長','椎名','壱谷','福光','蓮沼','箱崎','菅谷','林
 const PLACES=['店頭','PIT1','PIT2','陸運局A','陸運局B','部品屋','配送','本社','整備'];
 const TAGS=['顧客来店','支払日','休日','MTG','出張','その他'];
 
-/* ===== メンバー枠組み（CoreFlow名簿 portalMembers を生で参照・スタッフ増減は自動反映） ===== */
+/* ===== メンバー＆部署（CoreMembers＝社員名簿/組織図を生で参照） =====
+   人と組織の真実＝CoreMembers（coreMembers / coreDepts）。
+   ログインの鍵＝CoreFlow(portalMembers)。担当・部署はここ（CoreMembers）から引く。 */
 let MEMBERS=[];
-function membersColMHS(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
+let CORE_DEPTS=[];   // coreDepts 生データ（部/課/班/拠点）
+function coreBaseDoc(){ return window.fb.db.collection('companies').doc(COMPANY_ID); }
+function coreMembersCol(){ return coreBaseDoc().collection('coreMembers'); }
+function coreDeptsCol(){ return coreBaseDoc().collection('coreDepts'); }
+function deptById(id){ if(!id)return null; for(var i=0;i<CORE_DEPTS.length;i++){ if(CORE_DEPTS[i].id===id)return CORE_DEPTS[i]; } return null; }
+/* 社員の所属を 部(deptId)/課(sectionId) に解決（CoreMembers と同じ規則：主所属に課が入っていても 部=親/課=その課 に読み替え） */
+function memberDeptIds(m){ var pid=(m&&m.primaryDeptId)||''; var sid=(m&&m.sectionDeptId)||''; var pd=deptById(pid); if(pd&&pd.parentId){ if(!sid)sid=pid; pid=pd.parentId; } return {deptId:pid, sectionId:sid}; }
+/* その社員の表示部署名（課があれば課・無ければ部） */
+function memberDeptName(m){ var d=memberDeptIds(m); var sec=d.sectionId?deptById(d.sectionId):null; var par=d.deptId?deptById(d.deptId):null; return (sec&&sec.name)||(par&&par.name)||''; }
+
+/* 部署（coreDepts）購読：DEPTS（ピッカー）と DEPT_COLORS（バー色）を実組織で上書き */
+let _deptUnsub=null;
+function subscribeDepts(){
+  if(_deptUnsub) return;
+  _deptUnsub=coreDeptsCol().onSnapshot(function(snap){
+    var arr=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; arr.push(x); });
+    arr.sort(function(a,b){ var ao=(typeof a.order==='number')?a.order:1e9, bo=(typeof b.order==='number')?b.order:1e9; return (ao-bo) || String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+    CORE_DEPTS=arr;
+    if(arr.length){
+      DEPTS=arr.map(function(d){return d.name;}).filter(Boolean);
+      var cmap={'service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};   // 旧キー互換
+      arr.forEach(function(d){ if(d.name) cmap[d.name]=d.color||'#64748b'; });
+      DEPT_COLORS=cmap;
+    }
+    if(curView) showView(curView); refreshDayModal();
+  }, function(err){ console.warn('[MHS] 部署(coreDepts)購読エラー',err); });
+}
+
+/* メンバー（coreMembers）購読：名簿の増減・並び順を自動反映 */
+function membersColMHS(){ return coreMembersCol(); }
 let _memUnsub=null;
 function subscribeMembers(){
   if(_memUnsub) return;
@@ -683,10 +723,43 @@ function subscribeMembers(){
     var arr=[]; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false) arr.push(m); });
     arr.sort(function(a,b){ var sa=(typeof a.sortOrder==='number')?a.sortOrder:999999, sb=(typeof b.sortOrder==='number')?b.sortOrder:999999; if(sa!==sb)return sa-sb; return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
     MEMBERS=arr; if(curView) showView(curView); refreshDayModal();
-  }, function(err){ console.warn('[MHS] メンバー購読エラー',err); });
+  }, function(err){ console.warn('[MHS] メンバー(coreMembers)購読エラー',err); });
 }
 function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){return {id:n,name:n,ini:String(n).charAt(0)};}); }
-function memberById(id){ for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } return null; }
+/* id 解決：coreMember.id 優先。旧イベントの who は portalMember id の場合があるので portalMemberId でもフォールバック照合 */
+function memberById(id){ if(id==null)return null; var i; for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].portalMemberId&&MEMBERS[i].portalMemberId===id)return MEMBERS[i]; } return null; }
+/* 部署（部）ごとにメンバーをまとめる。[{dept:{id,name,color}|null, members:[...]}]（未所属は最後）。
+   部署情報(coreDepts)が無いときは1グループ(dept=null)＝従来のフラット表示にフォールバック。 */
+function membersGrouped(){
+  var list=memberList();
+  var tops=CORE_DEPTS.filter(function(d){ return !d.parentId; });
+  if(!tops.length) return [{dept:null, members:list}];
+  var groups=[], byId={};
+  tops.forEach(function(d){ var g={dept:d, members:[]}; byId[d.id]=g; groups.push(g); });
+  var none={dept:null, members:[]};
+  list.forEach(function(m){ var did=memberDeptIds(m).deptId; var g=(did&&byId[did])?byId[did]:none; g.members.push(m); });
+  var out=groups.filter(function(g){ return g.members.length; });
+  if(none.members.length) out.push(none);
+  return out.length?out:[{dept:null, members:list}];
+}
+function _hasDeptGroups(g){ return !(g.length===1 && !g[0].dept); }
+/* 担当チップ1個 */
+function whoChip(m,on,onclickAttr,sz){ return '<span class="mpick'+(on?' on':'')+'" onclick="'+onclickAttr+'">'+memberAvatar(m,sz)+'<span>'+esc(m.name)+'</span></span>'; }
+/* 担当ピッカー（部署見出し＋チップ群）。isOn(m)→bool、onclickOf(m)→onclick文字列 */
+function whoPickerHTML(isOn, onclickOf, sz){
+  sz=sz||20;
+  var groups=membersGrouped();
+  if(!_hasDeptGroups(groups)){ return groups[0].members.map(function(m){ return whoChip(m,isOn(m),onclickOf(m),sz); }).join(''); }
+  var inner=groups.map(function(g){
+    var nm=g.dept?g.dept.name:'未所属', col=(g.dept&&g.dept.color)||'#94a3b8';
+    var chips=g.members.map(function(m){ return whoChip(m,isOn(m),onclickOf(m),sz); }).join('');
+    return '<div class="mpick-grp"><div class="mpick-gh"><span class="mpick-dot" style="background:'+col+'"></span>'+esc(nm)+'</div><div class="mpick-chips">'+chips+'</div></div>';
+  }).join('');
+  return '<div class="mpick-groups">'+inner+'</div>';
+}
+/* 部署名→coreDept、部署→所属メンバー（部なら配下の課も含む・課ならその課） */
+function deptByName(nm){ if(!nm)return null; for(var i=0;i<CORE_DEPTS.length;i++){ if(CORE_DEPTS[i].name===nm)return CORE_DEPTS[i]; } return null; }
+function membersOfDeptId(did){ if(!did)return []; return memberList().filter(function(m){ var d=memberDeptIds(m); return d.deptId===did||d.sectionId===did; }); }
 function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
@@ -996,7 +1069,7 @@ function renderAxis(){
   document.getElementById('week-label').textContent=(curWeek.getMonth()+1)+'/'+curWeek.getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
   const evs=getEvents(curWeek,addDays(curWeek,6));
   let rows, rowLabel, axisName, matcher;
-  if(curAxis==='member'){ rows=memberList().map(function(m){return m.id;}); axisName='メンバー'; matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){return w===id||(m&&w===m.name);}); }; rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); }; }
+  if(curAxis==='member'){ var mg=membersGrouped(), grouped=_hasDeptGroups(mg); rows=[]; mg.forEach(function(g){ if(grouped) rows.push({grp:(g.dept?g.dept.name:'未所属'), color:(g.dept&&g.dept.color)||'#94a3b8'}); g.members.forEach(function(m){ rows.push(m.id); }); }); axisName='メンバー'; matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){ if(w===id)return true; if(m&&w===m.name)return true; var wm=memberById(w); return !!(wm&&wm.id===id); }); }; rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); }; }
   else if(curAxis==='vehicle'){ const vs=[...new Set(evs.map(e=>e.vehicle).filter(v=>v&&v!=='—'))]; rows=vs.length?vs:['（車両指定の予定なし）']; axisName='車両'; matcher=(e,r)=>e.vehicle===r; rowLabel=r=>'🚗 '+r; }
   else { rows=PLACES; axisName='場所'; matcher=(e,r)=>e.place===r; rowLabel=r=>'📍 '+r; }
   document.getElementById('axis-name').textContent=axisName;
@@ -1005,6 +1078,7 @@ function renderAxis(){
   let h='<div class="ah" style="position:sticky;left:0;z-index:2">'+axisName+' \\ 日</div>';
   days.forEach(d=>{const t=ymd(d)===ymd(TODAY); h+='<div class="ah'+(t?' col-today':'')+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</div>';});
   rows.forEach(r=>{
+    if(r && typeof r==='object' && r.grp){ h+='<div class="rh rh-grp" style="grid-column:1 / -1"><span class="mpick-dot" style="background:'+r.color+'"></span>'+esc(r.grp)+'</div>'; return; }
     h+='<div class="rh">'+rowLabel(r)+'</div>';
     days.forEach(d=>{
       const t=ymd(d)===ymd(TODAY);
@@ -1131,7 +1205,7 @@ let _recWho=[];
 function recWhoToggle(id,el){ var i=_recWho.indexOf(id); if(i>=0)_recWho.splice(i,1); else _recWho.push(id); el.classList.toggle('on'); }
 function recurAddHTML(){
   const dows=DOW.map(function(d,i){return '<option value="'+i+'">'+d+'</option>';}).join('');
-  const whoChips=memberList().map(function(m){var on=_recWho.indexOf(m.id)>=0;return '<span class="mpick'+(on?' on':'')+'" onclick="recWhoToggle(\''+escA(m.id)+'\',this)">'+memberAvatar(m,18)+'<span>'+esc(m.name)+'</span></span>';}).join('');
+  const whoChips=whoPickerHTML(function(m){return _recWho.indexOf(m.id)>=0;}, function(m){return 'recWhoToggle(\''+escA(m.id)+'\',this)';}, 18);
   return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
     '<input type="text" id="rec-title" class="cal-date" placeholder="予定名（例：ノー残DAY）" style="flex:1;min-width:150px">'+
     '<select id="rec-freq" class="cal-date" onchange="document.getElementById(\'rec-nth\').style.display=this.value===\'monthlyNth\'?\'\':\'none\'"><option value="weekly">毎週</option><option value="monthlyNth">毎月第n</option></select>'+
@@ -1218,7 +1292,7 @@ function renderEventForm(){
   const deptPick=DEPTS.map(function(dp){return pickHTML('dept',dp,dp,EF.dept===dp);}).join('');
   const tmodePick=[['allday','終日'],['am','AM'],['pm','PM'],['time','時刻']].map(function(a){return pickHTML('tmode',a[0],a[1],(EF.timeMode||'allday')===a[0]);}).join('');
   const secPick=[['no','通常'],['yes','🔒 自分だけ']].map(function(a){return pickHTML('sec',a[0],a[1],(EF.secret?'yes':'no')===a[0]);}).join('');
-  const whoPick=memberList().map(function(m){ var on=EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="efWhoToggle(\''+escA(m.id)+'\',this)">'+memberAvatar(m,20)+'<span>'+esc(m.name)+'</span></span>'; }).join('');
+  const whoPick=whoPickerHTML(function(m){return EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0;}, function(m){return 'efWhoToggle(\''+escA(m.id)+'\',this)';}, 20);
   const repeatPick=[['none','なし'],['daily','毎日'],['weekday','平日'],['weekly','毎週'],['biweekly','隔週'],['monthlyDay','毎月(日)'],['monthlyNth','毎月(第n曜)']].map(function(a){return pickHTML('repeat',a[0],a[1],EF.repeat.freq===a[0]);}).join('');
   const DOWJ=['日','月','火','水','木','金','土'];
   const rdayPick=DOWJ.map(function(d,x){return pickHTML('rday',String(x),d,EF.repeat.days.indexOf(x)>=0);}).join('');
@@ -1227,7 +1301,7 @@ function renderEventForm(){
     '<div class="fld"><label>予定 *</label><input type="text" id="ef-titlein" value="'+esc(EF.title||'')+'" placeholder="例：E社商談 / 田中様 来社 / 月末締め" style="font-size:15px;font-weight:600"></div>'+
     '<div class="fld"><label>種類</label><div class="seg-pick" id="g-etype">'+etypePick+'</div></div>'+
     '<div class="fld" id="row-kind"'+(notDeadline?'':' style="display:none"')+'><label>階層</label><div class="seg-pick" id="g-kind">'+kindPick+'</div></div>'+
-    '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div></div>'+
+    '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバーが担当に自動セットされます（個別に外せます）。</div></div>'+
     '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
     '<div class="row2"><div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
     '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div></div>'+
@@ -1242,12 +1316,14 @@ function renderEventForm(){
 function setOnly(gid,el){document.getElementById(gid).querySelectorAll('.pick').forEach(function(p){p.classList.remove('on');}); el.classList.add('on');}
 function toggleArr(a,v){const i=a.indexOf(v); if(i>=0)a.splice(i,1); else a.push(v);}
 function efWhoToggle(id,el){ toggleArr(EF.who,id); el.classList.toggle('on'); }
+/* 担当ピッカーを現在の EF.who で再描画（部署オートセット後など） */
+function refreshWhoPicker(){ var box=document.getElementById('g-who'); if(!box)return; box.innerHTML=whoPickerHTML(function(m){return EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0;}, function(m){return 'efWhoToggle(\''+escA(m.id)+'\',this)';}, 20); }
 function efPick(group,val,el){
   if(group==='etype'){ EF.etype=val; EF.layer=(val==='締切り')?'deadline':'company'; var nd=(val!=='締切り'); document.getElementById('row-kind').style.display=nd?'':'none'; document.getElementById('row-dept').style.display=((nd&&EF.kind==='dept')?'':'none'); document.getElementById('row-secret').style.display=((nd&&EF.kind==='personal')?'':'none'); setOnly('g-etype',el); }
   else if(group==='kind'){ EF.kind=val; document.getElementById('row-dept').style.display=(val==='dept'?'':'none'); document.getElementById('row-secret').style.display=(val==='personal'?'':'none'); setOnly('g-kind',el); }
   else if(group==='tmode'){ EF.timeMode=val; setOnly('g-tmode',el); document.getElementById('row-time').style.display=(val==='time')?'flex':'none'; }
   else if(group==='sec'){ EF.secret=(val==='yes'); setOnly('g-sec',el); }
-  else if(group==='dept'){ EF.dept=val; setOnly('g-dept',el); }
+  else if(group==='dept'){ EF.dept=val; setOnly('g-dept',el); var dp=deptByName(val); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length){ EF.who=ids; refreshWhoPicker(); } } }
   else if(group==='who'){ toggleArr(EF.who,val); el.classList.toggle('on'); }
   else if(group==='tag'){ toggleArr(EF.tags,val); el.classList.toggle('on'); }
   else if(group==='repeat'){ EF.repeat.freq=val; setOnly('g-repeat',el); document.getElementById('row-rdays').style.display=(val==='weekly'||val==='biweekly')?'':'none'; document.getElementById('row-runtil').style.display=(val&&val!=='none')?'':'none'; }
