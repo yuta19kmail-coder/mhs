@@ -203,6 +203,26 @@
   .mpick-chips{display:flex;gap:6px;flex-wrap:wrap}
   .mpick-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
   .rh-grp{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;background:var(--bg3);color:var(--text2)}
+  /* リマインド＆TODO/実行完了 */
+  .rchip{font-size:12px;padding:4px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
+  .rchip:hover{border-color:var(--acc)}
+  .rchip.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .rchip.custom{border-style:dashed}
+  .remind-fld{border:1px solid var(--acc);border-radius:10px;padding:10px 11px;background:rgba(220,38,38,.06)}
+  .remind-fld>label{color:var(--acc2)}
+  .rprev b{font-weight:700}
+  .todoline{display:flex;align-items:center;gap:9px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 11px}
+  .sw{width:40px;height:23px;border-radius:999px;background:#39414f;position:relative;cursor:pointer;flex:0 0 auto;transition:.15s}
+  .sw.on{background:#16a34a}
+  .sw::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.15s}
+  .sw.on::after{left:19px}
+  .rbadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:999px;background:#2a1119;border:1px solid #5a2230;color:#f3a4b5;margin:2px 4px 2px 0}
+  .donebar{margin-top:12px;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--bg3)}
+  .donebar.is-done{border-color:#16a34a;background:rgba(22,163,74,.1)}
+  .donebar .dst{font-weight:700;font-size:13px;margin-bottom:8px}
+  .donebar textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;min-height:40px;resize:vertical;margin-bottom:8px}
+  .donebar .repnote{font-size:12px;color:#22c55e}
+  .btn-done{background:#16a34a;color:#fff;border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
   .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
   .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
@@ -329,7 +349,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.14.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.15.0</div>
   </div>
 </div>
 
@@ -347,7 +367,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.14.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.15.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -876,7 +896,18 @@ function getEvents(start,end){
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
 }
-function dispTitle(e){return (e.prefix?e.prefix+'：':'')+e.title;}
+function dispTitle(e){return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title;}
+/* ===== リマインド（当日朝/前日/3日前/1週間前＋カスタムn日前） ===== */
+const REMIND_OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
+function remDate(dt){ var w=['日','月','火','水','木','金','土']; return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')'; }
+/* 予定（またはEF）の基準日から、通知予定の配列を計算（昇順） */
+function remindList(remind,custom,baseStr){
+  var dt=new Date((baseStr||'')+'T00:00:00'); if(isNaN(dt))return [];
+  var a=[]; REMIND_OPTS.forEach(function(o){ if((remind||[]).indexOf(o.k)>=0){ var t=new Date(dt); t.setDate(t.getDate()-o.days); a.push({t:t,label:o.label,morning:o.morning}); } });
+  (custom||[]).forEach(function(n){ var t=new Date(dt); t.setDate(t.getDate()-n); a.push({t:t,label:n+'日前'}); });
+  a.sort(function(x,y){return x.t-y.t;}); return a;
+}
+function fmtReportTs(iso){ try{ var d=new Date(iso); if(isNaN(d))return iso; var w=['日','月','火','水','木','金','土']; return (d.getMonth()+1)+'/'+d.getDate()+'('+w[d.getDay()]+') '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }catch(e){ return iso; } }
 
 let curMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
 let curWeek=startOfWeek(TODAY);
@@ -1257,6 +1288,13 @@ function openEv(json){
   var kindTxt = esc(et)+(scope?'・'+scope:'');
   var _spStart=e._spanStart||e.date;
   var dateTxt = (e.endDate && e.endDate>_spStart) ? (_spStart+' 〜 '+e.endDate) : e.date;
+  var remArr=remindList(e.remind,e.remindCustom,_spStart);
+  var remRow=(manual && remArr.length)?('<div class="fr"><span class="k">🔔通知</span><span>'+remArr.map(function(x){return '<span class="rbadge">🔔 '+x.label+'・'+remDate(x.t)+(x.morning?' 朝':'')+'</span>';}).join('')+'</span></div>'):'';
+  var todoBar='';
+  if(manual && e.todo && !(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none')){
+    if(e.done){ todoBar='<div class="donebar is-done"><div class="dst">✅ 実行完了（報告済み）</div><div class="repnote">'+(e.reportedBy?esc(e.reportedBy)+'・':'')+(e.reportedAt?fmtReportTs(e.reportedAt):'')+(e.reportNote?'<br>📝 '+esc(e.reportNote):'')+'</div><button class="btn-ghost" style="margin-top:8px" onclick="undoDoneFromView()">↩ 未完了に戻す</button></div>'; }
+    else { todoBar='<div class="donebar"><div class="dst">⬜ 未完了（実行完了の報告待ち）</div><textarea id="ev-repnote" placeholder="実行内容・結果をひと言（任意）"></textarea><button class="btn-done" onclick="reportDoneFromView()">✅ 実行完了を報告</button></div>'; }
+  }
   document.getElementById('ev-body').innerHTML=
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+eventColor(e)+'">'+kindTxt+'</span></div>'+
     '<div class="fr"><span class="k">日付</span><span>'+dateTxt+'</span></div>'+
@@ -1266,6 +1304,8 @@ function openEv(json){
     (e.place?'<div class="fr"><span class="k">場所</span><span>'+esc(e.place)+'</span></div>':'')+
     (e.tags&&e.tags.length?'<div class="fr"><span class="k">タグ</span><span>'+e.tags.map(esc).join('、')+'</span></div>':'')+
     (e.memo?'<div class="fr"><span class="k">メモ</span><span>'+esc(e.memo)+'</span></div>':'')+
+    remRow+
+    todoBar+
     foot;
   document.getElementById('ev-modal').classList.add('show');
 }
@@ -1273,16 +1313,41 @@ function closeEv(){document.getElementById('ev-modal').classList.remove('show');
 function editFromView(){ var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv; closeEv(); openEventForm(s); }
 function deleteFromView(){ if(!curEv||!curEv.id)return; var rep=curEv.repeat&&curEv.repeat.freq&&curEv.repeat.freq!=='none'; if(!confirm(rep?'この繰り返し予定を「すべて」削除しますか？':'この予定を削除しますか？'))return; schedDelete(curEv.id); closeEv(); toast('削除しました'); }
 function deleteOccurrence(){ if(!curEv||!curEv.id)return; var s=USER_EVENTS.find(function(x){return x.id===curEv.id;}); if(!s){ schedDelete(curEv.id); closeEv(); return; } if(!confirm(curEv.date+' の回だけ非表示にしますか？（他の回は残ります）'))return; s.repeat=s.repeat||{}; s.repeat.skip=(s.repeat.skip||[]).slice(); if(s.repeat.skip.indexOf(curEv.date)<0)s.repeat.skip.push(curEv.date); schedSave(s); closeEv(); toast('この回だけ非表示にしました'); }
+/* 実行完了の報告（TODO予定を完了で締める。完了は必ず報告経由） */
+function reportDoneFromView(){
+  if(!curEv||!curEv.id)return;
+  var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv;
+  var note=((document.getElementById('ev-repnote')||{}).value||'').trim();
+  var who=(window.fb.currentMember&&window.fb.currentMember.name)||(window.fb.currentUser&&(window.fb.currentUser.displayName||window.fb.currentUser.email))||'';
+  s.done=true; s.reportNote=note; s.reportedAt=new Date().toISOString(); s.reportedBy=who; s.todo=true;
+  schedSave(s);
+  curEv.done=true; curEv.reportNote=note; curEv.reportedAt=s.reportedAt; curEv.reportedBy=who; curEv.todo=true;
+  openEv(JSON.stringify(curEv)); toast('実行完了を報告しました');
+}
+function undoDoneFromView(){
+  if(!curEv||!curEv.id)return;
+  if(!confirm('実行完了の報告を取り消して未完了に戻しますか？'))return;
+  var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv;
+  s.done=false; s.reportNote=''; s.reportedAt=''; s.reportedBy='';
+  schedSave(s);
+  curEv.done=false; curEv.reportNote=''; curEv.reportedAt=''; curEv.reportedBy='';
+  openEv(JSON.stringify(curEv)); toast('未完了に戻しました');
+}
 
 /* ---------- 社内予定 追加/編集フォーム ---------- */
 let EF=null;
 function openEventForm(ev, presetDate, presetTime){
-  EF = ev ? JSON.parse(JSON.stringify(ev)) : {etype:'社内予定',layer:'company',kind:'all',dept:'',title:'',date:presetDate||ymd(TODAY),time:(presetTime||''),endTime:'',endDate:'',who:[],memo:'',secret:false,source:'manual',repeat:null};
+  EF = ev ? JSON.parse(JSON.stringify(ev)) : {etype:'社内予定',layer:'company',kind:'all',dept:'',title:'',date:presetDate||ymd(TODAY),time:(presetTime||''),endTime:'',endDate:'',who:[],memo:'',secret:false,source:'manual',repeat:null,remind:[],remindCustom:[]};
   if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime='';
   if(!EF.repeat||!EF.repeat.freq) EF.repeat={freq:'none',days:[],until:'',skip:(EF.repeat&&EF.repeat.skip)||[]};
   if(!EF.repeat.days)EF.repeat.days=[];
   if(!EF.etype) EF.etype=(EF.layer==='deadline')?'締切り':'社内予定';
   EF.layer=(EF.etype==='締切り')?'deadline':'company';
+  if(!Array.isArray(EF.remind))EF.remind=[];
+  if(!Array.isArray(EF.remindCustom))EF.remindCustom=[];
+  var _isRec=(EF.repeat&&EF.repeat.freq&&EF.repeat.freq!=='none');
+  if(typeof EF.todo!=='boolean') EF.todo=(EF.etype!=='締切り' && !_isRec);   // 既定：締切り・定期以外はTODO
+  if(typeof EF.done!=='boolean') EF.done=false;
   var _dm={'service':'整備','sales':'車販','reception':'受付'}; if(_dm[EF.dept])EF.dept=_dm[EF.dept];
   if(EF.time==='AM')EF.timeMode='am'; else if(EF.time==='PM')EF.timeMode='pm'; else if(EF.time&&EF.time!=='終日'&&EF.time!=='—')EF.timeMode='time'; else EF.timeMode='allday';
   if(!EF.secret)EF.secret=false;
@@ -1313,12 +1378,14 @@ function renderEventForm(){
         '<div class="fld" id="row-kind"'+(notDeadline?'':' style="display:none"')+'><label>階層</label><div class="seg-pick" id="g-kind">'+kindPick+'</div></div>'+
         '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバー（兼務の人も含む）が担当に自動セットされます（個別に外せます）。</div></div>'+
         '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
-        '<div class="row2"><div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
+        '<div class="row2"><div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
         '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div></div>'+
         '<div id="ef-closednote" style="font-size:11.5px;color:#f59e0b;margin:-4px 0 10px"></div>'+
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>担当</label><div class="seg-pick" id="g-who">'+whoPick+'</div></div>'+
+        '<div class="fld remind-fld"><label>🔔 リマインド</label><div class="seg-pick" id="g-remind">'+efRemindChipsHTML()+'</div><div class="rprev" id="ef-remind-prev" style="margin-top:8px;font-size:11px;color:var(--text3)">'+efRemindPrevHTML()+'</div></div>'+
+        '<div class="fld"><div class="todoline"><div class="sw'+(EF.todo?' on':'')+'" id="ef-todosw" onclick="efToggleTodo()"></div><div><div style="font-weight:600;font-size:13px">この予定を TODO にする</div><div id="ef-tododesc" style="font-size:11px;color:var(--text3)">'+(EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。')+'</div></div></div></div>'+
         '<div class="fld"><label>🔁 繰り返し</label><div class="seg-pick" id="g-repeat">'+repeatPick+'</div></div>'+
         '<div class="fld" id="row-rdays"'+((EF.repeat.freq==='weekly'||EF.repeat.freq==='biweekly')?'':' style="display:none"')+'><label>曜日（複数可・未選択なら開始日の曜日）</label><div class="seg-pick" id="g-rday">'+rdayPick+'</div></div>'+
         '<div class="fld" id="row-runtil"'+((EF.repeat.freq&&EF.repeat.freq!=='none')?'':' style="display:none"')+'><label>繰り返し終了日（任意・空ならずっと）</label><input type="date" id="ef-runtil" value="'+esc(EF.repeat.until||'')+'"></div>'+
@@ -1332,6 +1399,18 @@ function toggleArr(a,v){const i=a.indexOf(v); if(i>=0)a.splice(i,1); else a.push
 function efWhoToggle(id,el){ toggleArr(EF.who,id); el.classList.toggle('on'); }
 /* 担当ピッカーを現在の EF.who で再描画（部署オートセット後など） */
 function refreshWhoPicker(){ var box=document.getElementById('g-who'); if(!box)return; box.innerHTML=whoPickerHTML(function(m){return EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0;}, function(m){return 'efWhoToggle(\''+escA(m.id)+'\',this)';}, 20); }
+/* リマインド：チップHTML・プレビュー・トグル */
+function efRemindChipsHTML(){
+  var h=''; REMIND_OPTS.forEach(function(o){ h+='<span class="rchip'+(EF.remind.indexOf(o.k)>=0?' on':'')+'" onclick="efToggleRemind(\''+o.k+'\')">🔔 '+o.label+'</span>'; });
+  (EF.remindCustom||[]).forEach(function(n,i){ h+='<span class="rchip on" onclick="efRmCustom('+i+')">🔔 '+n+'日前 ✕</span>'; });
+  h+='<span class="rchip custom" onclick="efAddCustom()">＋カスタム</span>'; return h;
+}
+function efRemindPrevHTML(){ var base=(document.getElementById('ef-date')||{}).value||EF.date; var a=remindList(EF.remind,EF.remindCustom,base); if(!a.length)return '<span style="color:var(--text3)">リマインドなし</span>'; return '通知：'+a.map(function(x){return '<b style="color:#f59e0b">'+remDate(x.t)+(x.morning?' 朝':'')+'</b>（'+x.label+'）';}).join('　→　'); }
+function refreshRemind(){ var c=document.getElementById('g-remind'); if(c)c.innerHTML=efRemindChipsHTML(); var p=document.getElementById('ef-remind-prev'); if(p)p.innerHTML=efRemindPrevHTML(); }
+function efToggleRemind(k){ var i=EF.remind.indexOf(k); if(i>=0)EF.remind.splice(i,1); else EF.remind.push(k); refreshRemind(); }
+function efAddCustom(){ var v=prompt('何日前に通知しますか？（数字）','3'); var n=parseInt(v,10); if(n>0&&EF.remindCustom.indexOf(n)<0)EF.remindCustom.push(n); refreshRemind(); }
+function efRmCustom(i){ EF.remindCustom.splice(i,1); refreshRemind(); }
+function efToggleTodo(){ EF.todo=!EF.todo; var sw=document.getElementById('ef-todosw'); if(sw)sw.classList.toggle('on',EF.todo); var d=document.getElementById('ef-tododesc'); if(d)d.textContent=EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。'; }
 function efPick(group,val,el){
   if(group==='etype'){ EF.etype=val; EF.layer=(val==='締切り')?'deadline':'company'; var nd=(val!=='締切り'); document.getElementById('row-kind').style.display=nd?'':'none'; document.getElementById('row-dept').style.display=((nd&&EF.kind==='dept')?'':'none'); document.getElementById('row-secret').style.display=((nd&&EF.kind==='personal')?'':'none'); setOnly('g-etype',el); }
   else if(group==='kind'){ EF.kind=val; document.getElementById('row-dept').style.display=(val==='dept'?'':'none'); document.getElementById('row-secret').style.display=(val==='personal'?'':'none'); setOnly('g-kind',el); }

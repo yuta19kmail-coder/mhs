@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MHS 通常予定にリマインド＋実行完了 モック</title>
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#171a21; --bg3:#1f242e; --bd:#2b3240;
+    --tx:#e8edf5; --tx2:#aeb8c7; --tx3:#7a8696;
+    --red:#dc2626; --red2:#ef4444; --redbg:#3a1414;
+    --green:#16a34a; --green2:#22c55e; --amber:#f59e0b; --blue:#3b82f6; --violet:#8b5cf6; --acc:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a0c10;color:var(--tx);font-family:-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-size:14px;line-height:1.55}
+  .page{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+  .hd{display:flex;align-items:center;gap:11px;margin-bottom:4px}
+  .hd .ic{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--red),#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .hd h1{font-size:18px;margin:0}
+  .hd .v{font-size:11px;color:var(--tx3);border:1px solid var(--bd);border-radius:999px;padding:2px 9px}
+  .lede{color:var(--tx2);font-size:13px;margin:2px 0 16px}
+  .lede b{color:var(--tx)}
+  .new{color:#fff;background:var(--red);font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+
+  .stage{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
+  @media(max-width:920px){.stage{grid-template-columns:1fr}}
+
+  /* === モーダル風（実際の予定追加ポップアップを再現） === */
+  .mbox{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .mhead{padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+  .mhead .mt{font-size:15px;font-weight:700;flex:1}
+  .mhead .x{background:none;border:0;color:var(--tx2);font-size:18px;cursor:pointer}
+  .mbody{padding:15px 16px;max-height:none}
+  .ef-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;align-items:start}
+  @media(max-width:560px){.ef-2col{grid-template-columns:1fr}}
+  .fld{margin-bottom:12px}
+  .fld>label{display:block;font-size:12px;color:var(--tx2);margin-bottom:5px;font-weight:600}
+  .fld input[type=text],.fld input[type=date],.fld input[type=time],.fld textarea{width:100%;background:var(--bg3);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+  .fld textarea{min-height:46px;resize:vertical}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg-pick{display:flex;gap:6px;flex-wrap:wrap}
+  .pick{font-size:12.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--bd);background:var(--bg3);color:var(--tx2);cursor:pointer;user-select:none}
+  .pick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .mpick{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 11px 4px 5px;border-radius:999px;border:1px solid var(--bd);background:var(--bg3);color:var(--tx2);cursor:pointer}
+  .mpick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .av{width:20px;height:20px;border-radius:50%;color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+  .gh{font-size:11px;font-weight:700;color:var(--tx3);margin:2px 0 4px;display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .hintln{font-size:11px;color:var(--tx3);margin-top:4px}
+
+  /* リマインド枠（新規・本予定の中の一項目） */
+  .remind-fld{border:1px solid var(--red);border-radius:10px;padding:10px 11px;background:rgba(220,38,38,.06)}
+  .remind-fld>label{color:var(--red2)}
+  .rchip{font-size:12px;padding:4px 11px;border-radius:999px;border:1px solid var(--bd);background:var(--bg3);color:var(--tx2);cursor:pointer;user-select:none}
+  .rchip.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+  .rchip.custom{border-style:dashed}
+  .rprev{margin-top:8px;font-size:11px;color:var(--tx3)}
+  .rprev b{color:var(--amber)}
+  .rprev .none{color:var(--tx3)}
+
+  /* TODO/完了トグル行（本予定の中） */
+  .todoline{display:flex;align-items:center;gap:9px;background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:9px 11px;margin-top:2px}
+  .sw{width:40px;height:23px;border-radius:999px;background:#39414f;position:relative;cursor:pointer;flex:0 0 auto;transition:.15s}
+  .sw.on{background:var(--green)}
+  .sw::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.15s}
+  .sw.on::after{left:19px}
+  .todoline .tt{font-weight:600;font-size:13px}
+  .todoline .ts{font-size:11px;color:var(--tx3)}
+
+  .mfoot{padding:12px 16px;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:center}
+  .mfoot .grow{flex:1}
+  .btn{border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn-primary{background:var(--acc);color:#fff}
+  .btn-ghost{background:transparent;border:1px solid var(--bd);color:var(--tx2)}
+
+  /* 右：詳細ポップアップ（通常閲覧時の見え方） */
+  .detail .fr{display:flex;gap:10px;padding:7px 0;font-size:13px;border-bottom:1px solid #232a35}
+  .detail .fr .k{color:var(--tx3);min-width:62px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 9px;border-radius:999px;background:var(--bg3);border:1px solid var(--bd);color:var(--tx2);margin:2px 4px 2px 0}
+  .badge.rm{border-color:#5a2230;color:#f3a4b5;background:#2a1119}
+  .donebar{margin-top:12px;padding:11px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3)}
+  .donebar.is-done{border-color:var(--green);background:rgba(22,163,74,.1)}
+  .donebar .st{font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .donebar textarea{width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;min-height:40px;resize:vertical;margin-bottom:8px}
+  .repnote{font-size:12px;color:var(--green2)}
+  .muted{color:var(--tx3);font-size:12px}
+  .cap{font-size:12px;color:var(--tx3);margin:0 0 10px}
+  .footnote{color:var(--tx3);font-size:11.5px;margin-top:14px;border-top:1px solid var(--bd);padding-top:10px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hd">
+    <div class="ic">📅</div>
+    <h1>通常の予定に「リマインド」＋「実行完了」を統合</h1>
+    <span class="v">モック / 雰囲気確認用</span>
+  </div>
+  <p class="lede">専用ページではなく、<b>いつもの予定追加ポップアップ</b>の中に <span class="new">リマインド</span> と <span class="new">実行完了</span> を足した案です。左＝入力ポップアップ、右＝できた予定を普通に開いたときの見え方。</p>
+
+  <div class="stage">
+
+    <!-- ===== 左：予定追加ポップアップ ===== -->
+    <div class="mbox">
+      <div class="mhead"><span class="mt">社内予定を追加</span><button class="x">✕</button></div>
+      <div class="mbody">
+        <div class="fld"><label>予定 *</label><input type="text" id="f-title" value="佐藤様 アルファード 納車"></div>
+        <div class="ef-2col">
+          <!-- 左カラム -->
+          <div>
+            <div class="fld"><label>種類</label><div class="seg-pick">
+              <span class="pick">社内予定</span><span class="pick on">納車</span><span class="pick">来社</span><span class="pick">締切り</span>
+            </div></div>
+            <div class="fld"><label>階層</label><div class="seg-pick">
+              <span class="pick">全社</span><span class="pick on">部署</span><span class="pick">個人</span>
+            </div></div>
+            <div class="fld"><label>部署</label><div class="seg-pick">
+              <span class="pick">整備部</span><span class="pick on">車販部</span><span class="pick">受付課</span>
+            </div><div class="hintln">部署を選ぶと担当が自動セット（兼務含む）。</div></div>
+            <div class="row2">
+              <div class="fld"><label>日付 *</label><input type="date" id="f-date" value="2026-06-20"></div>
+              <div class="fld"><label>時間</label><input type="time" value="10:00"></div>
+            </div>
+          </div>
+          <!-- 右カラム -->
+          <div>
+            <div class="fld"><label>担当</label>
+              <div class="gh"><span class="dot" style="background:#dc2626"></span>車販部</div>
+              <div class="seg-pick">
+                <span class="mpick on"><span class="av" style="background:#dc2626">社</span>社長</span>
+                <span class="mpick on"><span class="av" style="background:#0891b2">林</span>林</span>
+                <span class="mpick"><span class="av" style="background:#2563eb">椎</span>椎名</span>
+              </div>
+            </div>
+
+            <!-- ★ リマインド（本予定の中の一項目） -->
+            <div class="fld remind-fld">
+              <label>🔔 リマインド <span class="new">NEW</span></label>
+              <div class="seg-pick" id="rchips"></div>
+              <div class="rprev" id="rprev"></div>
+            </div>
+
+            <!-- ★ TODO/実行完了トグル -->
+            <div class="fld">
+              <div class="todoline">
+                <div class="sw on" id="sw" onclick="toggleTodo()"></div>
+                <div><div class="tt">この予定を TODO にする <span class="new">NEW</span></div>
+                <div class="ts" id="swdesc">完了は「実行完了の報告」で締めます（報告するまで未完了）。</div></div>
+              </div>
+            </div>
+
+            <div class="fld"><label>補足メモ</label><textarea placeholder="持ち物・連絡先など"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="mfoot"><div class="grow"></div><button class="btn btn-ghost">キャンセル</button><button class="btn btn-primary">保存</button></div>
+    </div>
+
+    <!-- ===== 右：詳細ポップアップ（普通に開いた時） ===== -->
+    <div class="mbox detail">
+      <div class="mhead"><span class="mt">予定の詳細</span><button class="x">✕</button></div>
+      <div class="mbody">
+        <p class="cap">保存後、カレンダーで予定を開くといつも通りの詳細。そこに 🔔リマインドと ✅実行完了が並びます。</p>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">🏠 佐藤様 アルファード 納車</div>
+        <div class="fr"><span class="k">日時</span><span>6/20(土) 10:00</span></div>
+        <div class="fr"><span class="k">部署</span><span>車販部</span></div>
+        <div class="fr"><span class="k">担当</span><span><span class="av" style="background:#dc2626">社</span> 社長　<span class="av" style="background:#0891b2">林</span> 林</span></div>
+        <div class="fr" style="border:0"><span class="k">リマインド</span><span id="dprev"></span></div>
+
+        <!-- 実行完了バー -->
+        <div class="donebar" id="donebar">
+          <div class="st" id="dst">⬜ 未完了（実行完了の報告待ち）</div>
+          <div id="dform">
+            <div class="muted" style="margin-bottom:6px">実行内容・結果をひと言（任意）</div>
+            <textarea id="rnote" placeholder="例：納車完了・書類受領・次回点検案内済み"></textarea>
+            <button class="btn btn-primary" style="background:var(--green)" onclick="reportDone()">✅ 実行完了を報告</button>
+          </div>
+          <div id="ddone" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footnote">触れます：右カラムの 🔔チップ（当日朝/前日/3日前/1週間前/＋カスタム）で通知日が変わり、左右の表示に反映。下の「実行完了を報告」で完了状態に。リロードで戻ります。</p>
+</div>
+
+<script>
+const EVENT_DATE=new Date(2026,5,20);
+const OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
+let remind=['d3','d1']; let custom=[]; let isTodo=true; let done=false;
+function fmt(dt){const w=['日','月','火','水','木','金','土'];return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')';}
+
+function renderChips(){
+  let h='';
+  OPTS.forEach(o=>{ h+='<span class="rchip'+(remind.includes(o.k)?' on':'')+'" onclick="toggleR(\''+o.k+'\')">🔔 '+o.label+'</span>'; });
+  custom.forEach((n,i)=>{ h+='<span class="rchip on" onclick="rmC('+i+')">🔔 '+n+'日前 ✕</span>'; });
+  h+='<span class="rchip custom" onclick="addC()">＋カスタム</span>';
+  document.getElementById('rchips').innerHTML=h;
+}
+function previewArr(){
+  const a=[];
+  OPTS.forEach(o=>{ if(remind.includes(o.k)){const t=new Date(EVENT_DATE);t.setDate(t.getDate()-o.days);a.push({t,label:o.label,morning:o.morning});} });
+  custom.forEach(n=>{const t=new Date(EVENT_DATE);t.setDate(t.getDate()-n);a.push({t,label:n+'日前'});});
+  a.sort((x,y)=>x.t-y.t); return a;
+}
+function renderPrev(){
+  const a=previewArr();
+  const txt = a.length? ('通知：'+a.map(x=>'<b>'+fmt(x.t)+(x.morning?' 朝':'')+'</b>（'+x.label+'）').join('　→　')) : '<span class="none">リマインドなし</span>';
+  document.getElementById('rprev').innerHTML=txt;
+  document.getElementById('dprev').innerHTML = a.length? a.map(x=>'<span class="badge rm">🔔 '+x.label+'・'+fmt(x.t)+(x.morning?' 朝':'')+'</span>').join('') : '<span class="muted">なし</span>';
+}
+function toggleR(k){const i=remind.indexOf(k);if(i>=0)remind.splice(i,1);else remind.push(k);renderChips();renderPrev();}
+function addC(){const v=prompt('何日前に通知しますか？（数字）','5');const n=parseInt(v,10);if(n>0&&!custom.includes(n))custom.push(n);renderChips();renderPrev();}
+function rmC(i){custom.splice(i,1);renderChips();renderPrev();}
+
+function toggleTodo(){ isTodo=!isTodo; document.getElementById('sw').classList.toggle('on',isTodo);
+  document.getElementById('swdesc').textContent = isTodo? '完了は「実行完了の報告」で締めます（報告するまで未完了）。' : 'お知らせ扱い。完了の概念なし（報告不要）。';
+  document.getElementById('donebar').style.display = isTodo? '' : 'none';
+}
+function reportDone(){ done=true; const note=(document.getElementById('rnote').value||'').trim();
+  const now=new Date(); const ts=(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('donebar').classList.add('is-done');
+  document.getElementById('dst').innerHTML='✅ 実行完了（報告済み）';
+  document.getElementById('dform').style.display='none';
+  const dd=document.getElementById('ddone'); dd.style.display='block';
+  dd.innerHTML='<div class="repnote">報告 '+ts+(note?'<br>📝 '+note:'')+'</div><button class="btn btn-ghost" style="margin-top:8px" onclick="undo()">↩ 未完了に戻す</button>';
+}
+function undo(){ done=false; document.getElementById('donebar').classList.remove('is-done'); document.getElementById('dst').innerHTML='⬜ 未完了（実行完了の報告待ち）'; document.getElementById('dform').style.display='block'; document.getElementById('ddone').style.display='none'; document.getElementById('rnote').value=''; }
+
+renderChips(); renderPrev();
+</script>
+</body>
+</html>
