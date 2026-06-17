@@ -324,7 +324,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.13.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.13.1</div>
   </div>
 </div>
 
@@ -342,7 +342,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.13.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.13.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -759,7 +759,10 @@ function whoPickerHTML(isOn, onclickOf, sz){
 }
 /* 部署名→coreDept、部署→所属メンバー（部なら配下の課も含む・課ならその課） */
 function deptByName(nm){ if(!nm)return null; for(var i=0;i<CORE_DEPTS.length;i++){ if(CORE_DEPTS[i].name===nm)return CORE_DEPTS[i]; } return null; }
-function membersOfDeptId(did){ if(!did)return []; return memberList().filter(function(m){ var d=memberDeptIds(m); return d.deptId===did||d.sectionId===did; }); }
+/* 社員が属する全部署id（主：部/課 ＋ 兼務subDeptIds ＋ 兼務先が課ならその親部も）。担当オートセット・配車で使用 */
+function memberAllDeptIds(m){ var ids={}; var d=memberDeptIds(m); if(d.deptId)ids[d.deptId]=1; if(d.sectionId)ids[d.sectionId]=1; ((m&&m.subDeptIds)||[]).forEach(function(sid){ if(!sid)return; ids[sid]=1; var sd=deptById(sid); if(sd&&sd.parentId)ids[sd.parentId]=1; }); return ids; }
+/* その部署に属する社員（主所属＋兼務を両方拾う） */
+function membersOfDeptId(did){ if(!did)return []; return memberList().filter(function(m){ return !!memberAllDeptIds(m)[did]; }); }
 function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
@@ -1301,7 +1304,7 @@ function renderEventForm(){
     '<div class="fld"><label>予定 *</label><input type="text" id="ef-titlein" value="'+esc(EF.title||'')+'" placeholder="例：E社商談 / 田中様 来社 / 月末締め" style="font-size:15px;font-weight:600"></div>'+
     '<div class="fld"><label>種類</label><div class="seg-pick" id="g-etype">'+etypePick+'</div></div>'+
     '<div class="fld" id="row-kind"'+(notDeadline?'':' style="display:none"')+'><label>階層</label><div class="seg-pick" id="g-kind">'+kindPick+'</div></div>'+
-    '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバーが担当に自動セットされます（個別に外せます）。</div></div>'+
+    '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバー（兼務の人も含む）が担当に自動セットされます（個別に外せます）。</div></div>'+
     '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
     '<div class="row2"><div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
     '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div></div>'+
