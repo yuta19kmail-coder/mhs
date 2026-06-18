@@ -184,6 +184,12 @@
   .mbox.ef .mbody.scroll{max-height:86vh}
   .ef-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;align-items:start}
   @media(max-width:760px){.ef-2col{grid-template-columns:1fr}}
+  /* PIP（小窓・カレンダーを横断しながら開いたまま使う） */
+  .mbg.pip{background:transparent;pointer-events:none}
+  .mbg.pip .mbox{pointer-events:auto;position:absolute;box-shadow:0 12px 48px rgba(0,0,0,.6)}
+  .mbg.pip .mbox.ef{width:min(94vw,640px)}
+  .mbg.pip .mhead{cursor:move;user-select:none}
+  .mbg.pip .mbody.scroll{max-height:72vh}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:480px){.row2{grid-template-columns:1fr}}
   .fld{margin-bottom:12px}
@@ -377,7 +383,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.18.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.19.0</div>
   </div>
 </div>
 
@@ -395,7 +401,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.19.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -546,7 +552,7 @@
 <!-- 社内予定 追加/編集モーダル -->
 <div class="mbg" id="ef-modal" onclick="if(event.target.id==='ef-modal')closeEf()">
   <div class="mbox wide ef">
-    <div class="mhead"><span class="mt" id="ef-title">社内予定を追加</span><button class="x" onclick="closeEf()">✕</button></div>
+    <div class="mhead" onmousedown="efPipDragStart(event)" ontouchstart="efPipDragStart(event)"><span class="mt" id="ef-title">社内予定を追加</span><button class="x" id="ef-pip" onclick="togglePip()" title="PIP（小窓）で開く・ドラッグ移動">📌</button><button class="x" onclick="closeEf()">✕</button></div>
     <div class="mbody scroll" id="ef-body"></div>
     <div class="mfoot">
       <button class="btn-del" id="ef-del" style="display:none" onclick="deleteEvent()">🗑️ 削除</button>
@@ -855,6 +861,8 @@ function memberPhoto(m){ if(!m)return null; var pid=m.portalMemberId||m.id; if(p
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; var ph=memberPhoto(m); if(ph)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 /* 苗字だけ（"姓 名"→姓・空白なしはそのまま） */
 function surname(name){ return String(name||'').split(/[\s　]/)[0]; }
+/* 担当をアバター＋氏名で（予定詳細用） */
+function whoLineAvatars(who){ return (who||[]).map(function(id){ var m=memberById(id); var nm=m?m.name:id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
@@ -1556,7 +1564,7 @@ function openEv(json){
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+eventColor(e)+'">'+kindTxt+'</span></div>'+
     '<div class="fr"><span class="k">日付</span><span>'+dateTxt+'</span></div>'+
     '<div class="fr"><span class="k">時間</span><span>'+e.time+(e.endTime?' 〜 '+e.endTime:'')+'</span></div>'+
-    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span>'+e.who.map(memberLabel).join('、')+'</span></div>':'')+
+    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(e.who)+'</span></div>':'')+
     (e.vehicle&&e.vehicle!=='—'?'<div class="fr"><span class="k">車両</span><span>'+e.vehicle+'</span></div>':'')+
     (e.place?'<div class="fr"><span class="k">場所</span><span>'+esc(e.place)+'</span></div>':'')+
     (e.tags&&e.tags.length?'<div class="fr"><span class="k">タグ</span><span>'+e.tags.map(esc).join('、')+'</span></div>':'')+
@@ -1614,6 +1622,18 @@ function openEventForm(ev, presetDate, presetTime){
   document.getElementById('ef-modal').classList.add('show');
 }
 function closeEf(){document.getElementById('ef-modal').classList.remove('show');}
+/* PIP（小窓化＋ドラッグ移動）：カレンダー/週ビューを横断しながら新規予定を開いたまま使う */
+var _pipOn=false, _pipDrag=null;
+function togglePip(){
+  var mb=document.getElementById('ef-modal'); var box=mb.querySelector('.mbox'); _pipOn=!_pipOn; mb.classList.toggle('pip',_pipOn);
+  var btn=document.getElementById('ef-pip');
+  if(_pipOn){ box.style.left=Math.max(8,window.innerWidth-box.offsetWidth-24)+'px'; box.style.top='66px'; if(btn){btn.textContent='🗗';btn.title='通常表示に戻す';} }
+  else { box.style.left=''; box.style.top=''; if(btn){btn.textContent='📌';btn.title='PIP（小窓）で開く・ドラッグ移動';} }
+}
+function _pipPt(e){ return (e.touches&&e.touches[0])?e.touches[0]:e; }
+function efPipDragStart(e){ if(!_pipOn)return; if(e.target&&e.target.closest&&e.target.closest('button'))return; var box=document.getElementById('ef-modal').querySelector('.mbox'); var r=box.getBoundingClientRect(); var p=_pipPt(e); _pipDrag={dx:p.clientX-r.left,dy:p.clientY-r.top,box:box}; document.addEventListener('mousemove',efPipDragMove); document.addEventListener('mouseup',efPipDragEnd); document.addEventListener('touchmove',efPipDragMove,{passive:false}); document.addEventListener('touchend',efPipDragEnd); }
+function efPipDragMove(e){ if(!_pipDrag)return; var p=_pipPt(e); var x=p.clientX-_pipDrag.dx, y=p.clientY-_pipDrag.dy; x=Math.max(0,Math.min(x,window.innerWidth-90)); y=Math.max(0,Math.min(y,window.innerHeight-40)); _pipDrag.box.style.left=x+'px'; _pipDrag.box.style.top=y+'px'; if(e.cancelable)e.preventDefault(); }
+function efPipDragEnd(){ _pipDrag=null; document.removeEventListener('mousemove',efPipDragMove); document.removeEventListener('mouseup',efPipDragEnd); document.removeEventListener('touchmove',efPipDragMove); document.removeEventListener('touchend',efPipDragEnd); }
 function pickHTML(group,val,label,on){return '<span class="pick'+(on?' on':'')+'" onclick="efPick(\''+group+'\',\''+escA(val)+'\',this)">'+label+'</span>';}
 function renderEventForm(){
   const b=document.getElementById('ef-body');
