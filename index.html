@@ -358,7 +358,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.17.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.17.1</div>
   </div>
 </div>
 
@@ -376,7 +376,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1043,21 +1043,38 @@ function extractShift(items){
   rows=rows.filter(function(r){ return r.off.length>0; });
   return {ym:ym, days:dayCols.map(function(d){return d.day;}).sort(function(a,b){return a-b;}), rows:rows};
 }
-function shiftMatchMember(name){ for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].name===name)return MEMBERS[i].id; } return null; }
+/* 氏名の正規化：空白除去＋よくある異体字を統一（髙→高・﨑→崎 等） */
+function normName(s){ s=String(s||'').trim().replace(/[\s　]/g,''); var map={'髙':'高','﨑':'崎','邉':'辺','邊':'辺','齋':'斎','齊':'斉','德':'徳','凜':'凛','濵':'浜','賴':'頼','嶋':'島','沢':'澤'}; return s.replace(/[髙﨑邉邊齋齊德凜濵賴嶋沢]/g,function(c){return map[c]||c;}); }
+function shiftMatchMember(name){
+  var n=normName(name); var i;
+  for(i=0;i<MEMBERS.length;i++){ if(normName(MEMBERS[i].name)===n) return MEMBERS[i].id; }
+  for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].kana && normName(MEMBERS[i].kana)===n) return MEMBERS[i].id; }
+  for(i=0;i<MEMBERS.length;i++){ var mn=normName(MEMBERS[i].name); if(mn && (mn.indexOf(n)>=0||n.indexOf(mn)>=0) && Math.min(mn.length,n.length)>=2) return MEMBERS[i].id; }  // 部分一致（苗字だけ等）
+  return null;
+}
+function shiftMemberOptions(sel){
+  var o='<option value="">（未割当・名前で保存）</option>';
+  for(var i=0;i<MEMBERS.length;i++){ var m=MEMBERS[i]; var dn=memberDeptName(m); o+='<option value="'+escA(m.id)+'"'+(sel===m.id?' selected':'')+'>'+esc(m.name)+(dn?'（'+esc(dn)+'）':'')+'</option>'; }
+  return o;
+}
+function shiftAssign(idx,val){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; SHIFT_PARSE.rows[idx].memberId=val||null; renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
 function renderShiftPreview(p, fname){
-  shiftStatus('読み取り完了：'+esc(fname));
+  if(fname) p.fname=fname;
+  shiftStatus('読み取り完了：'+esc(p.fname||''));
   var pv=document.getElementById('pdf-preview'); if(!pv)return;
   if(!p.ym||!p.rows.length){ pv.innerHTML='<div style="color:#f59e0b;font-size:13px">⚠ うまく読み取れませんでした（年月や「休」の位置が想定と違う可能性）。フォーマットを共有いただければ調整します。</div>'; return; }
   var unmatched=p.rows.filter(function(r){return !r.memberId;}).length;
-  var head='<div style="font-size:13px;margin-bottom:8px"><b>'+p.ym.y+'年'+p.ym.mo+'月</b>のシフトを検出：休みのある人 <b>'+p.rows.length+'名</b>／日付 '+p.days.length+'日'+(unmatched?'　<span style="color:#f59e0b">（名簿未照合 '+unmatched+'名）</span>':'')+'</div>';
-  var rowsH=p.rows.map(function(r){
-    var mt=r.memberId?'<span style="color:#22c55e">✓照合</span>':'<span style="color:#f59e0b">未照合</span>';
-    return '<tr><td style="font-weight:600;white-space:nowrap">'+esc(r.name)+'</td><td style="font-size:11px;white-space:nowrap">'+mt+'</td><td style="color:var(--text2)">休 '+r.off.length+'日：'+r.off.join('・')+'</td></tr>';
+  var rosterNote=MEMBERS.length? ('名簿 '+MEMBERS.length+'名と照合') : '<span style="color:#f59e0b">⚠ CoreMembers名簿が0名（先にCoreMembersで「📥 portalMembersから取り込み」を実行してください）</span>';
+  var head='<div style="font-size:13px;margin-bottom:4px"><b>'+p.ym.y+'年'+p.ym.mo+'月</b>のシフトを検出：休みのある人 <b>'+p.rows.length+'名</b>／日付 '+p.days.length+'日'+(unmatched?'　<span style="color:#f59e0b">（未照合 '+unmatched+'名）</span>':'　<span style="color:#22c55e">（全員照合）</span>')+'</div>'+
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+rosterNote+'　／　未照合は右の欄で手動割り当てできます（名前のままでも保存可）。</div>';
+  var rowsH='<tr style="border-bottom:1px solid var(--border)"><td style="font-size:11px;color:var(--text3)">PDFの名前</td><td style="font-size:11px;color:var(--text3)">名簿の人に割り当て</td><td style="font-size:11px;color:var(--text3)">休み</td></tr>'+
+    p.rows.map(function(r,idx){
+    var sel='<select onchange="shiftAssign('+idx+',this.value)" style="background:var(--bg3);border:1px solid '+(r.memberId?'var(--border)':'#f59e0b')+';color:var(--text);border-radius:7px;padding:4px 6px;font-size:12px;max-width:200px">'+shiftMemberOptions(r.memberId)+'</select>';
+    return '<tr><td style="font-weight:600;white-space:nowrap">'+esc(r.name)+(r.memberId?' <span style="color:#22c55e;font-size:11px">✓</span>':'')+'</td><td>'+sel+'</td><td style="color:var(--text2);font-size:11px">休 '+r.off.length+'日：'+r.off.join('・')+'</td></tr>';
   }).join('');
   pv.innerHTML=head+'<div style="max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="shift-tbl">'+rowsH+'</table></div>'+
     '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-done" onclick="applyShift()">この内容をMHSに反映</button>'+
-    '<span style="font-size:11px;color:var(--text3)">'+p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+' の各日を staffShifts に保存します</span></div>'+
-    (unmatched?'<div style="font-size:11px;color:var(--text3);margin-top:6px">※未照合は名前のまま保存します（CoreMembersの氏名と表記を合わせると自動照合されます。例：髙橋／箱﨑などの異体字）。</div>':'');
+    '<span style="font-size:11px;color:var(--text3)">'+p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+' の各日を staffShifts に保存</span></div>';
 }
 function applyShift(){
   var p=SHIFT_PARSE; if(!p||!p.ym||!p.rows.length){ toast('先にPDFを読み込んでください'); return; }
