@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.29.3</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.30.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.3</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.30.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -571,6 +571,7 @@
     <div class="si-title">管理</div>
     <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">👥</span><span>シフト表</span></div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
+    <div class="si-item" data-v="evimport" onclick="showView('evimport')"><span class="ic">📥</span><span>予定取込・初期化</span></div>
     <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
     <div class="si-title">情報</div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このモックについて</span></div>
@@ -665,6 +666,12 @@
         シフト表PDF（Excel出力）を下にドラッグ＆ドロップすると、「<b>休</b>」を読み取って各日の<b>休みの人</b>をMHSに取り込みます（<code>staffShifts</code>）。週・日ビューの「休みアバター」やシフト専用ビューがこのデータを参照します。<br>※読み取り後にプレビューで確認してから反映します。空欄＝出勤・「休」＝休みとして判定。
       </p>
       <div id="shiftpdf-body"></div>
+    </section>
+
+    <!-- 予定取込・初期化 -->
+    <section id="view-evimport" class="view">
+      <div class="vhead"><div class="vtitle">📥 予定取込・初期化 <span class="dev-badge">管理</span></div></div>
+      <div id="evimport-body"></div>
     </section>
 
     <!-- About -->
@@ -1202,6 +1209,7 @@ function showView(v){
   if(v==='calset') renderCalSet();
   if(v==='shiftpdf') renderShiftPdf();
   if(v==='shift') renderShiftView();
+  if(v==='evimport') renderEvImport();
 }
 document.getElementById('cal-mode-seg').addEventListener('click',function(e){ if(e.target.dataset.m) setCalMode(e.target.dataset.m); });
 
@@ -2235,6 +2243,184 @@ function saveEventForm(){
 }
 function deleteEvent(){ if(!EF||!EF.id)return; if(!confirm('この予定を削除しますか？'))return; schedDelete(EF.id); closeEf(); toast('削除しました'); }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEv();closeEf();closeDayModal();}});
+
+/* ===== 予定取込・初期化（CSV/Excel → scheduleEvents） ===== */
+var EVIMP_PARSE=null;   // {rows:[{...event, _names:[], _unmatched:[], include:true}], warns:[]}
+
+function renderEvImport(){
+  var box=document.getElementById('evimport-body'); if(!box)return;
+  var n=USER_EVENTS.filter(function(e){return e.source==='manual';}).length;
+  box.innerHTML=''+
+    '<div class="note-card" style="margin-bottom:14px">'+
+      '<h4 style="margin:0 0 6px">① 既存の予定を初期化</h4>'+
+      '<p style="font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.7">現在 <b>'+n+'件</b> の社内予定（scheduleEvents）があります。テスト用データを消してから入れ直す場合はこちら。<b>付箋・シフト・会社カレンダー設定は消えません。</b></p>'+
+      '<button class="btn-del" onclick="deleteAllEvents()">🗑 予定を全削除（'+n+'件）</button>'+
+    '</div>'+
+    '<div class="note-card" style="margin-bottom:14px">'+
+      '<h4 style="margin:0 0 6px">② Excel / CSV から取り込み</h4>'+
+      '<p style="font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.7">テンプレート（<code>日付/種類/階層/部署/件名/開始/終了/担当/リマインド/TODO/メモ</code>）に整理した <b>.xlsx</b> または <b>.csv</b> を下にドラッグ＆ドロップ。担当は「呼び名・氏名・苗字」で名簿（'+MEMBERS.length+'名）と自動照合します。<br>※読み取り後にプレビューで確認してから反映します。</p>'+
+      '<div id="evimp-drop" style="border:2px dashed var(--border);border-radius:12px;padding:26px;text-align:center;color:var(--text3);cursor:pointer;transition:.15s">'+
+        '<div style="font-size:30px;margin-bottom:6px">📄</div><div style="font-size:13px">ここに Excel/CSV をドロップ、またはクリックして選択</div>'+
+        '<input type="file" id="evimp-file" accept=".csv,.xlsx,.xls,text/csv" style="display:none">'+
+      '</div>'+
+      '<div id="evimp-status" style="font-size:12px;color:var(--text3);margin-top:8px"></div>'+
+    '</div>'+
+    '<div id="evimp-preview"></div>';
+  var drop=document.getElementById('evimp-drop'), fi=document.getElementById('evimp-file');
+  drop.onclick=function(){ fi.click(); };
+  fi.onchange=function(){ if(fi.files&&fi.files[0]) evimpRead(fi.files[0]); };
+  drop.ondragover=function(e){ e.preventDefault(); drop.style.borderColor='var(--acc)'; drop.style.background='var(--bg3)'; };
+  drop.ondragleave=function(e){ e.preventDefault(); drop.style.borderColor='var(--border)'; drop.style.background=''; };
+  drop.ondrop=function(e){ e.preventDefault(); drop.style.borderColor='var(--border)'; drop.style.background=''; if(e.dataTransfer.files&&e.dataTransfer.files[0]) evimpRead(e.dataTransfer.files[0]); };
+}
+function evimpStatus(h){ var s=document.getElementById('evimp-status'); if(s)s.innerHTML=h; }
+
+function deleteAllEvents(){
+  var list=USER_EVENTS.filter(function(e){return e.source==='manual';});
+  if(!list.length){ toast('削除する予定がありません'); return; }
+  if(!confirm('社内予定 '+list.length+'件を全て削除します。元に戻せません。よろしいですか？\n（付箋・シフト・会社カレンダー設定は残ります）')) return;
+  var ids=list.map(function(e){return e.id;}), col=scheduleCol(), done=0, fail=0, CH=400;
+  (function chunk(i){
+    if(i>=ids.length){ toast(fail?('削除完了 '+done+'件／失敗 '+fail+'件'):('予定を全削除しました（'+done+'件）')); renderEvImport(); return; }
+    var batch=window.fb.db.batch(); var slice=ids.slice(i,i+CH);
+    slice.forEach(function(id){ batch.delete(col.doc(id)); });
+    batch.commit().then(function(){ done+=slice.length; chunk(i+CH); }).catch(function(e){ console.error('[MHS] 一括削除失敗',e); fail+=slice.length; chunk(i+CH); });
+  })(0);
+}
+
+/* SheetJS（xlsx）を必要時に読込 */
+function loadSheetJS(cb){
+  if(window.XLSX){ cb(true); return; }
+  var srcs=['https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js','https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
+  (function go(i){ if(i>=srcs.length){ cb(false); return; } var s=document.createElement('script'); s.src=srcs[i]; s.onload=function(){ cb(!!window.XLSX); }; s.onerror=function(){ go(i+1); }; document.head.appendChild(s); })(0);
+}
+/* 簡易CSVパーサ（ダブルクオート対応） */
+function parseCSV(text){
+  text=String(text).replace(/^﻿/,'').replace(/\r\n?/g,'\n');
+  var rows=[],row=[],cur='',q=false,i;
+  for(i=0;i<text.length;i++){ var c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=c; }
+    else { if(c==='"')q=true; else if(c===','){ row.push(cur); cur=''; } else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; } else cur+=c; }
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return String(x).trim()!==''; }); });
+}
+function evimpRead(file){
+  EVIMP_PARSE=null; evimpStatus('読み込み中… '+esc(file.name));
+  var nm=(file.name||'').toLowerCase();
+  if(/\.(xlsx|xls)$/.test(nm)){
+    loadSheetJS(function(ok){
+      if(!ok){ evimpStatus('<span style="color:#f59e0b">⚠ Excel読み込みライブラリの取得に失敗。CSVで保存して再度お試しください。</span>'); return; }
+      var rd=new FileReader();
+      rd.onload=function(){ try{ var wb=XLSX.read(new Uint8Array(rd.result),{type:'array'}); var ws=wb.Sheets[wb.SheetNames[0]]; var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}); evimpBuild(rows,file.name); }catch(e){ console.error(e); evimpStatus('<span style="color:#f59e0b">⚠ Excelの解析に失敗しました。</span>'); } };
+      rd.readAsArrayBuffer(file);
+    });
+  } else {
+    var rd=new FileReader();
+    rd.onload=function(){ try{ evimpBuild(parseCSV(rd.result),file.name); }catch(e){ console.error(e); evimpStatus('<span style="color:#f59e0b">⚠ CSVの解析に失敗しました。</span>'); } };
+    rd.readAsText(file,'UTF-8');
+  }
+}
+/* 日付正規化 → YYYY-MM-DD（年なしは今年） */
+function evimpDate(s){
+  s=String(s||'').trim(); if(!s)return '';
+  var m=s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); if(m) return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+  m=s.match(/^(\d{1,2})\D+(\d{1,2})/); if(m){ var y=new Date().getFullYear(); return y+'-'+String(+m[1]).padStart(2,'0')+'-'+String(+m[2]).padStart(2,'0'); }
+  return '';
+}
+function evimpTime(s){
+  s=String(s||'').trim(); if(!s||/^(終日|all|allday|終)$/i.test(s)) return '終日';
+  if(/^(am|午前)$/i.test(s)) return 'AM'; if(/^(pm|午後)$/i.test(s)) return 'PM';
+  var m=s.match(/(\d{1,2})\s*[:：時]\s*(\d{1,2})?/); if(m){ var hh=String(+m[1]).padStart(2,'0'), mm=String(+(m[2]||0)).padStart(2,'0'); return hh+':'+mm; }
+  m=s.match(/^(\d{1,2})$/); if(m) return String(+m[1]).padStart(2,'0')+':00';
+  return '終日';
+}
+var EVIMP_HMAP={ '日付':'date','日':'date','date':'date','種類':'etype','種別':'etype','etype':'etype','区分':'etype','階層':'kind','公開':'kind','kind':'kind','部署':'dept','課':'dept','dept':'dept','件名':'title','タイトル':'title','予定':'title','title':'title','開始':'time','開始時刻':'time','時間':'time','time':'time','終了':'end','終了時刻':'end','end':'end','担当':'who','担当者':'who','メンバー':'who','who':'who','リマインド':'remind','通知':'remind','remind':'remind','todo':'todo','TODO':'todo','タスク':'todo','メモ':'memo','備考':'memo','memo':'memo' };
+function evimpBuild(rows, fname){
+  if(!rows||rows.length<2){ evimpStatus('<span style="color:#f59e0b">⚠ データ行が見つかりません（1行目は見出し、2行目以降にデータ）。</span>'); return; }
+  var header=rows[0].map(function(x){ return String(x||'').trim(); });
+  var col={}; header.forEach(function(h,i){ var k=EVIMP_HMAP[h]||EVIMP_HMAP[h.toLowerCase()]; if(k&&col[k]==null)col[k]=i; });
+  if(col.date==null||col.title==null){ evimpStatus('<span style="color:#f59e0b">⚠ 見出しに「日付」と「件名」が必要です。検出した列：'+esc(header.join(' / '))+'</span>'); return; }
+  var out=[], warns=[];
+  for(var r=1;r<rows.length;r++){
+    var get=function(k){ return col[k]!=null?String(rows[r][col[k]]||'').trim():''; };
+    var title=get('title'); var dstr=get('date'); if(!title&&!dstr)continue;
+    var date=evimpDate(dstr);
+    var etRaw=get('etype'); var etype=/mtg|ミーティング|会議/i.test(etRaw)?'MTG':/来社|来店|訪問/.test(etRaw)?'来社':/締切|締め|deadline/i.test(etRaw)?'締切り':'社内予定';
+    var kRaw=get('kind'); var kind=/部署|課|dept/i.test(kRaw)?'dept':/個人|personal|自分/i.test(kRaw)?'personal':'all';
+    var layer=(etype==='締切り')?'deadline':'company';
+    if(layer!=='company'){ kind='all'; }
+    var dept=(kind==='dept')?get('dept'):'';
+    var time=evimpTime(get('time')); var endTime=(time.indexOf(':')>=0)?(function(){var t=evimpTime(get('end'));return t.indexOf(':')>=0?t:'';})():'';
+    // 担当
+    var names=get('who').split(/[、,，\/／・\s]+/).map(function(x){return x.trim();}).filter(Boolean);
+    var who=[], unmatched=[];
+    names.forEach(function(nm){ var id=shiftMatchMember(nm); if(id){ if(who.indexOf(id)<0)who.push(id); } else { unmatched.push(nm); who.push(nm); } });
+    if(unmatched.length) warns.push('「'+title+'」の担当 未照合：'+unmatched.join('・'));
+    // リマインド
+    var remind=[], remindCustom=[]; get('remind').split(/[、,，\/／・\s]+/).map(function(x){return x.trim();}).filter(Boolean).forEach(function(t){
+      if(/当日|朝/.test(t)){ if(remind.indexOf('morning')<0)remind.push('morning'); }
+      else if(/前日|1日前/.test(t)){ if(remind.indexOf('d1')<0)remind.push('d1'); }
+      else if(/3日前/.test(t)){ if(remind.indexOf('d3')<0)remind.push('d3'); }
+      else if(/1週間前|7日前|一週間/.test(t)){ if(remind.indexOf('w1')<0)remind.push('w1'); }
+      else { var mm=t.match(/(\d+)\s*日前/); if(mm&&remindCustom.indexOf(+mm[1])<0)remindCustom.push(+mm[1]); }
+    });
+    // TODO
+    var todoRaw=get('todo'); var todo=(etype!=='締切り'); if(/○|◯|yes|true|1|する|要|todo|✓|✔/i.test(todoRaw))todo=true; if(/×|✕|no|false|0|しない|不要|なし/i.test(todoRaw))todo=false;
+    var ev={ title:title, date:date, time:time, endTime:endTime, endDate:'', etype:etype, layer:layer, kind:kind, dept:dept, secret:false, who:who, memo:get('memo'), remind:remind, remindCustom:remindCustom, todo:todo, done:false, repeat:null, prefix:'', place:'', tags:[], _names:names, _unmatched:unmatched, _dateErr:!date, include:true };
+    out.push(ev);
+  }
+  EVIMP_PARSE={ rows:out, warns:warns, fname:fname }; evimpStatus('読み取り完了：'+esc(fname)+'（'+out.length+'件）'); renderEvImpPreview();
+}
+function evimpToggle(i,on){ if(EVIMP_PARSE&&EVIMP_PARSE.rows[i])EVIMP_PARSE.rows[i].include=!!on; }
+function evimpWhoLabel(ev){ return ev.who.map(function(w){ var m=memberById(w); return m?esc(memSurname(m)):'<span style="color:#f59e0b">'+esc(w)+'</span>'; }).join('・')||'<span style="color:var(--text3)">—</span>'; }
+function renderEvImpPreview(){
+  var pv=document.getElementById('evimp-preview'); if(!pv||!EVIMP_PARSE)return;
+  var rows=EVIMP_PARSE.rows; if(!rows.length){ pv.innerHTML='<div style="color:#f59e0b;font-size:13px">⚠ 取り込める行がありませんでした。</div>'; return; }
+  var derr=rows.filter(function(e){return e._dateErr;}).length, un=rows.filter(function(e){return e._unmatched.length;}).length;
+  var kmap={all:'全社',dept:'部署',personal:'個人'};
+  var head='<div class="note-card" style="margin-bottom:0;border-radius:12px 12px 0 0">'+
+    '<div style="font-size:13px;margin-bottom:4px"><b>'+rows.length+'件</b> を検出'+(derr?'　<span style="color:#ef4444">／日付エラー '+derr+'件</span>':'')+(un?'　<span style="color:#f59e0b">／担当未照合 '+un+'件</span>':'　<span style="color:#22c55e">／担当 全照合</span>')+'</div>'+
+    '<div style="font-size:11px;color:var(--text3)">未照合の担当は名前のまま登録されます（CoreMembersに追加すると次回から自動照合）。日付エラー行は反映対象外です。</div></div>';
+  var th='<tr style="border-bottom:1px solid var(--border)">'+['入れる','日付','種類','階層','件名','時間','担当','TODO','リマインド'].map(function(h){return '<td style="font-size:11px;color:var(--text3);padding:4px 6px">'+h+'</td>';}).join('')+'</tr>';
+  var body=rows.map(function(e,i){
+    var inc=(e.include!==false);
+    var cb='<input type="checkbox" '+(inc?'checked':'')+(e._dateErr?' disabled':'')+' onchange="evimpToggle('+i+',this.checked)" style="width:16px;height:16px;accent-color:var(--acc);cursor:pointer">';
+    var dcell=e._dateErr?'<span style="color:#ef4444">日付不明</span>':esc(e.date);
+    var rem=e.remind.map(function(k){var o=REMIND_OPTS.filter(function(x){return x.k===k;})[0];return o?o.label:k;}).concat(e.remindCustom.map(function(n){return n+'日前';})).join('・')||'—';
+    return '<tr style="border-top:1px solid var(--border);opacity:'+(inc?'1':'.4')+'">'+
+      '<td style="text-align:center;padding:4px 6px">'+cb+'</td>'+
+      '<td style="padding:4px 6px;white-space:nowrap">'+dcell+'</td>'+
+      '<td style="padding:4px 6px;white-space:nowrap">'+esc(e.etype)+'</td>'+
+      '<td style="padding:4px 6px;white-space:nowrap">'+kmap[e.kind]+(e.dept?'（'+esc(e.dept)+'）':'')+'</td>'+
+      '<td style="padding:4px 6px;font-weight:600">'+esc(e.title)+'</td>'+
+      '<td style="padding:4px 6px;white-space:nowrap">'+esc(e.time)+(e.endTime?'〜'+esc(e.endTime):'')+'</td>'+
+      '<td style="padding:4px 6px;white-space:nowrap">'+evimpWhoLabel(e)+'</td>'+
+      '<td style="padding:4px 6px;text-align:center">'+(e.todo?'✓':'')+'</td>'+
+      '<td style="padding:4px 6px;font-size:11px;color:var(--text3);white-space:nowrap">'+esc(rem)+'</td></tr>';
+  }).join('');
+  var warnBox=EVIMP_PARSE.warns.length?'<div style="font-size:11px;color:#f59e0b;margin-top:8px;line-height:1.6">'+EVIMP_PARSE.warns.map(esc).join('<br>')+'</div>':'';
+  var okN=rows.filter(function(e){return e.include!==false&&!e._dateErr;}).length;
+  pv.innerHTML=head+'<div style="max-height:46vh;overflow:auto;border:1px solid var(--border);border-top:0"><table style="width:100%;border-collapse:collapse;font-size:12px">'+th+body+'</table></div>'+
+    '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-done" onclick="applyEvImport()">この内容をMHSに反映（'+okN+'件）</button><span style="font-size:11px;color:var(--text3)">scheduleEvents に作成します</span></div>'+warnBox;
+}
+function applyEvImport(){
+  if(!EVIMP_PARSE){ toast('先にファイルを読み込んでください'); return; }
+  var list=EVIMP_PARSE.rows.filter(function(e){return e.include!==false&&!e._dateErr;});
+  if(!list.length){ toast('反映できる行がありません'); return; }
+  if(!confirm(list.length+'件の予定を登録します。よろしいですか？')) return;
+  var uid=(window.fb.currentUser&&window.fb.currentUser.uid)||null, col=scheduleCol(), done=0, fail=0, CH=400;
+  var docs=list.map(function(e){
+    var d={ title:e.title, date:e.date, time:e.time, endTime:e.endTime, endDate:'', etype:e.etype, layer:e.layer, kind:e.kind, dept:e.dept, secret:false, who:e.who.slice(), memo:e.memo, remind:e.remind.slice(), remindCustom:e.remindCustom.slice(), todo:e.todo, done:false, repeat:null, prefix:'', place:'', tags:[], ownerUid:uid, updatedAt:window.fb.serverTimestamp(), updatedBy:uid };
+    return { id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), data:d };
+  });
+  (function chunk(i){
+    if(i>=docs.length){ toast(fail?('反映完了 '+done+'件／失敗 '+fail+'件'):('予定を'+done+'件 取り込みました')); EVIMP_PARSE=null; renderEvImport(); return; }
+    var batch=window.fb.db.batch(); var slice=docs.slice(i,i+CH);
+    slice.forEach(function(o){ batch.set(col.doc(o.id),o.data); });
+    batch.commit().then(function(){ done+=slice.length; chunk(i+CH); }).catch(function(e){ console.error('[MHS] 取込保存失敗',e); fail+=slice.length; chunk(i+CH); });
+  })(0);
+}
 
 /* ---------- 起動（認証→入室→Firestore購読） ---------- */
 wireAuth();
