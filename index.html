@@ -349,7 +349,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.16.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.16.1</div>
   </div>
 </div>
 
@@ -367,7 +367,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.16.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.16.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -794,14 +794,14 @@ function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<spa
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
-  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>';
+  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz);
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
   if(e.kind==='personal') return whoAvatars(e.who,sz)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
-function evTitleW(e){ return esc(e.title||''); }
-function evTrail(e,sz){ return (e.kind==='personal')?'':whoAvatars(e.who,sz); }
+function evTitleW(e){ return esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
+function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder')?'':whoAvatars(e.who,sz); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
