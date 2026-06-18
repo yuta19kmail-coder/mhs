@@ -191,6 +191,7 @@
   .mbg.pip .mhead{cursor:move;user-select:none}
   .mbg.pip .mbody.scroll{max-height:72vh}
   /* フォームのチェッカー枠＋カレンダーバーの済バッジ */
+  select.t-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 8px;font-size:13px;font-family:inherit}
   .ef-checker{font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-height:34px}
   .ef-ck-ok{color:#22c55e}
   .ef-ck-warn{color:#f59e0b;padding:2px 0}
@@ -399,7 +400,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.20.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.20.1</div>
   </div>
 </div>
 
@@ -417,7 +418,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.20.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.20.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -994,7 +995,9 @@ function getEvents(start,end){
     if((!ev.remind||!ev.remind.length)&&(!ev.remindCustom||!ev.remindCustom.length)) return;
     if(ev.secret && ev.ownerUid && window.fb.currentUser && ev.ownerUid!==window.fb.currentUser.uid) return;
     remindList(ev.remind,ev.remindCustom,ev.date).forEach(function(r){
-      var ds=ymd(r.t); if(ds<s||ds>e) return;
+      var ds=ymd(r.t);
+      if(CAL.avoidClosed && isClosedDay(ds,new Date(ds+'T00:00:00'))) ds=prevOpenDay(ds);   // 定休日のリマインドは前営業日へ自動振替
+      if(ds<s||ds>e) return;
       list.push({ id:ev.id+'__rem_'+ds, source:'reminder', layer:'company', etype:'リマインド', kind:'reminder',
         date:ds, time:'終日', allDay:true, title:ev.title, who:(ev.who||[]).slice(),
         remOf:ev.id, remLabel:r.label, remTargetDate:ev.date, remTargetTime:ev.time, dept:ev.dept||'' });
@@ -1711,7 +1714,7 @@ function renderEventForm(){
         '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバー（兼務の人も含む）が担当に自動セットされます（個別に外せます）。</div></div>'+
         '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
         '<div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind();efRunChecks()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
-        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" step="900" onchange="round15(this);efRunChecks()" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" step="900" onchange="round15(this)" value="'+esc(EF.endTime||'')+'"></div></div>'+
+        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center">'+timeSelectHTML('ef-time',EF.timeMode==='time'?(EF.time||''):'')+'<span style="color:var(--text3)">〜</span>'+timeSelectHTML('ef-endtime',EF.endTime||'')+'</div></div>'+
         '<div class="fld"><label>チェック（担当のダブり・当日休み）</label><div id="ef-checker" class="ef-checker"></div></div>'+
         '<div id="ef-closednote" style="font-size:11.5px;color:#f59e0b;margin:-4px 0 10px"></div>'+
       '</div>'+
@@ -1761,7 +1764,15 @@ function efClosedNote(){
   if(v&&isClosedDay(v,new Date(v+'T00:00:00'))){ const h=holName(v); n.textContent='※ この日は休業日です'+(h?'（'+h+'）':'')+'。登録はできますが念のためご確認を。'; }
   else n.textContent='';
 }
-function round15(el){ var v=el.value; if(!/^\d{1,2}:\d{2}$/.test(v))return; var p=v.split(':'); var h=+p[0], m=Math.round((+p[1])/15)*15; if(m===60){m=0;h=(h+1)%24;} el.value=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+/* 時間ピッカー＝時(00-23)セレクト＋分(00/15/30/45の4択)。値は隠しinput(idp)にHH:MMで保持 */
+function timeSelectHTML(idp, val){
+  var hm=(val&&/^\d{1,2}:\d{2}$/.test(val))?val.split(':'):['',''], h=String(hm[0]||'').padStart(2,'0'), m=hm[1]||'';
+  if(!val||!/^\d{1,2}:\d{2}$/.test(val)){ h=''; m=''; }
+  var ho='<option value="">--</option>'; for(var i=0;i<24;i++){ var s=String(i).padStart(2,'0'); ho+='<option value="'+s+'"'+(s===h?' selected':'')+'>'+s+'</option>'; }
+  var mo=''; ['00','15','30','45'].forEach(function(s){ mo+='<option value="'+s+'"'+(s===m?' selected':'')+'>'+s+'</option>'; });
+  return '<input type="hidden" id="'+idp+'" value="'+esc(val||'')+'"><select id="'+idp+'-h" class="t-sel" onchange="efTimeSync()">'+ho+'</select><span style="color:var(--text3)">:</span><select id="'+idp+'-m" class="t-sel" onchange="efTimeSync()">'+mo+'</select>';
+}
+function efTimeSync(){ ['ef-time','ef-endtime'].forEach(function(idp){ var hs=document.getElementById(idp+'-h'), ms=document.getElementById(idp+'-m'), hid=document.getElementById(idp); if(!hs||!ms||!hid)return; hid.value=hs.value?(hs.value+':'+(ms.value||'00')):''; }); efRunChecks(); }
 /* 担当のダブり・当日休みを検出（フォームのチェッカー／下部チェックリスト共用） */
 function whoConflicts(date, who, excludeId){
   var dups=[], offs=[]; if(!date) return {dups:dups,offs:offs};
