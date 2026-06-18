@@ -277,26 +277,49 @@
   .dl-tm{font-size:11px;color:var(--text3);min-width:42px}
   .dl-ti{flex:1;font-size:13px}
   .dl-who{display:inline-flex;flex:0 0 auto}
-  /* 付箋 */
-  .nt-compose{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px}
+  /* 付箋（CarFlow風 色付き付箋） */
+  .nt-compose{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px}
   .nt-compose textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;min-height:46px;resize:vertical}
   .nt-asgrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
-  .nt-lbl{font-size:11px;color:var(--text3);padding-top:5px;flex:0 0 auto}
-  .nt-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:9px}
-  .nt-card.done{opacity:.6}
-  .nt-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
-  .nt-asg{display:inline-flex;align-items:center;gap:2px;font-size:11px;color:var(--text3)}
-  .nt-text{font-size:13px;white-space:pre-wrap;word-break:break-word}
-  .nt-card.done .nt-text{text-decoration:line-through;text-decoration-color:var(--text3)}
-  .note-app{font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px}
-  .note-app-mhs{background:#3a1414;color:#f3a4a4}
-  .note-app-car{background:#102a43;color:#5b9bd5}
-  .note-ref{font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:#5b9bd5;text-decoration:none}
-  .nt-replies{margin-top:6px;padding-left:6px;border-left:2px solid var(--border)}
-  .nt-reply{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);padding:2px 0}
-  .nt-acts{display:flex;gap:6px;margin-top:7px}
-  .nt-mini{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:3px 10px;font-size:11px;cursor:pointer}
-  .nt-mini:hover{border-color:var(--acc);color:var(--text)}
+  .nt-lbl{font-size:11px;color:var(--text3);padding-top:5px;flex:0 0 auto;min-width:28px}
+  .bn-cpicker{display:flex;gap:8px}
+  .bn-cpick{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent}
+  .bn-cpick.on{outline:2px solid var(--acc);outline-offset:1px;border-color:#fff}
+  .bn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .bn-card{position:relative;padding:13px 13px 11px;border-radius:10px;border:1px solid rgba(0,0,0,.1);box-shadow:0 2px 6px rgba(0,0,0,.18);min-height:118px;display:flex;flex-direction:column;gap:7px;color:#1f2937;overflow:visible}
+  .bn-card.is-done{opacity:.82}
+  .bn-color-red{background:linear-gradient(180deg,#ffadad,#ff8c8c)}
+  .bn-color-orange{background:linear-gradient(180deg,#ffd29a,#ffb774)}
+  .bn-color-yellow{background:linear-gradient(180deg,#fff5a8,#ffea7a)}
+  .bn-color-green{background:linear-gradient(180deg,#b9e7b9,#98d695)}
+  .bn-color-blue{background:linear-gradient(180deg,#b6d8ff,#93c2fa)}
+  .bn-srcrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .bn-srcbadge{font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px}
+  .bn-src-mhs{background:rgba(0,0,0,.2);color:#fff}
+  .bn-src-car{background:#0d47a1;color:#fff}
+  .bn-carlink2{font-size:11px;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:1px 8px;color:#0d47a1;text-decoration:none;font-weight:700}
+  .bn-title{font-size:14px;font-weight:700;color:#1f2937;line-height:1.3;padding-right:30px;word-break:break-word}
+  .bn-body{font-size:12.5px;color:rgba(0,0,0,.78);line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .bn-card.is-done .bn-body,.bn-card.is-done .bn-title{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.4)}
+  .bn-footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:6px;border-top:1px dashed rgba(0,0,0,.18)}
+  .bn-members{display:flex}
+  .bn-mav{margin-right:-4px;display:inline-flex}
+  .bn-no-member{font-size:10px;color:rgba(0,0,0,.45);font-style:italic}
+  .bn-author{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(0,0,0,.55)}
+  .bn-author-name{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bn-replies{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+  .bn-reply{display:flex;align-items:flex-start;gap:6px}
+  .bn-reply-av{flex-shrink:0}
+  .bn-reply-bubble{flex:1;min-width:0;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:4px 9px}
+  .bn-reply-text{font-size:12px;color:rgba(0,0,0,.8);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+  .bn-menu-btn{position:absolute;top:3px;right:3px;width:30px;height:30px;border:0;background:transparent;font-size:18px;font-weight:700;cursor:pointer;color:rgba(0,0,0,.5);border-radius:5px;z-index:5}
+  .bn-menu-btn:hover{background:rgba(0,0,0,.1)}
+  .bn-menu{position:absolute;top:30px;right:6px;display:none;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:10;min-width:132px;padding:4px}
+  .bn-menu.open{display:block}
+  .bn-menu-it{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 12px;font-size:12px;cursor:pointer;color:#2c2c2c;border-radius:5px}
+  .bn-menu-it:hover{background:#f4f4f4}
+  .bn-menu-danger{color:#c62828}
+  .bn-done-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);font-size:60px;font-weight:900;color:rgba(211,47,47,.8);border:5px solid rgba(211,47,47,.8);border-radius:50%;width:92px;height:92px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;font-family:serif}
   .achip-off{background:rgba(120,134,150,.28)!important;color:var(--text2);font-weight:600}
   .acell-off{background:rgba(120,134,150,.06)}
   /* リマインド＆TODO/実行完了 */
@@ -473,7 +496,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.26.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.27.0</div>
   </div>
 </div>
 
@@ -491,7 +514,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.26.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.27.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1582,57 +1605,73 @@ function renderDash(){
   }
 }
 /* ===== 付箋（MHS発=mhsNotes ＋ CarFlow=boardNotes を集約・返信/編集/済） ===== */
-var MHS_NOTES=[], CAR_NOTES=[], _mhsNotesUnsub=null, _carNotesUnsub=null;
-var _noteCompose={assignees:[], text:''};
+var MHS_NOTES=[], CAR_NOTES=[], _mhsNotesUnsub=null, _carNotesUnsub=null, _notesErr='';
+var _noteCompose={assignees:[], text:'', color:'yellow'};
+var BN_COLORS=[['red','#ff8c8c'],['orange','#ffb774'],['yellow','#ffea7a'],['green','#98d695'],['blue','#93c2fa']];
 var CARFLOW_URL='https://carflow.kobayashi-motors.com';
 function noteColRef(app){ var base=window.fb.db.collection('companies').doc(COMPANY_ID); return app==='carflow'?base.collection('boardNotes'):base.collection('mhsNotes'); }
 function subscribeNotes(){
-  if(!_mhsNotesUnsub){ _mhsNotesUnsub=noteColRef('mhs').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='mhs'; a.push(n); }); MHS_NOTES=a; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] mhsNotes購読',e); }); }
+  if(!_mhsNotesUnsub){ _mhsNotesUnsub=noteColRef('mhs').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='mhs'; a.push(n); }); MHS_NOTES=a; _notesErr=''; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] mhsNotes購読',e); _notesErr='付箋(mhsNotes)の読込に失敗：'+(e&&e.code||e)+'（Firestoreルールに mhsNotes を追加してデプロイ済みか確認）'; if(curView==='dash')renderDash(); }); }
   if(!_carNotesUnsub){ _carNotesUnsub=noteColRef('carflow').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='carflow'; a.push(n); }); CAR_NOTES=a; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] boardNotes購読',e); }); }
 }
 function allNotes(){ return MHS_NOTES.concat(CAR_NOTES); }
-function noteAssignees(n){ return n.assignees||n.m||[]; }
+function noteAssignees(n){ return n.memberUids||n.assignees||n.m||[]; }
+function noteBody(n){ return (n.body!=null?n.body:(n.text||'')); }
 function noteForMe(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return !!(uid && noteAssignees(n).indexOf(uid)>=0); }
 function findNote(id,app){ var arr=app==='carflow'?CAR_NOTES:MHS_NOTES; for(var i=0;i<arr.length;i++){ if(arr[i].id===id)return arr[i]; } return null; }
 function noteCanEdit(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return n.app==='mhs' || (n.authorUid&&uid&&n.authorUid===uid); }
 function noteCardHTML(n){
-  var au=n.authorUid?memberById(n.authorUid):null; var avA=au?memberAvatar(au,20):'';
-  var asg=noteAssignees(n).map(function(uid){ var m=memberById(uid); return m?memberAvatar(m,18):''; }).join('');
-  var replies=(n.replies||[]).map(function(r){ var rm=r.uid?memberById(r.uid):null; return '<div class="nt-reply">'+(rm?memberAvatar(rm,15):'')+'<span>'+esc(r.text||'')+'</span></div>'; }).join('');
+  var color=['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow';
   var done=n.status==='done';
-  var appB=(n.app==='carflow'?'<span class="note-app note-app-car">CarFlow</span>':'<span class="note-app note-app-mhs">MHS</span>');
-  var carB=(n.app==='carflow'&&n.autoSource&&n.autoSource.carId)?'<a class="note-ref" href="'+CARFLOW_URL+'/?car='+encodeURIComponent(n.autoSource.carId)+'" target="_blank" rel="noopener">🚙 '+esc(n.autoSource.carId)+'</a>':'';
-  var acts='<button class="nt-mini" onclick="noteReply(\''+n.id+'\',\''+n.app+'\')">返信</button>'+
-    '<button class="nt-mini" onclick="noteToggleDone(\''+n.id+'\',\''+n.app+'\')">'+(done?'戻す':'済')+'</button>'+
-    (noteCanEdit(n)?'<button class="nt-mini" onclick="noteEdit(\''+n.id+'\',\''+n.app+'\')">編集</button><button class="nt-mini" onclick="noteDelete(\''+n.id+'\',\''+n.app+'\')">🗑</button>':'');
-  return '<div class="nt-card'+(done?' done':'')+'">'+
-    '<div class="nt-top">'+avA+appB+carB+(asg?'<span class="nt-asg">→ '+asg+'</span>':'')+'</div>'+
-    '<div class="nt-text">'+esc(n.text||'')+'</div>'+
-    (replies?'<div class="nt-replies">'+replies+'</div>':'')+
-    '<div class="nt-acts">'+acts+'</div>'+
+  var au=n.authorUid?memberById(n.authorUid):null; var auAv=au?memberAvatar(au,16):''; var auName=au?memDisp(au):'';
+  var asgUids=noteAssignees(n);
+  var memberAvs=asgUids.map(function(uid){ var m=memberById(uid); return m?'<span class="bn-mav">'+memberAvatar(m,22)+'</span>':''; }).join('')||'<span class="bn-no-member">担当なし</span>';
+  var appB=(n.app==='carflow'?'<span class="bn-srcbadge bn-src-car">CarFlow</span>':'<span class="bn-srcbadge bn-src-mhs">MHS</span>');
+  var carB=(n.app==='carflow'&&n.autoSource&&n.autoSource.carId)?'<a class="bn-carlink2" href="'+CARFLOW_URL+'/?car='+encodeURIComponent(n.autoSource.carId)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🚙 '+esc(n.autoSource.carId)+'</a>':'';
+  var title=n.title||''; var body=noteBody(n);
+  var replies=(n.replies||[]).map(function(r){ var rm=r.uid?memberById(r.uid):null; var rav=rm?memberAvatar(rm,18):''; return '<div class="bn-reply"><span class="bn-reply-av">'+rav+'</span><div class="bn-reply-bubble"><div class="bn-reply-text">'+esc(r.text||'')+'</div></div></div>'; }).join('');
+  var menu=(noteCanEdit(n)?'<button class="bn-menu-it" onclick="noteEdit(\''+n.id+'\',\''+n.app+'\')">✏️ 編集</button>':'')+
+    '<button class="bn-menu-it" onclick="noteReply(\''+n.id+'\',\''+n.app+'\')">💬 返信</button>'+
+    '<button class="bn-menu-it" onclick="noteToggleDone(\''+n.id+'\',\''+n.app+'\')">'+(done?'↩ 戻す':'✓ 済にする')+'</button>'+
+    (noteCanEdit(n)?'<button class="bn-menu-it bn-menu-danger" onclick="noteDelete(\''+n.id+'\',\''+n.app+'\')">🗑 削除</button>':'');
+  return '<div class="bn-card bn-color-'+color+(done?' is-done':'')+'" onclick="event.stopPropagation()">'+
+    (done?'<div class="bn-done-stamp">済</div>':'')+
+    '<button class="bn-menu-btn" onclick="event.stopPropagation();toggleNoteMenu(\''+n.id+'\')" title="メニュー">⋮</button>'+
+    '<div class="bn-menu" id="bnm-'+n.id+'">'+menu+'</div>'+
+    '<div class="bn-srcrow">'+appB+carB+'</div>'+
+    (title?'<div class="bn-title">'+esc(title)+'</div>':'')+
+    (body?'<div class="bn-body">'+esc(body)+'</div>':'')+
+    (replies?'<div class="bn-replies">'+replies+'</div>':'')+
+    '<div class="bn-footer"><div class="bn-members">'+memberAvs+'</div>'+(au?'<div class="bn-author">'+auAv+'<span class="bn-author-name">'+esc(auName)+'</span></div>':'')+'</div>'+
   '</div>';
 }
+function toggleNoteMenu(id){ var el=document.getElementById('bnm-'+id); if(!el)return; var open=el.classList.contains('open'); document.querySelectorAll('.bn-menu.open').forEach(function(m){m.classList.remove('open');}); if(!open)el.classList.add('open'); }
+function noteComposeColor(c){ _noteCompose.color=c; if(curView==='dash')renderDash(); }
+document.addEventListener('click',function(e){ if(e.target&&e.target.closest&&e.target.closest('.bn-menu-btn,.bn-menu'))return; document.querySelectorAll('.bn-menu.open').forEach(function(m){m.classList.remove('open');}); });
 function dashNotesHTML(mode){
   var notes=allNotes().slice();
   if(mode==='self') notes=notes.filter(noteForMe);
   notes.sort(function(a,b){ var ad=a.status==='done', bd=b.status==='done'; if(ad!==bd)return ad?1:-1; return (b.order||0)-(a.order||0); });
   var loginMembers=MEMBERS.filter(function(m){return m.portalMemberId;});
   var asgChips=loginMembers.map(function(m){ var on=_noteCompose.assignees.indexOf(m.portalMemberId)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="noteComposeToggle(\''+escA(m.portalMemberId)+'\')">'+memberAvatar(m,16)+'<span>'+esc(memDisp(m))+'</span></span>'; }).join('');
+  var colorPick=BN_COLORS.map(function(c){ return '<span class="bn-cpick'+(_noteCompose.color===c[0]?' on':'')+'" style="background:'+c[1]+'" onclick="noteComposeColor(\''+c[0]+'\')" title="'+c[0]+'"></span>'; }).join('');
   var compose='<div class="nt-compose"><textarea id="nt-text" placeholder="付箋を書く…（MHSに投稿）" oninput="_noteCompose.text=this.value">'+esc(_noteCompose.text||'')+'</textarea>'+
+    '<div class="nt-asgrow"><span class="nt-lbl">色</span><div class="bn-cpicker">'+colorPick+'</div></div>'+
     '<div class="nt-asgrow"><span class="nt-lbl">宛先</span><div class="seg-pick">'+asgChips+'</div></div>'+
     '<div style="text-align:right;margin-top:6px"><button class="btn-done" style="background:var(--acc)" onclick="addMhsNote()">投稿</button></div></div>';
-  var cards=notes.length?notes.map(noteCardHTML).join(''):'<div class="empty" style="color:var(--text3);padding:6px">付箋なし</div>';
-  return compose+cards;
+  var cards=notes.length?('<div class="bn-grid">'+notes.map(noteCardHTML).join('')+'</div>'):'<div class="empty" style="color:var(--text3);padding:6px">付箋なし</div>';
+  var err=_notesErr?'<div style="font-size:11.5px;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid #f59e0b;border-radius:8px;padding:7px 9px;margin-bottom:8px">⚠ '+esc(_notesErr)+'</div>':'';
+  return err+compose+cards;
 }
 function noteComposeToggle(uid){ var i=_noteCompose.assignees.indexOf(uid); if(i>=0)_noteCompose.assignees.splice(i,1); else _noteCompose.assignees.push(uid); if(curView==='dash')renderDash(); }
 function addMhsNote(){
   var ta=document.getElementById('nt-text'); var text=(ta&&ta.value||'').trim(); if(!text){ toast('内容を入力してください'); return; }
   var id='n'+Date.now()+Math.floor(Math.random()*1000);
-  var data={ id:id, text:text, authorUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, assignees:_noteCompose.assignees.slice(), replies:[], status:'open', order:Date.now(), createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp() };
+  var data={ id:id, body:text, title:'', color:_noteCompose.color||'yellow', authorUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, memberUids:_noteCompose.assignees.slice(), replies:[], status:'open', order:Date.now(), createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp() };
   noteColRef('mhs').doc(id).set(data).then(function(){ _noteCompose.text=''; _noteCompose.assignees=[]; toast('投稿しました'); if(curView==='dash')renderDash(); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
 }
 function noteReply(id,app){ var n=findNote(id,app); if(!n)return; var t=prompt('返信を入力'); if(t==null)return; t=t.trim(); if(!t)return; var replies=(n.replies||[]).slice(); replies.push({id:'r'+Date.now(),uid:(window.fb.currentUser&&window.fb.currentUser.uid)||null,text:t,at:Date.now()}); noteColRef(app).doc(id).set({replies:replies,updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 返信に失敗（権限）'); }); }
-function noteEdit(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } var t=prompt('編集',n.text||''); if(t==null)return; noteColRef(app).doc(id).set({text:t.trim(),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 編集に失敗（権限）'); }); }
+function noteEdit(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } var t=prompt('編集',noteBody(n)); if(t==null)return; var patch={updatedAt:window.fb.serverTimestamp()}; if(n.body!=null)patch.body=t.trim(); else patch.text=t.trim(); noteColRef(app).doc(id).set(patch,{merge:true}).catch(function(e){ console.error(e); toast('⚠ 編集に失敗（権限）'); }); }
 function noteToggleDone(id,app){ var n=findNote(id,app); if(!n)return; var done=n.status==='done'; noteColRef(app).doc(id).set({status:done?'open':'done',doneAt:done?null:window.fb.serverTimestamp(),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗'); }); }
 function noteDelete(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('削除権限がありません'); return; } if(!confirm('この付箋を削除しますか？'))return; noteColRef(app).doc(id).delete().catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
 
