@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.38.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.39.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.38.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.39.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1056,13 +1056,13 @@ function memSurname(m){ return (m&&m.dispName)||(m&&m.lastName)||surname(m&&m.na
 function memDisp(m){ return (m&&m.dispName)||(m&&m.name)||''; }
 /* 担当をアバター＋氏名で（予定詳細用） */
 function whoLineAvatars(who, dateStr){ return (who||[]).map(function(id){ var vis=memberVisibility(id,dateStr); if(vis==='hide')return ''; var m=memberById(id); var nm=m?memDisp(m):id; var gray=(vis==='gray'); return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+(gray?'（退職）':'')+'</span></span>'; }).filter(Boolean).join(''); }
-function whoAvatars(who,sz,dateStr){ who=(who||[]).filter(function(id){return memberVisibility(id,dateStr)!=='hide';}); if(!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id); if(!m)return ''; var gray=(memberVisibility(id,dateStr)==='gray'); return '<span style="display:inline-flex'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+memberAvatar(m,sz)+'</span>';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
+function whoAvatars(who,sz,dateStr,full){ who=(who||[]).filter(function(id){return memberVisibility(id,dateStr)!=='hide';}); if(!who.length)return ''; sz=sz||14; var lim=full?who.length:4; var av=who.slice(0,lim).map(function(id){var m=memberById(id); if(!m)return ''; var gray=(memberVisibility(id,dateStr)==='gray'); return '<span style="display:inline-flex'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+memberAvatar(m,sz)+'</span>';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle;flex-wrap:wrap">'+av+((!full&&who.length>4)?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
-function evLead(e,sz){
-  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date);
+function evLead(e,sz,full){
+  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date,full);
   if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
-  if(e.kind==='personal') return whoAvatars(e.who,sz,e.date)||'<span class="grp">個人</span>';
+  if(e.kind==='personal') return whoAvatars(e.who,sz,e.date,full)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
@@ -1071,7 +1071,7 @@ function occIsRec(e){ return !!(e&&e.repeat&&e.repeat.freq&&e.repeat.freq!=='non
 function occDone(e){ if(occIsRec(e)) return !!(e.doneDates&&e.doneDates[e.date]); return !!e.done; }
 function occDoneInfo(e){ if(occIsRec(e)){ var d=(e.doneDates&&e.doneDates[e.date])||null; return d?{by:d.by,at:d.at,note:d.note}:null; } return e.done?{by:e.reportedBy,at:e.reportedAt,note:e.reportNote}:null; }
 function evTitleW(e){ var done=(e.todo&&occDone(e))?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date); }
+function evTrail(e,sz,full){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -1508,6 +1508,7 @@ function timeGridHTML(days,byDate,ncol){
   days.forEach(function(d){ var key=ymd(d); (byDate[key]||[]).filter(isTimedEvent).forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); if(st!=null){ if(Math.floor(st)<lo)lo=Math.floor(st); var ee=(en!=null&&en>st)?en:st+1; if(Math.ceil(ee)>hi)hi=Math.ceil(ee); } }); });
   if(lo<0)lo=0; if(hi>24)hi=24; if(hi<=lo)hi=lo+1;
   var nh=hi-lo;
+  var full=(ncol===1);   // 日ビューは横幅に余裕があるので担当をフルアバター表示（+Nで省略しない）
   var gridCols='var(--tg-axw) repeat('+ncol+',minmax(92px,1fr))';
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
@@ -1518,7 +1519,7 @@ function timeGridHTML(days,byDate,ncol){
   h+='<div class="tg2-allday" style="grid-template-columns:'+gridCols+'"><div class="lab">終日<br>AM/PM</div>';
   days.forEach(function(d){ var key=ymd(d); var evs=(byDate[key]||[]).filter(function(e){return !isTimedEvent(e);}).sort(byTime);
     h+='<div class="tg2-adcell">';
-    evs.forEach(function(e){ var tl=(e.time==='AM'?'AM':e.time==='PM'?'PM':'終日'); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+tl+'</span>'+evTrail(e,15)+'</div></div>'; });
+    evs.forEach(function(e){ var tl=(e.time==='AM'?'AM':e.time==='PM'?'PM':'終日'); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+tl+'</span>'+evTrail(e,15,full)+'</div></div>'; });
     h+='<div class="tg2-addbtn" onclick="openEventForm(null,\''+key+'\')">＋</div>';
     h+='</div>';
   });
@@ -1532,7 +1533,7 @@ function timeGridHTML(days,byDate,ncol){
     for(var i=1;i<nh;i++){ h+='<div class="tg2-line" style="top:'+(i*hpx)+'px"></div>'; }
     var timed=(byDate[key]||[]).filter(isTimedEvent).sort(byTime);
     timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-lo)*hpx, height=Math.max(dur*hpx,36); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
-      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15)+'</div></div>';
+      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15,full)+'</div></div>';
     });
     h+='</div>';
   });
