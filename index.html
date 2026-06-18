@@ -232,6 +232,21 @@
   .shift-tbl{width:100%;border-collapse:collapse;font-size:12px}
   .shift-tbl tr{border-bottom:1px solid var(--border)}
   .shift-tbl td{padding:5px 9px;vertical-align:top}
+  /* 週/日の休みアバター */
+  .day-off{display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-top:3px}
+  .off-l{font-size:9px;color:var(--text3)}
+  .off-av{display:inline-flex;filter:grayscale(.6);opacity:.75}
+  /* シフト表（人×日マトリクス） */
+  .shv-scroll{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:70vh}
+  .shv-grid{display:inline-block;min-width:100%}
+  .shv-row{display:flex;border-bottom:1px solid var(--border)}
+  .shv-head{position:sticky;top:0;background:var(--bg2);z-index:3;color:var(--text3)}
+  .shv-name{width:128px;min-width:128px;padding:4px 8px;display:flex;align-items:center;gap:6px;position:sticky;left:0;background:var(--bg2);font-size:12px;border-right:1px solid var(--border);z-index:1}
+  .shv-c{width:30px;min-width:30px;text-align:center;font-size:11px;padding:3px 0;border-right:1px solid var(--border);line-height:1.2}
+  .shv-c.sun{color:#ef4444}.shv-c.sat{color:#60a5fa}
+  .shv-c.off{background:rgba(220,38,38,.20);color:#f3a4b5;font-weight:600}
+  .shv-w{font-size:9px;color:var(--text3)}
+  .shv-grp{padding:5px 8px;font-size:11px;font-weight:700;color:var(--text2);background:var(--bg3);display:flex;align-items:center;gap:6px;position:sticky;left:0}
   .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
   .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
@@ -358,7 +373,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.17.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.18.0</div>
   </div>
 </div>
 
@@ -376,7 +391,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -396,6 +411,7 @@
     <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>カレンダー</span></div>
     <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">🔀</span><span>多軸ビュー</span></div>
     <div class="si-title">管理</div>
+    <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">👥</span><span>シフト表</span></div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
     <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
     <div class="si-title">情報</div>
@@ -463,6 +479,18 @@
         ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は MasterHub Schedule に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
       </p>
       <div id="calset-body"></div>
+    </section>
+
+    <!-- シフト表（管理） -->
+    <section id="view-shift" class="view">
+      <div class="vhead"><div class="vtitle">👥 シフト表 <span class="dev-badge">管理</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-ghost" onclick="shiftMonthMove(-1)">◀</button>
+        <span id="shift-label" style="font-weight:700;font-size:14px"></span>
+        <button class="btn-ghost" onclick="shiftMonthMove(1)">▶</button>
+        <span style="font-size:11px;color:var(--text3)">取り込んだシフト（<b style="color:#f3a4b5">休＝赤</b>／空欄＝出勤）。部署ごとに表示。</span>
+      </div>
+      <div id="shift-body"></div>
     </section>
 
     <!-- シフトPDF入力（管理） -->
@@ -591,6 +619,7 @@ async function enterApp(member,user){
   subscribeDepts();
   subscribeMembers();
   subscribeSchedule();
+  subscribeShifts();
   renderLayers('layers-month'); renderLayers('layers-axis');
   setSyncState(navigator.onLine!==false);
   showView('brief');
@@ -959,6 +988,7 @@ function showView(v){
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
   if(v==='shiftpdf') renderShiftPdf();
+  if(v==='shift') renderShiftView();
 }
 document.getElementById('cal-mode-seg').addEventListener('click',function(e){ if(e.target.dataset.m) setCalMode(e.target.dataset.m); });
 
@@ -1032,7 +1062,7 @@ function extractShift(items){
   if(!dayCols.length) return {ym:ym,days:[],rows:[]};
   var minDayX=Math.min.apply(null,dayCols.map(function(d){return d.x;}));
   var nameItems=items.filter(function(it){ return it.x<minDayX-4 && it.s.length>=2 && !/^\d+$/.test(it.s) && !/年|月|出勤|休日|勤務|遅刻/.test(it.s) && /[぀-ヿ一-鿿]/.test(it.s); });
-  var rows=nameItems.map(function(it){ return {name:it.s,y:it.y,off:[]}; });
+  var rows=nameItems.map(function(it){ return {name:it.s,y:it.y,off:[],include:true}; });
   items.filter(function(it){return it.s==='休';}).forEach(function(k){
     if(!rows.length)return;
     var row=rows.reduce(function(a,b){ return Math.abs(b.y-k.y)<Math.abs(a.y-k.y)?b:a; });
@@ -1065,6 +1095,7 @@ function shiftMemberOptions(sel){
   return o;
 }
 function shiftAssign(idx,val){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; var r=SHIFT_PARSE.rows[idx]; r.memberId=val||null; saveShiftAlias(r.name, r.memberId); renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
+function shiftToggleInclude(idx,on){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; SHIFT_PARSE.rows[idx].include=!!on; renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
 function renderShiftPreview(p, fname){
   if(fname) p.fname=fname;
   shiftStatus('読み取り完了：'+esc(p.fname||''));
@@ -1074,10 +1105,12 @@ function renderShiftPreview(p, fname){
   var rosterNote=MEMBERS.length? ('名簿 '+MEMBERS.length+'名と照合') : '<span style="color:#f59e0b">⚠ CoreMembers名簿が0名（先にCoreMembersで「📥 portalMembersから取り込み」を実行してください）</span>';
   var head='<div style="font-size:13px;margin-bottom:4px"><b>'+p.ym.y+'年'+p.ym.mo+'月</b>のシフトを検出：休みのある人 <b>'+p.rows.length+'名</b>／日付 '+p.days.length+'日'+(unmatched?'　<span style="color:#f59e0b">（未照合 '+unmatched+'名）</span>':'　<span style="color:#22c55e">（全員照合）</span>')+'</div>'+
     '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+rosterNote+'　／　未照合は右の欄で手動割り当て。<b>割り当ては記憶され、次回のPDFから自動照合</b>されます（名簿に居ない人はCoreMembersに追加が必要）。</div>';
-  var rowsH='<tr style="border-bottom:1px solid var(--border)"><td style="font-size:11px;color:var(--text3)">PDFの名前</td><td style="font-size:11px;color:var(--text3)">名簿の人に割り当て</td><td style="font-size:11px;color:var(--text3)">休み</td></tr>'+
+  var rowsH='<tr style="border-bottom:1px solid var(--border)"><td style="font-size:11px;color:var(--text3)">入れる</td><td style="font-size:11px;color:var(--text3)">PDFの名前</td><td style="font-size:11px;color:var(--text3)">名簿の人に割り当て</td><td style="font-size:11px;color:var(--text3)">休み</td></tr>'+
     p.rows.map(function(r,idx){
-    var sel='<select onchange="shiftAssign('+idx+',this.value)" style="background:var(--bg3);border:1px solid '+(r.memberId?'var(--border)':'#f59e0b')+';color:var(--text);border-radius:7px;padding:4px 6px;font-size:12px;max-width:200px">'+shiftMemberOptions(r.memberId)+'</select>';
-    return '<tr><td style="font-weight:600;white-space:nowrap">'+esc(r.name)+(r.memberId?' <span style="color:#22c55e;font-size:11px">✓</span>':'')+'</td><td>'+sel+'</td><td style="color:var(--text2);font-size:11px">休 '+r.off.length+'日：'+r.off.join('・')+'</td></tr>';
+    var inc=(r.include!==false);
+    var cb='<input type="checkbox" '+(inc?'checked':'')+' onchange="shiftToggleInclude('+idx+',this.checked)" style="width:16px;height:16px;accent-color:var(--acc);cursor:pointer">';
+    var sel='<select onchange="shiftAssign('+idx+',this.value)"'+(inc?'':' disabled')+' style="background:var(--bg3);border:1px solid '+(r.memberId?'var(--border)':'#f59e0b')+';color:var(--text);border-radius:7px;padding:4px 6px;font-size:12px;max-width:200px">'+shiftMemberOptions(r.memberId)+'</select>';
+    return '<tr style="opacity:'+(inc?'1':'.45')+'"><td style="text-align:center">'+cb+'</td><td style="font-weight:600;white-space:nowrap">'+esc(r.name)+(r.memberId?' <span style="color:#22c55e;font-size:11px">✓</span>':'')+'</td><td>'+sel+'</td><td style="color:var(--text2);font-size:11px">休 '+r.off.length+'日：'+r.off.join('・')+'</td></tr>';
   }).join('');
   pv.innerHTML=head+'<div style="max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="shift-tbl">'+rowsH+'</table></div>'+
     '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-done" onclick="applyShift()">この内容をMHSに反映</button>'+
@@ -1087,13 +1120,51 @@ function applyShift(){
   var p=SHIFT_PARSE; if(!p||!p.ym||!p.rows.length){ toast('先にPDFを読み込んでください'); return; }
   var dim=new Date(p.ym.y,p.ym.mo,0).getDate();
   var byDate={}; for(var d=1;d<=dim;d++) byDate[d]=[];
-  p.rows.forEach(function(r){ r.off.forEach(function(d){ if(byDate[d]) byDate[d].push(r.memberId||('name:'+r.name)); }); });
+  p.rows.forEach(function(r){ if(r.include===false)return; r.off.forEach(function(d){ if(byDate[d]) byDate[d].push(r.memberId||('name:'+r.name)); }); });
   var batch=window.fb.db.batch(), col=shiftCol();
   for(var dd=1;dd<=dim;dd++){
     var ds=p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
     batch.set(col.doc(ds),{ date:ds, off:byDate[dd], source:'pdf', updatedAt:window.fb.serverTimestamp(), updatedBy:(window.fb.currentUser&&window.fb.currentUser.uid)||null },{merge:true});
   }
   batch.commit().then(function(){ toast('シフトを反映しました（'+p.ym.y+'/'+p.ym.mo+'・'+dim+'日分）'); shiftStatus('✅ '+p.ym.y+'/'+p.ym.mo+' を反映済み'); }).catch(function(e){ console.error('[MHS] シフト保存失敗',e); toast('⚠ 反映に失敗（権限/通信）。Firestoreルールに staffShifts が必要です'); });
+}
+
+/* ===== 取り込んだシフトの表示（staffShifts → 休みアバター／シフト表） ===== */
+let SHIFT_BYDATE={};
+let _shiftUnsub=null;
+function subscribeShifts(){
+  if(_shiftUnsub) return;
+  _shiftUnsub=shiftCol().onSnapshot(function(snap){
+    var m={}; snap.forEach(function(d){ if(d.id==='_aliases')return; var x=d.data()||{}; if(Array.isArray(x.off)) m[d.id]=x.off; });
+    SHIFT_BYDATE=m;
+    if(curView==='month') renderCal();
+    if(curView==='shift') renderShiftView();
+  }, function(err){ console.warn('[MHS] シフト購読エラー',err); });
+}
+function resolveShiftMember(v){ if(typeof v==='string'&&v.indexOf('name:')===0){ var nm=v.slice(5); return {id:v,name:nm,ini:nm.charAt(0)}; } return memberById(v)||{id:v,name:String(v),ini:String(v).charAt(0)}; }
+function offAvatarsHTML(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; var av=off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av" title="休：'+esc(m.name)+'">'+memberAvatar(m,16)+'</span>'; }).join(''); return '<div class="day-off"><span class="off-l">休</span>'+av+'</div>'; }
+function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off)return false; return off.indexOf(m.id)>=0 || off.indexOf('name:'+m.name)>=0; }
+let shiftCursor=null;
+function shiftMonthMove(n){ var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1); shiftCursor=new Date(base.getFullYear(),base.getMonth()+n,1); renderShiftView(); }
+function renderShiftView(){
+  var host=document.getElementById('shift-body'); if(!host)return;
+  var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+  var y=base.getFullYear(), mo=base.getMonth(), dim=new Date(y,mo+1,0).getDate();
+  var lab=document.getElementById('shift-label'); if(lab)lab.textContent=y+'年'+(mo+1)+'月';
+  var head='<div class="shv-row shv-head"><div class="shv-name">メンバー</div>';
+  for(var d=1;d<=dim;d++){ var dt=new Date(y,mo,d), wd=dt.getDay(); head+='<div class="shv-c'+(wd===0?' sun':(wd===6?' sat':''))+'">'+d+'<br><span class="shv-w">'+DOW[wd]+'</span></div>'; }
+  head+='</div>';
+  var groups=membersGrouped(), body='', any=false;
+  groups.forEach(function(g){
+    if(g.dept){ body+='<div class="shv-grp"><span class="mpick-dot" style="background:'+((g.dept&&g.dept.color)||'#94a3b8')+'"></span>'+esc(g.dept.name)+'</div>'; }
+    g.members.forEach(function(m){
+      body+='<div class="shv-row"><div class="shv-name">'+memberAvatar(m,18)+'<span>'+esc(m.name)+'</span></div>';
+      for(var d2=1;d2<=dim;d2++){ var ds=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(d2).padStart(2,'0'); var off=isOff(m,ds); if(off)any=true; body+='<div class="shv-c'+(off?' off':'')+'">'+(off?'休':'')+'</div>'; }
+      body+='</div>';
+    });
+  });
+  var note=any?'':'<div style="font-size:12px;color:var(--text3);padding:10px">この月の取り込み済みシフトがありません（管理▸シフトPDF入力で取り込んでください）。</div>';
+  host.innerHTML='<div class="shv-scroll"><div class="shv-grid">'+head+body+'</div></div>'+note;
 }
 
 /* ===== カレンダー（月／週／日 切替・ドラッグ移動・ホバー全件） ===== */
@@ -1160,7 +1231,7 @@ function timeGridHTML(days,byDate,ncol){
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
   days.forEach(function(d){ var key=ymd(d),t=(key===ymd(TODAY)),hol=holName(key),ev=evalDay(key,d);
-    h+='<div class="tg2-dh'+(t?' today':'')+'"><span class="'+(d.getDay()===0?'sun':(d.getDay()===6?'sat':''))+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'+(hol?'<span class="hn">'+esc(hol)+'</span>':'')+(ev.closed?'<span class="hn" style="color:var(--text3)">休</span>':'')+'</div>';
+    h+='<div class="tg2-dh'+(t?' today':'')+'"><span class="'+(d.getDay()===0?'sun':(d.getDay()===6?'sat':''))+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'+(hol?'<span class="hn">'+esc(hol)+'</span>':'')+(ev.closed?'<span class="hn" style="color:var(--text3)">休</span>':'')+offAvatarsHTML(key)+'</div>';
   });
   h+='</div>';
   h+='<div class="tg2-allday" style="grid-template-columns:'+gridCols+'"><div class="lab">終日<br>AM/PM</div>';
