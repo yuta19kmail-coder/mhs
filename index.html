@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.33.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.34.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.33.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.34.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -952,7 +952,7 @@ const TAGS=['顧客来店','支払日','休日','MTG','出張','その他'];
    人と組織の真実＝CoreMembers（coreMembers / coreDepts）。
    ログインの鍵＝CoreFlow(portalMembers)。担当・部署はここ（CoreMembers）から引く。 */
 let MEMBERS=[];
-let FORMER_IDS={}; // 退職者（coreMembers active:false）の id/portalMemberId 集合。担当表示から消す用
+let FORMER={}; // 退職者（coreMembers status:'left' か active:false）。id/portalMemberId → メンバーデータ（leftAt付き）。退職日以降は非表示・以前はグレー表示に使う
 let CORE_DEPTS=[];   // coreDepts 生データ（部/課/班/拠点）
 let PORTAL_PHOTO={}; // portalMembers の“今の”Googleアバター（doc id → photo URL）
 let _portalUnsub=null;
@@ -994,17 +994,21 @@ let _memUnsub=null;
 function subscribeMembers(){
   if(_memUnsub) return;
   _memUnsub=membersColMHS().onSnapshot(function(snap){
-    var arr=[],former={}; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false){ arr.push(m); } else { former[d.id]=1; if(m.portalMemberId)former[m.portalMemberId]=1; } }); FORMER_IDS=former;
+    var arr=[],former={}; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.status==='left'||m.active===false){ former[d.id]=m; if(m.portalMemberId)former[m.portalMemberId]=m; } else { arr.push(m); } }); FORMER=former;
     arr.sort(function(a,b){ var sa=(typeof a.sortOrder==='number')?a.sortOrder:999999, sb=(typeof b.sortOrder==='number')?b.sortOrder:999999; if(sa!==sb)return sa-sb; return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
     MEMBERS=arr; if(curView) showView(curView); refreshDayModal();
   }, function(err){ console.warn('[MHS] メンバー(coreMembers)購読エラー',err); });
 }
 function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){return {id:n,name:n,ini:String(n).charAt(0)};}); }
 /* id 解決：coreMember.id 優先。旧イベントの who は portalMember id の場合があるので portalMemberId でもフォールバック照合 */
-function memberById(id){ if(id==null)return null; var i; for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].portalMemberId&&MEMBERS[i].portalMemberId===id)return MEMBERS[i]; } return null; }
-/* 退職者（名簿でactive:false）の担当エントリは表示・チェックから外す。名前で取り込んだ未照合の担当（IDでない自由名）は退職者集合に入らないので残る。 */
-function isFormerMember(w){ return !!(w!=null && FORMER_IDS[w]); }
-function liveWho(arr){ return (arr||[]).filter(function(w){ return !isFormerMember(w); }); }
+function memberById(id){ if(id==null)return null; var i; for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].portalMemberId&&MEMBERS[i].portalMemberId===id)return MEMBERS[i]; } if(FORMER[id])return FORMER[id]; return null; }
+/* 退職者の担当エントリの見せ方を予定日で判定：
+   - 'hide' 退職日以降 → 表示しない（担当から外れる）
+   - 'gray' 退職日より前（or 退職日未設定）→ 実績としてグレー表示
+   - 'show' 現役 or 未照合の自由名（IDでない名前で取り込んだ担当）→ 通常表示 */
+function memberVisibility(w, dateStr){ var fm=(w!=null)?FORMER[w]:null; if(!fm) return 'show'; var la=fm.leftAt||''; if(la && dateStr && dateStr>=la) return 'hide'; return 'gray'; }
+/* チェック（休み・ダブり）からは退職者を一律で外す（過去・未来問わず行動対象でないため） */
+function liveWho(arr){ return (arr||[]).filter(function(w){ return !(w!=null && FORMER[w]); }); }
 /* 部署（部）ごとにメンバーをまとめる。[{dept:{id,name,color}|null, members:[...]}]（未所属は最後）。
    部署情報(coreDepts)が無いときは1グループ(dept=null)＝従来のフラット表示にフォールバック。 */
 function membersGrouped(){
@@ -1051,19 +1055,19 @@ function memSurname(m){ return (m&&m.dispName)||(m&&m.lastName)||surname(m&&m.na
 /* フル表示名：呼び名(dispName)＞氏名 */
 function memDisp(m){ return (m&&m.dispName)||(m&&m.name)||''; }
 /* 担当をアバター＋氏名で（予定詳細用） */
-function whoLineAvatars(who){ return liveWho(who).map(function(id){ var m=memberById(id); var nm=m?memDisp(m):id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
-function whoAvatars(who,sz){ who=liveWho(who); if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
+function whoLineAvatars(who, dateStr){ return (who||[]).map(function(id){ var vis=memberVisibility(id,dateStr); if(vis==='hide')return ''; var m=memberById(id); var nm=m?memDisp(m):id; var gray=(vis==='gray'); return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+(gray?'（退職）':'')+'</span></span>'; }).filter(Boolean).join(''); }
+function whoAvatars(who,sz,dateStr){ who=(who||[]).filter(function(id){return memberVisibility(id,dateStr)!=='hide';}); if(!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id); if(!m)return ''; var gray=(memberVisibility(id,dateStr)==='gray'); return '<span style="display:inline-flex'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+memberAvatar(m,sz)+'</span>';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
-  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz);
+  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date);
   if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
-  if(e.kind==='personal') return whoAvatars(e.who,sz)||'<span class="grp">個人</span>';
+  if(e.kind==='personal') return whoAvatars(e.who,sz,e.date)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
 function evTitleW(e){ var done=(e.todo&&e.done)?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz); }
+function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -1567,7 +1571,7 @@ function dayPopShow(ev,dateStr){
   clearTimeout(popTimer);
   const p=document.getElementById('day-pop');
   let h='<div class="pop-h">'+dateStr.slice(5).replace('-','/')+' の予定（'+list.length+'件）</div>';
-  list.forEach(function(e){ h+='<div class="pop-ev" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'">'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12)+dispTitle(e)+'</div>'; });
+  list.forEach(function(e){ h+='<div class="pop-ev" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'">'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12,e.date)+dispTitle(e)+'</div>'; });
   p.innerHTML=h;
   const r=ev.currentTarget.getBoundingClientRect();
   p.style.left=Math.max(8,Math.min(r.left, window.innerWidth-332))+'px';
@@ -1617,7 +1621,7 @@ function renderAxis(){
       const cell=evs.filter(e=>e.date===ds&&matcher(e,r)).sort((a,b)=>(a.time>b.time?1:-1));
       h+='<div class="acell'+(t?' col-today':'')+(off?' acell-off':'')+'">';
       if(off) h+='<div class="achip achip-off">休</div>';
-      cell.forEach(e=>{h+='<div class="achip" style="background:'+eventColor(e)+'" onclick=\'openEv('+JSON.stringify(JSON.stringify(e))+')\'>'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12)+dispTitle(e)+'</div>';});
+      cell.forEach(e=>{h+='<div class="achip" style="background:'+eventColor(e)+'" onclick=\'openEv('+JSON.stringify(JSON.stringify(e))+')\'>'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12,e.date)+dispTitle(e)+'</div>';});
       h+='</div>';
     });
   });
@@ -1635,7 +1639,7 @@ function dashEventList(evs){
   return Object.keys(byd).sort().map(function(ds){
     var d=new Date(ds+'T00:00:00'); var lbl=(d.getMonth()+1)+'/'+d.getDate()+'('+DOW[d.getDay()]+')'+(ds===ymd(TODAY)?' <b style="color:var(--acc2)">今日</b>':'');
     var rows=byd[ds].sort(function(a,b){return (a.time>b.time?1:-1);}).map(function(e){
-      return '<div class="dl-row" onclick=\''+openEvAttr(e)+'\'><span class="dl-tag" style="background:'+eventColor(e)+'"></span><span class="dl-tm">'+(e.time==='終日'||e.time==='—'?'終日':esc(e.time))+'</span><span class="dl-ti">'+dispTitle(e)+'</span><span class="dl-who">'+whoAvatars(e.who,16)+'</span></div>';
+      return '<div class="dl-row" onclick=\''+openEvAttr(e)+'\'><span class="dl-tag" style="background:'+eventColor(e)+'"></span><span class="dl-tm">'+(e.time==='終日'||e.time==='—'?'終日':esc(e.time))+'</span><span class="dl-ti">'+dispTitle(e)+'</span><span class="dl-who">'+whoAvatars(e.who,16,e.date)+'</span></div>';
     }).join('');
     return '<div class="dl-day"><div class="dl-date">'+lbl+'</div>'+rows+'</div>';
   }).join('');
@@ -1826,7 +1830,7 @@ function renderBrief(){
     document.getElementById(nId).textContent=list.length+'件';
     const el=document.getElementById(elId);
     if(!list.length){el.innerHTML='<div class="empty">予定なし</div>';return;}
-    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+eventColor(e)+'"></span>'+whoAvatars(e.who,15)+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(liveWho(e.who).length?'・'+liveWho(e.who).map(memberLabel).join('、'):'')+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
+    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+eventColor(e)+'"></span>'+whoAvatars(e.who,15,e.date)+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(function(){var ws=(e.who||[]).filter(function(w){return memberVisibility(w,e.date)!=='hide';}); return ws.length?'・'+ws.map(function(w){return memberLabel(w)+(memberVisibility(w,e.date)==='gray'?'（退職）':'');}).join('、'):'';})()+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
   };
   fill('brief-today','brief-today-n',td);
   fill('brief-tom','brief-tom-n',tm);
@@ -1965,7 +1969,7 @@ function openReminderDetail(e){
     '<div class="fr"><span class="k">対象の予定</span><span style="font-weight:700">'+esc(e.title||'')+'</span></div>'+
     '<div class="fr"><span class="k">本番</span><span>'+esc(e.remTargetDate||'')+tgtTime+'</span></div>'+
     '<div class="fr"><span class="k">通知日</span><span>'+esc(e.date)+'（'+esc(e.remLabel||'')+'前）</span></div>'+
-    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(e.who)+'</span></div>':'')+
+    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(e.who,e.date)+'</span></div>':'')+
     '<div class="rem-note">実行完了の報告・編集・削除は「本予定」から行います。</div>'+
     (src?'<div style="margin-top:12px"><button class="btn-ghost" onclick="'+openEvAttr(src)+'">▶ 本予定を開く</button></div>':'<div class="rem-note" style="margin-top:6px">※本予定が表示範囲外、またはサンプルのため開けません。</div>');
   document.getElementById('ev-modal').classList.add('show');
@@ -2024,7 +2028,7 @@ function openEv(json){
   if(manual){
     if(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none'){
       foot='<div style="margin-top:6px;font-size:11.5px;color:var(--text3)">🔁 繰り返し：'+esc(repeatLabel(e))+(e.repeat.until?'（〜'+e.repeat.until+'）':'')+'</div>'+
-        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" onclick="editFromView()">✏️ シリーズを編集</button><button class="btn-del" onclick="deleteOccurrence()">🗑️ この回だけ</button><button class="btn-del" onclick="deleteFromHere()">🗑️ ここから先</button></div>';
+        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" onclick="editFromView()">✏️ 編集</button><button class="btn-del" onclick="deleteOccurrence()">🗑️ この回だけ</button><button class="btn-del" onclick="deleteFromHere()">🗑️ ここから先</button></div>';
     } else {
       foot='<div style="margin-top:14px;display:flex;gap:8px"><button class="btn-ghost" onclick="editFromView()">✏️ 編集</button><button class="btn-del" onclick="deleteFromView()">🗑️ 削除</button></div>';
     }
@@ -2051,7 +2055,7 @@ function openEv(json){
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+eventColor(e)+'">'+kindTxt+'</span></div>'+
     '<div class="fr"><span class="k">日付</span><span>'+dateTxt+'</span></div>'+
     '<div class="fr"><span class="k">時間</span><span>'+e.time+(e.endTime?' 〜 '+e.endTime:'')+'</span></div>'+
-    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(e.who)+'</span></div>':'')+
+    (e.who&&e.who.length?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(e.who,e.date)+'</span></div>':'')+
     (e.vehicle&&e.vehicle!=='—'?'<div class="fr"><span class="k">車両</span><span>'+e.vehicle+'</span></div>':'')+
     (e.place?'<div class="fr"><span class="k">場所</span><span>'+esc(e.place)+'</span></div>':'')+
     (e.tags&&e.tags.length?'<div class="fr"><span class="k">タグ</span><span>'+e.tags.map(esc).join('、')+'</span></div>':'')+
@@ -2062,7 +2066,7 @@ function openEv(json){
   document.getElementById('ev-modal').classList.add('show');
 }
 function closeEv(){document.getElementById('ev-modal').classList.remove('show'); if(typeof bdClearTimers==='function')bdClearTimers();}
-function editFromView(){ var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv; closeEv(); openEventForm(s); }
+function editFromView(){ var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv; var occ=(curEv&&curEv.date)||null; var rec=s&&s.repeat&&s.repeat.freq&&s.repeat.freq!=='none'; closeEv(); openEventForm(s); if(rec)EDIT_OCC_DATE=occ; }
 function deleteFromView(){ if(!curEv||!curEv.id)return; var rep=curEv.repeat&&curEv.repeat.freq&&curEv.repeat.freq!=='none'; if(!confirm(rep?'この繰り返し予定を「すべて」削除しますか？':'この予定を削除しますか？'))return; schedDelete(curEv.id); closeEv(); toast('削除しました'); }
 function deleteOccurrence(){ if(!curEv||!curEv.id)return; var s=USER_EVENTS.find(function(x){return x.id===curEv.id;}); if(!s){ schedDelete(curEv.id); closeEv(); return; } if(!confirm(curEv.date+' の回だけ非表示にしますか？（他の回は残ります）'))return; s.repeat=s.repeat||{}; s.repeat.skip=(s.repeat.skip||[]).slice(); if(s.repeat.skip.indexOf(curEv.date)<0)s.repeat.skip.push(curEv.date); schedSave(s); closeEv(); toast('この回だけ非表示にしました'); }
 /* クリックした回から先（未来）を削除。これより前の回は実績として残す＝繰り返し終了日(until)をこの回の前日に縮める。 */
@@ -2100,7 +2104,10 @@ function undoDoneFromView(){
 
 /* ---------- 社内予定 追加/編集フォーム ---------- */
 let EF=null;
+var EDIT_OCC_DATE=null;   // 繰り返し予定を「回」から編集中のクリック日（保存時の範囲選択に使う）
+var _editScopeS0=null;    // 範囲選択ダイアログ中の元シリーズ
 function openEventForm(ev, presetDate, presetTime){
+  EDIT_OCC_DATE=null;
   EF = ev ? JSON.parse(JSON.stringify(ev)) : {etype:'社内予定',layer:'company',kind:'all',dept:'',title:'',date:presetDate||ymd(TODAY),time:(presetTime||''),endTime:'',endDate:'',who:[],memo:'',secret:false,source:'manual',repeat:null,remind:[],remindCustom:[]};
   if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime='';
   if(!EF.repeat||!EF.repeat.freq) EF.repeat={freq:'none',days:[],until:'',skip:(EF.repeat&&EF.repeat.skip)||[]};
@@ -2256,8 +2263,53 @@ function saveEventForm(){
   var rf=(EF.repeat&&EF.repeat.freq)||'none';
   if(rf==='none'){ EF.repeat=null; }
   else { EF.repeat={freq:rf, days:((EF.repeat&&EF.repeat.days)||[]).slice(), until:(document.getElementById('ef-runtil')||{}).value||'', skip:((EF.repeat&&EF.repeat.skip)||[])}; }
+  // 繰り返し予定を「回」から編集した場合は、反映範囲（今回だけ／これから先）を選ぶ
+  var isRec=EF.repeat&&EF.repeat.freq&&EF.repeat.freq!=='none';
+  if(EF.id && isRec && EDIT_OCC_DATE){
+    var s0=USER_EVENTS.find(function(x){return x.id===EF.id;});
+    if(s0 && EDIT_OCC_DATE>s0.date){ openEditScope(s0); return; }   // 最初の回より後 → 範囲選択
+    // 最初の回（or 該当なし）はシリーズ全体として普通に保存
+  }
   if(!EF.id){ EF.id='e'+Date.now()+Math.floor(Math.random()*1000); EF.ownerUid=(window.fb.currentUser&&window.fb.currentUser.uid)||null; }
+  EDIT_OCC_DATE=null;
   schedSave(EF); closeEf(); toast('保存しました');
+}
+/* 繰り返し編集の反映範囲ダイアログ（今回だけ／これから先）。過去の回は元のまま実績として残す。 */
+function openEditScope(s0){
+  _editScopeS0=s0; var occ=EDIT_OCC_DATE;
+  var prev=document.getElementById('editscope-ov'); if(prev)prev.remove();
+  var ov=document.createElement('div'); ov.id='editscope-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100000;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML='<div style="background:var(--bg2,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:14px;padding:20px;width:min(90vw,360px);box-shadow:0 20px 60px rgba(0,0,0,.4)">'+
+    '<div style="font-weight:700;font-size:15px;margin-bottom:6px">繰り返し予定の変更</div>'+
+    '<div style="font-size:12.5px;color:var(--text3,#888);margin-bottom:16px">'+esc(occ)+' の回を編集しています。どこまで反映しますか？<br>※ '+esc(occ)+' より前の回は、元のまま実績として残ります。</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<button onclick="editScopePick(\'this\')" style="padding:11px;border:0;border-radius:9px;background:var(--acc,#dc2626);color:#fff;font-weight:600;font-size:13px;cursor:pointer">今回だけ（'+esc(occ)+'）に反映</button>'+
+      '<button onclick="editScopePick(\'forward\')" style="padding:11px;border:0;border-radius:9px;background:var(--acc,#dc2626);color:#fff;font-weight:600;font-size:13px;cursor:pointer">これから先（'+esc(occ)+' 以降）に反映</button>'+
+      '<button onclick="editScopeCancel()" style="padding:9px;border:1px solid var(--border,#ddd);border-radius:9px;background:transparent;color:var(--text2,#555);font-size:12px;cursor:pointer">キャンセル</button>'+
+    '</div></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov)editScopeCancel(); });
+  document.body.appendChild(ov);
+}
+function editScopeCancel(){ var ov=document.getElementById('editscope-ov'); if(ov)ov.remove(); _editScopeS0=null; }
+function _newEvId(){ return 'e'+Date.now()+Math.floor(Math.random()*1000); }
+function editScopePick(mode){
+  var s0=_editScopeS0, occ=EDIT_OCC_DATE; var uid=(window.fb.currentUser&&window.fb.currentUser.uid)||null;
+  if(!s0||!occ){ editScopeCancel(); return; }
+  if(mode==='this'){
+    // 元シリーズはこの回をスキップ＋この回だけ単発で新規（編集内容）
+    s0.repeat=s0.repeat||{}; s0.repeat.skip=(s0.repeat.skip||[]).slice(); if(s0.repeat.skip.indexOf(occ)<0)s0.repeat.skip.push(occ); schedSave(s0);
+    var one=JSON.parse(JSON.stringify(EF)); one.id=_newEvId(); one.date=occ; one.endDate=''; one.repeat=null; one.ownerUid=EF.ownerUid||uid; schedSave(one);
+    editScopeCancel(); closeEf(); EDIT_OCC_DATE=null; toast(occ+' の回だけ変更しました');
+  } else {
+    // 元シリーズは前日で終了＋この回以降を新シリーズで新規（編集内容・元の終了日と未来skipを引き継ぐ）
+    var origUntil=(s0.repeat&&s0.repeat.until)||''; var prevDay=ymd(addDays(new Date(occ+'T00:00:00'),-1));
+    s0.repeat=s0.repeat||{}; s0.repeat.until=prevDay; schedSave(s0);
+    var ser=JSON.parse(JSON.stringify(EF)); ser.id=_newEvId(); ser.date=occ; ser.ownerUid=EF.ownerUid||uid;
+    var futSkip=(((EF.repeat&&EF.repeat.skip)||[]).filter(function(d){return d>=occ;}));
+    ser.repeat=Object.assign({},EF.repeat,{until:origUntil,skip:futSkip}); schedSave(ser);
+    editScopeCancel(); closeEf(); EDIT_OCC_DATE=null; toast(occ+' 以降を変更しました（前の回は実績として残ります）');
+  }
 }
 function deleteEvent(){ if(!EF||!EF.id)return; if(!confirm('この予定を削除しますか？'))return; schedDelete(EF.id); closeEf(); toast('削除しました'); }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeEv();closeEf();closeDayModal();}});
