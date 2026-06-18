@@ -286,7 +286,7 @@
   .bn-cpick{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent}
   .bn-cpick.on{outline:2px solid var(--acc);outline-offset:1px;border-color:#fff}
   .bn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-  .bn-card{position:relative;padding:13px 13px 11px;border-radius:10px;border:1px solid rgba(0,0,0,.1);box-shadow:0 2px 6px rgba(0,0,0,.18);min-height:118px;display:flex;flex-direction:column;gap:7px;color:#1f2937;overflow:visible}
+  .bn-card{position:relative;padding:13px 13px 11px;border-radius:10px;border:1px solid rgba(0,0,0,.1);box-shadow:0 2px 6px rgba(0,0,0,.18);min-height:150px;display:flex;flex-direction:column;gap:7px;color:#1f2937;overflow:visible}
   .bn-card.is-done{opacity:.82}
   .bn-color-red{background:linear-gradient(180deg,#ffadad,#ff8c8c)}
   .bn-color-orange{background:linear-gradient(180deg,#ffd29a,#ffb774)}
@@ -319,8 +319,15 @@
   .bn-menu-it{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 12px;font-size:12px;cursor:pointer;color:#2c2c2c;border-radius:5px}
   .bn-menu-it:hover{background:#f4f4f4}
   .bn-menu-danger{color:#c62828}
-  .bn-done-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);font-size:60px;font-weight:900;color:rgba(211,47,47,.8);border:5px solid rgba(211,47,47,.8);border-radius:50%;width:92px;height:92px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;font-family:serif}
+  .bn-done-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);font-size:88px;font-weight:900;color:rgba(211,47,47,.85);border:6px solid rgba(211,47,47,.85);border-radius:50%;width:128px;height:128px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;font-family:serif;letter-spacing:-4px;text-shadow:1px 1px 0 rgba(255,255,255,.4)}
   .bn-card-label{position:absolute;top:7px;right:38px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.62);color:#2c2c2c;max-width:52%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.5px}
+  .bn-label-chips{display:flex;gap:4px;flex-wrap:wrap}
+  .bn-label-chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+  .bn-label-red{background:#ffcdd2;color:#b71c1c;border-color:#ef9a9a}
+  .bn-label-orange{background:#ffe0b2;color:#e65100;border-color:#ffcc80}
+  .bn-label-yellow{background:#fff9c4;color:#827717;border-color:#fff176}
+  .bn-label-green{background:#c8e6c9;color:#1b5e20;border-color:#a5d6a7}
+  .bn-label-blue{background:#bbdefb;color:#0d47a1;border-color:#90caf9}
   .bn-lbl-row{display:flex;align-items:center;gap:10px;padding:6px 0}
   .bn-lbl-row input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 9px;font-size:13px;font-family:inherit}
   /* 付箋モーダル：色スウォッチ＋担当マルチ */
@@ -523,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.29.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.29.2</div>
   </div>
 </div>
 
@@ -541,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1721,7 +1728,8 @@ function dashNotesHTML(mode){
   var notes=allNotes().filter(noteVisible);
   if(mode==='self') notes=notes.filter(noteForMe);
   notes.sort(function(a,b){ var ad=a.status==='done', bd=b.status==='done'; if(ad!==bd)return ad?1:-1; return (b.order||0)-(a.order||0); });
-  var addBtn='<div style="margin-bottom:12px"><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button></div>';
+  var legend=BN_COLORS.map(function(c){ var t=MHS_LABELS[c[0]]||''; return t?'<span class="bn-label-chip bn-label-'+c[0]+'">'+esc(t)+'</span>':''; }).join('');
+  var addBtn='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button><div class="bn-label-chips">'+legend+'</div></div>';
   var cards=notes.length?('<div class="bn-grid">'+notes.map(noteCardHTML).join('')+'</div>'):'<div class="empty" style="color:var(--text3);padding:6px">付箋なし</div>';
   var err=_notesErr?'<div style="font-size:11.5px;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid #f59e0b;border-radius:8px;padding:7px 9px;margin-bottom:8px">⚠ '+esc(_notesErr)+'</div>':'';
   return err+addBtn+cards;
