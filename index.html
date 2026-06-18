@@ -377,7 +377,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.18.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.18.2</div>
   </div>
 </div>
 
@@ -395,7 +395,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -622,6 +622,7 @@ async function enterApp(member,user){
   subscribeCal();
   subscribeDepts();
   subscribeMembers();
+  subscribePortalPhotos();
   subscribeSchedule();
   subscribeShifts();
   renderLayers('layers-month'); renderLayers('layers-axis');
@@ -765,6 +766,13 @@ const TAGS=['顧客来店','支払日','休日','MTG','出張','その他'];
    ログインの鍵＝CoreFlow(portalMembers)。担当・部署はここ（CoreMembers）から引く。 */
 let MEMBERS=[];
 let CORE_DEPTS=[];   // coreDepts 生データ（部/課/班/拠点）
+let PORTAL_PHOTO={}; // portalMembers の“今の”Googleアバター（doc id → photo URL）
+let _portalUnsub=null;
+function subscribePortalPhotos(){
+  if(_portalUnsub) return;
+  var col=window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers');
+  _portalUnsub=col.onSnapshot(function(snap){ var m={}; snap.forEach(function(d){ var x=d.data()||{}; var ph=x.photo||x.photoURL||x.customPhotoURL; if(ph)m[d.id]=ph; }); PORTAL_PHOTO=m; if(curView)showView(curView); refreshDayModal(); }, function(err){ console.warn('[MHS] アバター購読エラー',err); });
+}
 function coreBaseDoc(){ return window.fb.db.collection('companies').doc(COMPANY_ID); }
 function coreMembersCol(){ return coreBaseDoc().collection('coreMembers'); }
 function coreDeptsCol(){ return coreBaseDoc().collection('coreDepts'); }
@@ -842,7 +850,11 @@ function memberAllDeptIds(m){ var ids={}; var d=memberDeptIds(m); if(d.deptId)id
 /* その部署に属する社員（主所属＋兼務を両方拾う） */
 function membersOfDeptId(did){ if(!did)return []; return memberList().filter(function(m){ return !!memberAllDeptIds(m)[did]; }); }
 function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
-function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
+/* 表示用アバター画像：CoreFlow(portalMembers)の“今の”Google画像を最優先（coreMembers.photoはフォールバック） */
+function memberPhoto(m){ if(!m)return null; var pid=m.portalMemberId||m.id; if(pid && PORTAL_PHOTO[pid]) return PORTAL_PHOTO[pid]; return m.photo||null; }
+function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; var ph=memberPhoto(m); if(ph)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
+/* 苗字だけ（"姓 名"→姓・空白なしはそのまま） */
+function surname(name){ return String(name||'').split(/[\s　]/)[0]; }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
@@ -1150,7 +1162,7 @@ function subscribeShifts(){
 }
 function resolveShiftMember(v){ if(typeof v==='string'&&v.indexOf('name:')===0){ var nm=v.slice(5); return {id:v,name:nm,ini:nm.charAt(0)}; } return memberById(v)||{id:v,name:String(v),ini:String(v).charAt(0)}; }
 /* 大きめ＋カラー＋氏名つき（休み枠・日ポップアップ用） */
-function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av-b" title="休：'+esc(m.name)+'">'+memberAvatar(m,28)+'<span class="off-nm">'+esc(m.name)+'</span></span>'; }).join(''); }
+function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av-b" title="休：'+esc(m.name)+'">'+memberAvatar(m,28)+'<span class="off-nm">'+esc(surname(m.name))+'</span></span>'; }).join(''); }
 function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off)return false; return off.indexOf(m.id)>=0 || off.indexOf('name:'+m.name)>=0; }
 let shiftCursor=null;
 function shiftMonthMove(n){ var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1); shiftCursor=new Date(base.getFullYear(),base.getMonth()+n,1); renderShiftView(); }
