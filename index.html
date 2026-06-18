@@ -442,7 +442,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.24.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.24.2</div>
   </div>
 </div>
 
@@ -460,7 +460,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -899,7 +899,7 @@ function membersGrouped(){
 }
 function _hasDeptGroups(g){ return !(g.length===1 && !g[0].dept); }
 /* 担当チップ1個 */
-function whoChip(m,on,onclickAttr,sz){ return '<span class="mpick'+(on?' on':'')+'" onclick="'+onclickAttr+'">'+memberAvatar(m,sz)+'<span>'+esc(m.name)+'</span></span>'; }
+function whoChip(m,on,onclickAttr,sz){ return '<span class="mpick'+(on?' on':'')+'" onclick="'+onclickAttr+'">'+memberAvatar(m,sz)+'<span>'+esc(memDisp(m))+'</span></span>'; }
 /* 担当ピッカー（部署見出し＋チップ群）。isOn(m)→bool、onclickOf(m)→onclick文字列 */
 function whoPickerHTML(isOn, onclickOf, sz){
   sz=sz||20;
@@ -918,16 +918,18 @@ function deptByName(nm){ if(!nm)return null; for(var i=0;i<CORE_DEPTS.length;i++
 function memberAllDeptIds(m){ var ids={}; var d=memberDeptIds(m); if(d.deptId)ids[d.deptId]=1; if(d.sectionId)ids[d.sectionId]=1; ((m&&m.subDeptIds)||[]).forEach(function(sid){ if(!sid)return; ids[sid]=1; var sd=deptById(sid); if(sd&&sd.parentId)ids[sd.parentId]=1; }); return ids; }
 /* その部署に属する社員（主所属＋兼務を両方拾う） */
 function membersOfDeptId(did){ if(!did)return []; return memberList().filter(function(m){ return !!memberAllDeptIds(m)[did]; }); }
-function memberLabel(v){ var m=memberById(v); return m?m.name:v; }
+function memberLabel(v){ var m=memberById(v); return m?memDisp(m):v; }
 /* 表示用アバター画像：CoreFlow(portalMembers)の“今の”Google画像を最優先（coreMembers.photoはフォールバック） */
 function memberPhoto(m){ if(!m)return null; var pid=m.portalMemberId||m.id; if(pid && PORTAL_PHOTO[pid]) return PORTAL_PHOTO[pid]; return m.photo||null; }
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; var ph=memberPhoto(m); if(ph)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 /* 苗字だけ（"姓 名"→姓・空白なしはそのまま） */
 function surname(name){ return String(name||'').split(/[\s　]/)[0]; }
-/* メンバーの苗字：CoreMembersのlastNameを最優先（無ければ氏名を空白分割） */
-function memSurname(m){ return (m&&m.lastName)?m.lastName:surname(m&&m.name||''); }
+/* 表示名：呼び名(dispName)＞苗字(lastName)＞氏名の空白分割。短い表示用 */
+function memSurname(m){ return (m&&m.dispName)||(m&&m.lastName)||surname(m&&m.name||''); }
+/* フル表示名：呼び名(dispName)＞氏名 */
+function memDisp(m){ return (m&&m.dispName)||(m&&m.name)||''; }
 /* 担当をアバター＋氏名で（予定詳細用） */
-function whoLineAvatars(who){ return (who||[]).map(function(id){ var m=memberById(id); var nm=m?m.name:id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
+function whoLineAvatars(who){ return (who||[]).map(function(id){ var m=memberById(id); var nm=m?memDisp(m):id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
@@ -1193,7 +1195,7 @@ function shiftMatchMember(name){
 }
 function shiftMemberOptions(sel){
   var o='<option value="">（未割当・名前で保存）</option>';
-  for(var i=0;i<MEMBERS.length;i++){ var m=MEMBERS[i]; var dn=memberDeptName(m); o+='<option value="'+escA(m.id)+'"'+(sel===m.id?' selected':'')+'>'+esc(m.name)+(dn?'（'+esc(dn)+'）':'')+'</option>'; }
+  for(var i=0;i<MEMBERS.length;i++){ var m=MEMBERS[i]; var dn=memberDeptName(m); o+='<option value="'+escA(m.id)+'"'+(sel===m.id?' selected':'')+'>'+esc(memDisp(m))+(dn?'（'+esc(dn)+'）':'')+'</option>'; }
   return o;
 }
 function shiftAssign(idx,val){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; var r=SHIFT_PARSE.rows[idx]; r.memberId=val||null; saveShiftAlias(r.name, r.memberId); renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
@@ -1245,9 +1247,9 @@ function subscribeShifts(){
 }
 /* シフトの1エントリ → {member(アバター用), label(苗字表示)}。新形式{id,nm}＋旧形式(文字列)両対応 */
 function shiftEntryInfo(v){
-  if(v && typeof v==='object'){ var m=v.id?memberById(v.id):null; return {member:m||{name:v.nm,ini:String(v.nm||'？').charAt(0)}, label:(m&&m.lastName)||surname(v.nm||(m&&m.name)||'')}; }
+  if(v && typeof v==='object'){ var m=v.id?memberById(v.id):null; return {member:m||{name:v.nm,ini:String(v.nm||'？').charAt(0)}, label:(m&&m.dispName)||(m&&m.lastName)||surname(v.nm||(m&&m.name)||'')}; }
   if(typeof v==='string' && v.indexOf('name:')===0){ var nm=v.slice(5); return {member:{name:nm,ini:nm.charAt(0)}, label:surname(nm)}; }
-  var mm=memberById(v); return {member:mm||{name:String(v),ini:String(v).charAt(0)}, label:(mm&&mm.lastName)||SHIFT_ALIAS_REV[v]||surname(mm?mm.name:String(v))};
+  var mm=memberById(v); return {member:mm||{name:String(v),ini:String(v).charAt(0)}, label:(mm&&mm.dispName)||(mm&&mm.lastName)||SHIFT_ALIAS_REV[v]||surname(mm?mm.name:String(v))};
 }
 /* 大きめ＋カラー＋苗字（休み枠・日ポップアップ用） */
 function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var info=shiftEntryInfo(v); return '<span class="off-av-b" title="休：'+esc(info.label)+'">'+memberAvatar(info.member,28)+'<span class="off-nm">'+esc(info.label)+'</span></span>'; }).join(''); }
@@ -1474,7 +1476,7 @@ function renderAxis(){
   var mg=membersGrouped(), grouped=_hasDeptGroups(mg), rows=[];
   mg.forEach(function(g){ if(grouped) rows.push({grp:(g.dept?g.dept.name:'未所属'), color:(g.dept&&g.dept.color)||'#94a3b8'}); g.members.forEach(function(m){ rows.push(m.id); }); });
   var matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){ if(w===id)return true; if(m&&w===m.name)return true; var wm=memberById(w); return !!(wm&&wm.id===id); }); };
-  var rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); };
+  var rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(memDisp(m)); };
   const grid=document.getElementById('axis-grid');
   grid.style.gridTemplateColumns='150px repeat(7,1fr)';
   let h='<div class="ah" style="position:sticky;left:0;z-index:2">メンバー \\ 日</div>';
