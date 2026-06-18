@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.36.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.37.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.36.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.37.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1137,7 +1137,15 @@ function eventOccurrences(ev,start,end){
     if(ds<ev.date) continue;
     if(r.until && ds>r.until) break;
     if(skip.indexOf(ds)>=0) continue;
-    if(matchRepeat(r,anchor,d)) out.push(applyAvoidClosed(Object.assign({},ev,{date:ds,_occ:true})));
+    if(!matchRepeat(r,anchor,d)) continue;
+    var occ=Object.assign({},ev,{date:ds,_occ:true});
+    var cm=r.closedMode||'';   // ''=全体設定に従う / 'skip'=休日はスルー(非表示) / 'avoid'=休日は前営業日へ振替
+    if(isClosedDay(ds, d)){
+      if(cm==='skip') continue;   // この繰り返しは休日をスルー＝表示しない
+      var doAvoid=(cm==='avoid')||(cm!=='skip'&&CAL.avoidClosed);
+      if(doAvoid){ var nd=prevOpenDay(ds); if(nd&&nd!==ds){ occ._origDate=ds; occ.date=nd; occ._shifted=true; } }
+    }
+    out.push(occ);
   }
   return out;
 }
@@ -1490,7 +1498,12 @@ function evIcons(e){ return (e.secret?'🔒':''); }
 function evInterval(e){ var t=e&&e.time; if(!t||t==='終日'||t==='—')return null; if(t==='AM'){var b=bizHours();return {s:b.s,en:12};} if(t==='PM'){var b2=bizHours();return {s:12,en:b2.e};} var s=parseHM(t); if(s==null)return null; var en=parseHM(e.endTime); if(en==null||en<=s)en=s+1; return {s:s,en:en}; }
 function evTimeOverlap(a,b){ var ia=evInterval(a), ib=evInterval(b); if(!ia||!ib)return false; return ia.s<ib.en && ib.s<ia.en; }
 function timeGridHTML(days,byDate,ncol){
-  var bh=bizHours(), hpx=54, nh=bh.e-bh.s;
+  var bh=bizHours(), hpx=54;
+  // 営業時間を基準にしつつ、表示中の日に営業時間外の予定があれば、その時間まで軸を広げる（その分だけ拡張）
+  var lo=bh.s, hi=bh.e;
+  days.forEach(function(d){ var key=ymd(d); (byDate[key]||[]).filter(isTimedEvent).forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); if(st!=null){ if(Math.floor(st)<lo)lo=Math.floor(st); var ee=(en!=null&&en>st)?en:st+1; if(Math.ceil(ee)>hi)hi=Math.ceil(ee); } }); });
+  if(lo<0)lo=0; if(hi>24)hi=24; if(hi<=lo)hi=lo+1;
+  var nh=hi-lo;
   var gridCols='var(--tg-axw) repeat('+ncol+',minmax(92px,1fr))';
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
@@ -1508,13 +1521,13 @@ function timeGridHTML(days,byDate,ncol){
   h+='</div>';
   h+='<div class="tg2-body" style="grid-template-columns:'+gridCols+'">';
   h+='<div class="tg2-axis">';
-  for(var hr=bh.s;hr<bh.e;hr++){ h+='<div class="tg2-hour" style="height:'+hpx+'px"><span>'+String(hr).padStart(2,'0')+':00</span></div>'; }
+  for(var hr=lo;hr<hi;hr++){ h+='<div class="tg2-hour" style="height:'+hpx+'px"><span>'+String(hr).padStart(2,'0')+':00</span></div>'; }
   h+='</div>';
   days.forEach(function(d){ var key=ymd(d),t=(key===ymd(TODAY)),ev=evalDay(key,d);
-    h+='<div class="tg2-col'+(t?' today':'')+(ev.closed?' closed':'')+'" style="height:'+(nh*hpx)+'px" onclick="tgColAdd(event,\''+key+'\','+bh.s+','+hpx+')">';
+    h+='<div class="tg2-col'+(t?' today':'')+(ev.closed?' closed':'')+'" style="height:'+(nh*hpx)+'px" onclick="tgColAdd(event,\''+key+'\','+lo+','+hpx+')">';
     for(var i=1;i<nh;i++){ h+='<div class="tg2-line" style="top:'+(i*hpx)+'px"></div>'; }
     var timed=(byDate[key]||[]).filter(isTimedEvent).sort(byTime);
-    timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-bh.s)*hpx, height=Math.max(dur*hpx,36); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
+    timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-lo)*hpx, height=Math.max(dur*hpx,36); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
       h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15)+'</div></div>';
     });
     h+='</div>';
@@ -2168,6 +2181,7 @@ function renderEventForm(){
         '<div class="fld"><label>🔁 繰り返し</label><div class="seg-pick" id="g-repeat">'+repeatPick+'</div></div>'+
         '<div class="fld" id="row-rdays"'+((EF.repeat.freq==='weekly'||EF.repeat.freq==='biweekly')?'':' style="display:none"')+'><label>曜日（複数可・未選択なら開始日の曜日）</label><div class="seg-pick" id="g-rday">'+rdayPick+'</div></div>'+
         '<div class="fld" id="row-runtil"'+((EF.repeat.freq&&EF.repeat.freq!=='none')?'':' style="display:none"')+'><label>繰り返し終了日（任意・空ならずっと）</label><input type="date" id="ef-runtil" value="'+esc(EF.repeat.until||'')+'"></div>'+
+        '<div class="fld" id="row-rclosed"'+((EF.repeat.freq&&EF.repeat.freq!=='none')?'':' style="display:none"')+'><label class="todoline" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" id="ef-rclosed" '+((EF.repeat.closedMode===(CAL.avoidClosed?'skip':'avoid'))?'checked':'')+' onchange="efClosedModeChange()" style="margin-top:2px"><span><span style="font-weight:600;font-size:13px">'+(CAL.avoidClosed?'休日は回避しない（休日に当たる回はスルー＝表示しない）':'休日は前営業日に振替する（回避する）')+'</span><br><span style="font-size:11px;color:var(--text3)">全体設定＝「'+(CAL.avoidClosed?'休日を避ける':'避けない')+'」。この繰り返しだけ逆の扱いにします。</span></span></label></div>'+
         '<div class="fld"><label>補足メモ</label><textarea id="ef-memo" placeholder="補足・連絡先・持ち物など">'+esc(EF.memo||'')+'</textarea></div>'+
       '</div>'+
     '</div>';
@@ -2198,7 +2212,7 @@ function efPick(group,val,el){
   else if(group==='dept'){ EF.dept=val; setOnly('g-dept',el); var dp=deptByName(val); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length){ EF.who=ids; refreshWhoPicker(); } } efRunChecks(); }
   else if(group==='who'){ toggleArr(EF.who,val); el.classList.toggle('on'); }
   else if(group==='tag'){ toggleArr(EF.tags,val); el.classList.toggle('on'); }
-  else if(group==='repeat'){ EF.repeat.freq=val; setOnly('g-repeat',el); document.getElementById('row-rdays').style.display=(val==='weekly'||val==='biweekly')?'':'none'; document.getElementById('row-runtil').style.display=(val&&val!=='none')?'':'none'; }
+  else if(group==='repeat'){ EF.repeat.freq=val; setOnly('g-repeat',el); document.getElementById('row-rdays').style.display=(val==='weekly'||val==='biweekly')?'':'none'; document.getElementById('row-runtil').style.display=(val&&val!=='none')?'':'none'; var _rc=document.getElementById('row-rclosed'); if(_rc)_rc.style.display=(val&&val!=='none')?'':'none'; }
   else if(group==='rday'){ toggleArr(EF.repeat.days,(+val)); el.classList.toggle('on'); }
 }
 function efClosedNote(){
@@ -2215,7 +2229,13 @@ function timeSelectHTML(idp, val){
   var mo=''; ['00','15','30','45'].forEach(function(s){ mo+='<option value="'+s+'"'+(s===m?' selected':'')+'>'+s+'</option>'; });
   return '<input type="hidden" id="'+idp+'" value="'+esc(val||'')+'"><select id="'+idp+'-h" class="t-sel" onchange="efTimeSync()">'+ho+'</select><span style="color:var(--text3)">:</span><select id="'+idp+'-m" class="t-sel" onchange="efTimeSync()">'+mo+'</select>';
 }
-function efTimeSync(){ ['ef-time','ef-endtime'].forEach(function(idp){ var hs=document.getElementById(idp+'-h'), ms=document.getElementById(idp+'-m'), hid=document.getElementById(idp); if(!hs||!ms||!hid)return; hid.value=hs.value?(hs.value+':'+(ms.value||'00')):''; }); efRunChecks(); }
+function efTimeSync(){ ['ef-time','ef-endtime'].forEach(function(idp){ var hs=document.getElementById(idp+'-h'), ms=document.getElementById(idp+'-m'), hid=document.getElementById(idp); if(!hs||!ms||!hid)return; hid.value=hs.value?(hs.value+':'+(ms.value||'00')):''; });
+  // 開始だけ入れて終了が空なら、終了を1時間後に自動セット（既に終了が入っていれば触らない）
+  var st=document.getElementById('ef-time'), et=document.getElementById('ef-endtime');
+  if(st&&et&&st.value&&!et.value){ var p=st.value.split(':'); var h=(+p[0])+1; var mi=(+p[1]||0); if(h>23)h=23; var hh=String(h).padStart(2,'0'), mm=String(mi).padStart(2,'0'); et.value=hh+':'+mm; var eh=document.getElementById('ef-endtime-h'), em=document.getElementById('ef-endtime-m'); if(eh)eh.value=hh; if(em)em.value=mm; }
+  efRunChecks(); }
+/* 繰り返しの休日回避オーバーライド：全体設定の逆を1個だけ設定。ON時、全体=避ける→'skip'(休日スルー)／全体=避けない→'avoid'(前営業日へ振替)。 */
+function efClosedModeChange(){ EF.repeat=EF.repeat||{}; var on=(document.getElementById('ef-rclosed')||{}).checked; EF.repeat.closedMode=on?(CAL.avoidClosed?'skip':'avoid'):''; }
 /* 担当のダブり・当日休みを検出（フォームのチェッカー／下部チェックリスト共用） */
 function whoConflicts(date, who, excludeId, selfEv){
   var dups=[], offs=[]; if(!date) return {dups:dups,offs:offs};
@@ -2261,7 +2281,7 @@ function saveEventForm(){
   if(EF.kind!=='personal') EF.secret=false;
   var rf=(EF.repeat&&EF.repeat.freq)||'none';
   if(rf==='none'){ EF.repeat=null; }
-  else { EF.repeat={freq:rf, days:((EF.repeat&&EF.repeat.days)||[]).slice(), until:(document.getElementById('ef-runtil')||{}).value||'', skip:((EF.repeat&&EF.repeat.skip)||[])}; }
+  else { EF.repeat={freq:rf, days:((EF.repeat&&EF.repeat.days)||[]).slice(), until:(document.getElementById('ef-runtil')||{}).value||'', skip:((EF.repeat&&EF.repeat.skip)||[]), closedMode:(EF.repeat&&EF.repeat.closedMode)||''}; }
   // 繰り返し予定を「回」から編集した場合は、反映範囲（今回だけ／これから先）を選ぶ
   var isRec=EF.repeat&&EF.repeat.freq&&EF.repeat.freq!=='none';
   if(EF.id && isRec && EDIT_OCC_DATE){
