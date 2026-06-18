@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.30.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.31.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.30.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.31.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1108,6 +1108,7 @@ function repeatLabel(ev){
     case 'biweekly': return '隔週 '+days;
     case 'monthlyDay': return '毎月'+(anchor?anchor.getDate():'')+'日';
     case 'monthlyNth': return '毎月 第'+(anchor?nthOfMonth(anchor):'')+' '+(anchor?dn[anchor.getDay()]:'')+'曜';
+    case 'monthlyEnd': return '毎月末';
     default: return '';
   }
 }
@@ -1120,6 +1121,7 @@ function matchRepeat(r,anchor,d){
     case 'biweekly': { var wk=Math.round((startOfWeek(d).getTime()-startOfWeek(anchor).getTime())/(7*86400000)); var par=(((wk%2)+2)%2===0); var ok=(r.days&&r.days.length)?(r.days.indexOf(dow)>=0):(dow===anchor.getDay()); return par&&ok; }
     case 'monthlyDay': return d.getDate()===anchor.getDate();
     case 'monthlyNth': return dow===anchor.getDay() && nthOfMonth(d)===nthOfMonth(anchor);
+    case 'monthlyEnd': return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()===d.getDate();
     default: return false;
   }
 }
@@ -2124,7 +2126,7 @@ function renderEventForm(){
   const tmodePick=[['allday','終日'],['am','AM'],['pm','PM'],['time','時刻']].map(function(a){return pickHTML('tmode',a[0],a[1],(EF.timeMode||'allday')===a[0]);}).join('');
   const secPick=[['no','通常'],['yes','🔒 自分だけ']].map(function(a){return pickHTML('sec',a[0],a[1],(EF.secret?'yes':'no')===a[0]);}).join('');
   const whoPick=whoPickerHTML(function(m){return EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0;}, function(m){return 'efWhoToggle(\''+escA(m.id)+'\',this)';}, 20);
-  const repeatPick=[['none','なし'],['daily','毎日'],['weekday','平日'],['weekly','毎週'],['biweekly','隔週'],['monthlyDay','毎月(日)'],['monthlyNth','毎月(第n曜)']].map(function(a){return pickHTML('repeat',a[0],a[1],EF.repeat.freq===a[0]);}).join('');
+  const repeatPick=[['none','なし'],['daily','毎日'],['weekday','平日'],['weekly','毎週'],['biweekly','隔週'],['monthlyDay','毎月(日)'],['monthlyNth','毎月(第n曜)'],['monthlyEnd','毎月末']].map(function(a){return pickHTML('repeat',a[0],a[1],EF.repeat.freq===a[0]);}).join('');
   const DOWJ=['日','月','火','水','木','金','土'];
   const rdayPick=DOWJ.map(function(d,x){return pickHTML('rday',String(x),d,EF.repeat.days.indexOf(x)>=0);}).join('');
   var notDeadline=(EF.etype!=='締切り');
