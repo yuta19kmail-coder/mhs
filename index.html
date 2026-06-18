@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.37.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.38.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.37.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.38.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1066,7 +1066,11 @@ function evLead(e,sz){
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
-function evTitleW(e){ var done=(e.todo&&e.done)?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
+/* 回ごとの完了状態：繰り返しは doneDates[その日] を見る／単発は e.done。 */
+function occIsRec(e){ return !!(e&&e.repeat&&e.repeat.freq&&e.repeat.freq!=='none'); }
+function occDone(e){ if(occIsRec(e)) return !!(e.doneDates&&e.doneDates[e.date]); return !!e.done; }
+function occDoneInfo(e){ if(occIsRec(e)){ var d=(e.doneDates&&e.doneDates[e.date])||null; return d?{by:d.by,at:d.at,note:d.note}:null; } return e.done?{by:e.reportedBy,at:e.reportedAt,note:e.reportNote}:null; }
+function evTitleW(e){ var done=(e.todo&&occDone(e))?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
 function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
@@ -1189,7 +1193,7 @@ function getEvents(start,end){
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
 }
-function dispTitle(e){ if(e.source==='birthday'||e.kind==='birthday') return '🎂 '+e.title; if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
+function dispTitle(e){ if(e.source==='birthday'||e.kind==='birthday') return '🎂 '+e.title; if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&occDone(e)?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
 /* ===== リマインド（当日朝/前日/3日前/1週間前＋カスタムn日前） ===== */
 const REMIND_OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
 function remDate(dt){ var w=['日','月','火','水','木','金','土']; return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')'; }
@@ -2055,9 +2059,11 @@ function openEv(json){
   var remArr=remindList(e.remind,e.remindCustom,_spStart);
   var remRow=(manual && remArr.length)?('<div class="fr"><span class="k">🔔通知</span><span>'+remArr.map(function(x){return '<span class="rbadge">🔔 '+x.label+'・'+remDate(x.t)+(x.morning?' 朝':'')+'</span>';}).join('')+'</span></div>'):'';
   var todoBar='';
-  if(manual && e.todo && !(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none')){
-    if(e.done){ todoBar='<div class="donebar is-done"><div class="dst">✅ 実行完了（報告済み）</div><div class="repnote">'+(e.reportedBy?esc(e.reportedBy)+'・':'')+(e.reportedAt?fmtReportTs(e.reportedAt):'')+(e.reportNote?'<br>📝 '+esc(e.reportNote):'')+'</div><button class="btn-ghost" style="margin-top:8px" onclick="undoDoneFromView()">↩ 未完了に戻す</button></div>'; }
-    else { todoBar='<div class="donebar"><div class="dst">⬜ 未完了（実行完了の報告待ち）</div><textarea id="ev-repnote" placeholder="実行内容・結果をひと言（任意）"></textarea><button class="btn-done" onclick="reportDoneFromView()">✅ 実行完了を報告</button></div>'; }
+  if(manual && e.todo){
+    var _rec=(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none');
+    var _di=occDoneInfo(e);
+    if(_di){ todoBar='<div class="donebar is-done"><div class="dst">✅ 実行完了（報告済み）'+(_rec?'　<span style="font-weight:400;color:var(--text3);font-size:11px">'+esc(e.date)+' の回</span>':'')+'</div><div class="repnote">'+(_di.by?esc(_di.by)+'・':'')+(_di.at?fmtReportTs(_di.at):'')+(_di.note?'<br>📝 '+esc(_di.note):'')+'</div><button class="btn-ghost" style="margin-top:8px" onclick="undoDoneFromView()">↩ 未完了に戻す</button></div>'; }
+    else { todoBar='<div class="donebar"><div class="dst">⬜ 未完了（実行完了の報告待ち）'+(_rec?'　<span style="font-weight:400;color:var(--text3);font-size:11px">'+esc(e.date)+' の回</span>':'')+'</div><textarea id="ev-repnote" placeholder="実行内容・結果をひと言（任意）"></textarea><button class="btn-done" onclick="reportDoneFromView()">✅ 実行完了を報告</button></div>'; }
   }
   document.getElementById('ev-body').innerHTML=
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+eventColor(e)+'">'+kindTxt+'</span></div>'+
@@ -2095,18 +2101,31 @@ function reportDoneFromView(){
   var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv;
   var note=((document.getElementById('ev-repnote')||{}).value||'').trim();
   var who=(window.fb.currentMember&&window.fb.currentMember.name)||(window.fb.currentUser&&(window.fb.currentUser.displayName||window.fb.currentUser.email))||'';
-  s.done=true; s.reportNote=note; s.reportedAt=new Date().toISOString(); s.reportedBy=who; s.todo=true;
-  schedSave(s);
-  curEv.done=true; curEv.reportNote=note; curEv.reportedAt=s.reportedAt; curEv.reportedBy=who; curEv.todo=true;
+  var at=new Date().toISOString();
+  if(occIsRec(s)){ // 繰り返しはその回（日付）だけ完了に
+    s.doneDates=s.doneDates||{}; s.doneDates[curEv.date]={by:who,at:at,note:note}; s.todo=true;
+    schedSave(s);
+    curEv.doneDates=s.doneDates;
+  } else {
+    s.done=true; s.reportNote=note; s.reportedAt=at; s.reportedBy=who; s.todo=true;
+    schedSave(s);
+    curEv.done=true; curEv.reportNote=note; curEv.reportedAt=at; curEv.reportedBy=who; curEv.todo=true;
+  }
   openEv(JSON.stringify(curEv)); toast('実行完了を報告しました');
 }
 function undoDoneFromView(){
   if(!curEv||!curEv.id)return;
   if(!confirm('実行完了の報告を取り消して未完了に戻しますか？'))return;
   var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv;
-  s.done=false; s.reportNote=''; s.reportedAt=''; s.reportedBy='';
-  schedSave(s);
-  curEv.done=false; curEv.reportNote=''; curEv.reportedAt=''; curEv.reportedBy='';
+  if(occIsRec(s)){
+    s.doneDates=s.doneDates||{}; s.doneDates[curEv.date]=null;   // merge保存で消えるよう null（occDoneはnull=未完了扱い）
+    schedSave(s);
+    curEv.doneDates=s.doneDates;
+  } else {
+    s.done=false; s.reportNote=''; s.reportedAt=''; s.reportedBy='';
+    schedSave(s);
+    curEv.done=false; curEv.reportNote=''; curEv.reportedAt=''; curEv.reportedBy='';
+  }
   openEv(JSON.stringify(curEv)); toast('未完了に戻しました');
 }
 
