@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.29.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.29.3</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1729,7 +1729,7 @@ function dashNotesHTML(mode){
   if(mode==='self') notes=notes.filter(noteForMe);
   notes.sort(function(a,b){ var ad=a.status==='done', bd=b.status==='done'; if(ad!==bd)return ad?1:-1; return (b.order||0)-(a.order||0); });
   var legend=BN_COLORS.map(function(c){ var t=MHS_LABELS[c[0]]||''; return t?'<span class="bn-label-chip bn-label-'+c[0]+'">'+esc(t)+'</span>':''; }).join('');
-  var addBtn='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button><div class="bn-label-chips">'+legend+'</div></div>';
+  var addBtn='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div class="bn-label-chips">'+legend+'</div><span style="flex:1 1 auto"></span><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button></div>';
   var cards=notes.length?('<div class="bn-grid">'+notes.map(noteCardHTML).join('')+'</div>'):'<div class="empty" style="color:var(--text3);padding:6px">付箋なし</div>';
   var err=_notesErr?'<div style="font-size:11.5px;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid #f59e0b;border-radius:8px;padding:7px 9px;margin-bottom:8px">⚠ '+esc(_notesErr)+'</div>':'';
   return err+addBtn+cards;
