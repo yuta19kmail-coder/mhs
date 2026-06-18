@@ -266,6 +266,8 @@
   .mpick-chips{display:flex;gap:6px;flex-wrap:wrap}
   .mpick-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
   .rh-grp{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;background:var(--bg3);color:var(--text2)}
+  .achip-off{background:rgba(120,134,150,.28)!important;color:var(--text2);font-weight:600}
+  .acell-off{background:rgba(120,134,150,.06)}
   /* リマインド＆TODO/実行完了 */
   .rchip{font-size:12px;padding:4px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
   .rchip:hover{border-color:var(--acc)}
@@ -440,7 +442,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.23.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.24.0</div>
   </div>
 </div>
 
@@ -458,7 +460,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.23.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -476,7 +478,7 @@
     <div class="si-title">ビュー</div>
     <div class="si-item active" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
     <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>カレンダー</span></div>
-    <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">🔀</span><span>多軸ビュー</span></div>
+    <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">👤</span><span>メンバー（週）</span></div>
     <div class="si-title">管理</div>
     <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">👥</span><span>シフト表</span></div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
@@ -521,22 +523,17 @@
       <div id="cal-checklist"></div>
     </section>
 
-    <!-- 多軸ビュー -->
+    <!-- メンバー（週）ビュー -->
     <section id="view-axis" class="view">
       <div class="vhead">
-        <div class="vtitle">🔀 多軸ビュー</div>
-        <div class="seg" id="axis-seg">
-          <button data-ax="member" class="active">メンバー軸</button>
-          <button data-ax="vehicle">車両軸</button>
-          <button data-ax="place">場所軸</button>
-        </div>
+        <div class="vtitle">👤 メンバー（週）</div>
         <button class="vh-btn" onclick="moveWeek(-1)">◀ 前週</button>
         <span id="week-label" style="font-weight:700;min-width:150px;text-align:center"></span>
         <button class="vh-btn" onclick="moveWeek(1)">翌週 ▶</button>
         <button class="vh-btn" onclick="goThisWeek()">今週</button>
       </div>
       <div class="layers" id="layers-axis" style="margin-bottom:12px"></div>
-      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">縦＝<span id="axis-name">メンバー</span>／横＝今週の各日。1つの予定をどの軸からでも同じデータとして見られる、というのがこのビューの狙い（Excelのピボット感覚）。</p>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">縦＝メンバー（部署ごと）／横＝今週の各日。誰がいつ何を担当しているか・誰が休みかを一覧できます。</p>
       <div class="axis-wrap"><div class="axis" id="axis-grid"></div></div>
     </section>
 
@@ -1464,13 +1461,6 @@ function refreshDayModal(){ if(dayModalOpen()) renderDayModalBody(); }
 function openDayModal(dateStr){ dayPopHide(); _dayModalDate=dateStr; renderDayModalBody(); document.getElementById('day-modal').classList.add('show'); }
 function closeDayModal(){ _dayModalDate=null; document.getElementById('day-modal').classList.remove('show'); }
 
-document.getElementById('axis-seg').addEventListener('click',e=>{
-  if(e.target.dataset.ax){
-    curAxis=e.target.dataset.ax;
-    document.querySelectorAll('#axis-seg button').forEach(b=>b.classList.toggle('active',b.dataset.ax===curAxis));
-    renderAxis();
-  }
-});
 function moveWeek(n){curWeek=addDays(curWeek,7*n);renderAxis();}
 function goThisWeek(){curWeek=startOfWeek(TODAY);renderAxis();}
 function renderAxis(){
@@ -1478,22 +1468,24 @@ function renderAxis(){
   const days=[]; for(let i=0;i<7;i++)days.push(addDays(curWeek,i));
   document.getElementById('week-label').textContent=(curWeek.getMonth()+1)+'/'+curWeek.getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
   const evs=getEvents(curWeek,addDays(curWeek,6));
-  let rows, rowLabel, axisName, matcher;
-  if(curAxis==='member'){ var mg=membersGrouped(), grouped=_hasDeptGroups(mg); rows=[]; mg.forEach(function(g){ if(grouped) rows.push({grp:(g.dept?g.dept.name:'未所属'), color:(g.dept&&g.dept.color)||'#94a3b8'}); g.members.forEach(function(m){ rows.push(m.id); }); }); axisName='メンバー'; matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){ if(w===id)return true; if(m&&w===m.name)return true; var wm=memberById(w); return !!(wm&&wm.id===id); }); }; rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); }; }
-  else if(curAxis==='vehicle'){ const vs=[...new Set(evs.map(e=>e.vehicle).filter(v=>v&&v!=='—'))]; rows=vs.length?vs:['（車両指定の予定なし）']; axisName='車両'; matcher=(e,r)=>e.vehicle===r; rowLabel=r=>'🚗 '+r; }
-  else { rows=PLACES; axisName='場所'; matcher=(e,r)=>e.place===r; rowLabel=r=>'📍 '+r; }
-  document.getElementById('axis-name').textContent=axisName;
+  var mg=membersGrouped(), grouped=_hasDeptGroups(mg), rows=[];
+  mg.forEach(function(g){ if(grouped) rows.push({grp:(g.dept?g.dept.name:'未所属'), color:(g.dept&&g.dept.color)||'#94a3b8'}); g.members.forEach(function(m){ rows.push(m.id); }); });
+  var matcher=function(e,id){ var m=memberById(id); return (e.who||[]).some(function(w){ if(w===id)return true; if(m&&w===m.name)return true; var wm=memberById(w); return !!(wm&&wm.id===id); }); };
+  var rowLabel=function(id){ var m=memberById(id)||{id:id,name:id,ini:String(id).charAt(0)}; return memberAvatar(m,22)+esc(m.name); };
   const grid=document.getElementById('axis-grid');
   grid.style.gridTemplateColumns='150px repeat(7,1fr)';
-  let h='<div class="ah" style="position:sticky;left:0;z-index:2">'+axisName+' \\ 日</div>';
+  let h='<div class="ah" style="position:sticky;left:0;z-index:2">メンバー \\ 日</div>';
   days.forEach(d=>{const t=ymd(d)===ymd(TODAY); h+='<div class="ah'+(t?' col-today':'')+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</div>';});
   rows.forEach(r=>{
     if(r && typeof r==='object' && r.grp){ h+='<div class="rh rh-grp" style="grid-column:1 / -1"><span class="mpick-dot" style="background:'+r.color+'"></span>'+esc(r.grp)+'</div>'; return; }
     h+='<div class="rh">'+rowLabel(r)+'</div>';
+    var mm=memberById(r);
     days.forEach(d=>{
-      const t=ymd(d)===ymd(TODAY);
-      const cell=evs.filter(e=>e.date===ymd(d)&&matcher(e,r)).sort((a,b)=>(a.time>b.time?1:-1));
-      h+='<div class="acell'+(t?' col-today':'')+'">';
+      const t=ymd(d)===ymd(TODAY), ds=ymd(d);
+      const off=isOff(mm||{id:r,name:String(r)}, ds);
+      const cell=evs.filter(e=>e.date===ds&&matcher(e,r)).sort((a,b)=>(a.time>b.time?1:-1));
+      h+='<div class="acell'+(t?' col-today':'')+(off?' acell-off':'')+'">';
+      if(off) h+='<div class="achip achip-off">休</div>';
       cell.forEach(e=>{h+='<div class="achip" style="background:'+eventColor(e)+'" onclick=\'openEv('+JSON.stringify(JSON.stringify(e))+')\'>'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12)+dispTitle(e)+'</div>';});
       h+='</div>';
     });
