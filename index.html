@@ -442,7 +442,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.24.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.24.1</div>
   </div>
 </div>
 
@@ -460,7 +460,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -689,6 +689,7 @@ async function enterApp(member,user){
   subscribePortalPhotos();
   subscribeSchedule();
   subscribeShifts();
+  loadShiftAliases();
   renderLayers('layers-month'); renderLayers('layers-axis');
   setSyncState(navigator.onLine!==false);
   showView('brief');
@@ -923,6 +924,8 @@ function memberPhoto(m){ if(!m)return null; var pid=m.portalMemberId||m.id; if(p
 function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; var ph=memberPhoto(m); if(ph)return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var bg=m.color||'#64748b'; return '<span class="m-av" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.45)+'px">'+esc(m.ini||String(m.name||'？').charAt(0))+'</span>'; }
 /* 苗字だけ（"姓 名"→姓・空白なしはそのまま） */
 function surname(name){ return String(name||'').split(/[\s　]/)[0]; }
+/* メンバーの苗字：CoreMembersのlastNameを最優先（無ければ氏名を空白分割） */
+function memSurname(m){ return (m&&m.lastName)?m.lastName:surname(m&&m.name||''); }
 /* 担当をアバター＋氏名で（予定詳細用） */
 function whoLineAvatars(who){ return (who||[]).map(function(id){ var m=memberById(id); var nm=m?m.name:id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
@@ -1050,7 +1053,7 @@ function getEvents(start,end){
     if(!m.birthday) return; var mt=String(m.birthday).match(/(\d{1,2})-(\d{1,2})$/); if(!mt) return;
     var mo=mt[1].padStart(2,'0'), da=mt[2].padStart(2,'0');
     for(var y=start.getFullYear(); y<=end.getFullYear(); y++){ var ds=y+'-'+mo+'-'+da; if(ds<s||ds>e) continue;
-      list.push({ id:'bday_'+m.id+'_'+ds, source:'birthday', layer:'company', kind:'birthday', date:ds, time:'終日', allDay:true, title:surname(m.name)+'さん 誕生日', bMember:m.id, bName:m.name }); }
+      list.push({ id:'bday_'+m.id+'_'+ds, source:'birthday', layer:'company', kind:'birthday', date:ds, time:'終日', allDay:true, title:memSurname(m)+'さん 誕生日', bMember:m.id, bName:m.name }); }
   });
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
@@ -1176,9 +1179,9 @@ function extractShift(items){
 /* 氏名の正規化：空白除去＋よくある異体字を統一（髙→高・﨑→崎 等） */
 function normName(s){ s=String(s||'').trim().replace(/[\s　]/g,''); var map={'髙':'高','﨑':'崎','邉':'辺','邊':'辺','齋':'斎','齊':'斉','德':'徳','凜':'凛','濵':'浜','賴':'頼','嶋':'島','沢':'澤'}; return s.replace(/[髙﨑邉邊齋齊德凜濵賴嶋沢]/g,function(c){return map[c]||c;}); }
 /* 名前→メンバーの手動対応を記憶（毎月のPDFで再利用）。staffShifts/_aliases に保存 */
-var SHIFT_ALIAS={};
+var SHIFT_ALIAS={}, SHIFT_ALIAS_REV={};   // REV: memberId → PDFの苗字（旧形式データの苗字表示に使う）
 function shiftAliasDoc(){ return shiftCol().doc('_aliases'); }
-function loadShiftAliases(cb){ shiftAliasDoc().get().then(function(d){ SHIFT_ALIAS=(d.exists&&d.data().aliases)||{}; if(cb)cb(); }).catch(function(){ SHIFT_ALIAS={}; if(cb)cb(); }); }
+function loadShiftAliases(cb){ shiftAliasDoc().get().then(function(d){ SHIFT_ALIAS=(d.exists&&d.data().aliases)||{}; SHIFT_ALIAS_REV={}; Object.keys(SHIFT_ALIAS).forEach(function(k){ SHIFT_ALIAS_REV[SHIFT_ALIAS[k]]=k; }); if(cb)cb(); if(curView)showView(curView); }).catch(function(){ SHIFT_ALIAS={}; SHIFT_ALIAS_REV={}; if(cb)cb(); }); }
 function saveShiftAlias(name,memberId){ var n=normName(name); if(memberId) SHIFT_ALIAS[n]=memberId; else delete SHIFT_ALIAS[n]; shiftAliasDoc().set({aliases:SHIFT_ALIAS,updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.warn('[MHS] エイリアス保存失敗',e); }); }
 function shiftMatchMember(name){
   var n=normName(name); var i;
@@ -1242,9 +1245,9 @@ function subscribeShifts(){
 }
 /* シフトの1エントリ → {member(アバター用), label(苗字表示)}。新形式{id,nm}＋旧形式(文字列)両対応 */
 function shiftEntryInfo(v){
-  if(v && typeof v==='object'){ var m=v.id?memberById(v.id):null; return {member:m||{name:v.nm,ini:String(v.nm||'？').charAt(0)}, label:surname(v.nm||(m&&m.name)||'')}; }
+  if(v && typeof v==='object'){ var m=v.id?memberById(v.id):null; return {member:m||{name:v.nm,ini:String(v.nm||'？').charAt(0)}, label:(m&&m.lastName)||surname(v.nm||(m&&m.name)||'')}; }
   if(typeof v==='string' && v.indexOf('name:')===0){ var nm=v.slice(5); return {member:{name:nm,ini:nm.charAt(0)}, label:surname(nm)}; }
-  var mm=memberById(v); return {member:mm||{name:String(v),ini:String(v).charAt(0)}, label:surname(mm?mm.name:String(v))};
+  var mm=memberById(v); return {member:mm||{name:String(v),ini:String(v).charAt(0)}, label:(mm&&mm.lastName)||SHIFT_ALIAS_REV[v]||surname(mm?mm.name:String(v))};
 }
 /* 大きめ＋カラー＋苗字（休み枠・日ポップアップ用） */
 function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var info=shiftEntryInfo(v); return '<span class="off-av-b" title="休：'+esc(info.label)+'">'+memberAvatar(info.member,28)+'<span class="off-nm">'+esc(info.label)+'</span></span>'; }).join(''); }
@@ -1263,7 +1266,7 @@ function renderShiftView(){
   groups.forEach(function(g){
     if(g.dept){ body+='<div class="shv-grp"><span class="mpick-dot" style="background:'+((g.dept&&g.dept.color)||'#94a3b8')+'"></span>'+esc(g.dept.name)+'</div>'; }
     g.members.forEach(function(m){
-      body+='<div class="shv-row"><div class="shv-name">'+memberAvatar(m,18)+'<span>'+esc(m.name)+'</span></div>';
+      body+='<div class="shv-row"><div class="shv-name">'+memberAvatar(m,18)+'<span>'+esc(memSurname(m))+'</span></div>';
       for(var d2=1;d2<=dim;d2++){ var ds=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(d2).padStart(2,'0'); var off=isOff(m,ds); if(off)any=true; body+='<div class="shv-c'+(off?' off':'')+'">'+(off?'休':'')+'</div>'; }
       body+='</div>';
     });
@@ -1310,12 +1313,12 @@ function collectIssues(){
     if(e.source==='reminder')return;
     if(e._shifted){ issues.push({type:'shift',id:(e.id||e.title),extra:e.date,label:'🔁 「'+esc(e.title)+'」は定休日のため '+(e._origDate||'').slice(5)+' → '+e.date.slice(5)+' に自動振替'}); }
     (e.who||[]).forEach(function(w){
-      var m=memberById(w); var mo=m||{id:w,name:String(w)}; var nm=surname(mo.name);
+      var m=memberById(w); var mo=m||{id:w,name:String(w)}; var nm=memSurname(mo);
       if(isOff(mo,e.date)){ issues.push({type:'off',id:(e.id||e.title)+'_'+w,extra:e.date,label:'🟠 '+esc(nm)+' は休みなのに予定「'+esc(e.title)+'」（'+e.date.slice(5)+'）'}); }
       var key=e.date+'|'+(m?m.id:w); (seen[key]=seen[key]||[]).push(e);
     });
   });
-  Object.keys(seen).forEach(function(k){ var arr=seen[k]; if(arr.length>=2){ var pa=k.split('|'); var m=memberById(pa[1]); var nm=m?surname(m.name):pa[1]; issues.push({type:'dup',id:k,extra:arr.length,label:'🔴 '+esc(nm)+'：'+pa[0].slice(5)+' に予定'+arr.length+'件（'+arr.map(function(e){return esc(e.title);}).join('／')+'）'}); } });
+  Object.keys(seen).forEach(function(k){ var arr=seen[k]; if(arr.length>=2){ var pa=k.split('|'); var m=memberById(pa[1]); var nm=m?memSurname(m):pa[1]; issues.push({type:'dup',id:k,extra:arr.length,label:'🔴 '+esc(nm)+'：'+pa[0].slice(5)+' に予定'+arr.length+'件（'+arr.map(function(e){return esc(e.title);}).join('／')+'）'}); } });
   return issues.filter(function(it){ return APPROVED.indexOf(checklistKey(it))<0; });
 }
 function renderChecklist(){
@@ -1893,8 +1896,8 @@ function efRunChecks(){
   var date=(document.getElementById('ef-date')||{}).value||EF.date;
   if(!EF.who||!EF.who.length){ box.innerHTML='<span class="ef-ck-ok">担当を選ぶと、ダブり予定・当日休みを自動チェックします。</span>'; return; }
   var c=whoConflicts(date, EF.who, EF.id), lines=[];
-  c.offs.forEach(function(m){ lines.push('<div class="ef-ck-warn">🟠 '+esc(surname(m.name))+' はこの日「休み」です</div>'); });
-  c.dups.forEach(function(d){ lines.push('<div class="ef-ck-warn">🔴 '+esc(surname(d.member.name))+' は同日に別予定「'+esc(d.other.title||'')+'」あり</div>'); });
+  c.offs.forEach(function(m){ lines.push('<div class="ef-ck-warn">🟠 '+esc(memSurname(m))+' はこの日「休み」です</div>'); });
+  c.dups.forEach(function(d){ lines.push('<div class="ef-ck-warn">🔴 '+esc(memSurname(d.member))+' は同日に別予定「'+esc(d.other.title||'')+'」あり</div>'); });
   box.innerHTML = lines.length? (lines.join('')+'<div class="ef-ck-note">※ このままでも保存できます（確認のみ）。</div>') : '<span class="ef-ck-ok">✓ ダブり・不在なし</span>';
 }
 function saveEventForm(){
