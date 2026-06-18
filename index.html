@@ -266,6 +266,17 @@
   .mpick-chips{display:flex;gap:6px;flex-wrap:wrap}
   .mpick-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 auto}
   .rh-grp{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;background:var(--bg3);color:var(--text2)}
+  /* ダッシュボード */
+  .dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .dash-h{font-size:14px;font-weight:700;margin-bottom:8px}
+  .dl-day{margin-bottom:6px}
+  .dl-date{font-size:12px;color:var(--text3);font-weight:700;margin:6px 0 3px}
+  .dl-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer}
+  .dl-row:hover{background:var(--bg3)}
+  .dl-tag{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .dl-tm{font-size:11px;color:var(--text3);min-width:42px}
+  .dl-ti{flex:1;font-size:13px}
+  .dl-who{display:inline-flex;flex:0 0 auto}
   .achip-off{background:rgba(120,134,150,.28)!important;color:var(--text2);font-weight:600}
   .acell-off{background:rgba(120,134,150,.06)}
   /* リマインド＆TODO/実行完了 */
@@ -442,7 +453,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.24.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.25.0</div>
   </div>
 </div>
 
@@ -460,7 +471,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.24.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.25.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -476,7 +487,8 @@
   <!-- ===== サイドバー ===== -->
   <div id="sidebar">
     <div class="si-title">ビュー</div>
-    <div class="si-item active" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
+    <div class="si-item active" data-v="dash" onclick="showView('dash')"><span class="ic">🏠</span><span>ダッシュボード</span></div>
+    <div class="si-item" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
     <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>カレンダー</span></div>
     <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">👤</span><span>メンバー（週）</span></div>
     <div class="si-title">管理</div>
@@ -493,8 +505,19 @@
   <!-- ===== メイン ===== -->
   <div id="main">
 
+    <!-- ダッシュボード -->
+    <section id="view-dash" class="view active">
+      <div class="vhead"><div class="vtitle">🏠 ダッシュボード</div>
+        <div class="seg" id="dash-seg">
+          <button data-dm="self" class="active" onclick="setDashMode('self')">自分</button>
+          <button data-dm="all" onclick="setDashMode('all')">全体</button>
+        </div>
+      </div>
+      <div id="dash-body"></div>
+    </section>
+
     <!-- 朝礼カード -->
-    <section id="view-brief" class="view active">
+    <section id="view-brief" class="view">
       <div class="vhead"><div class="vtitle">🌅 朝礼カード <span id="brief-date" style="font-size:13px;color:var(--text2);font-weight:500"></span></div></div>
       <div id="brief-warns"></div>
       <div class="brief">
@@ -692,7 +715,7 @@ async function enterApp(member,user){
   loadShiftAliases();
   renderLayers('layers-month'); renderLayers('layers-axis');
   setSyncState(navigator.onLine!==false);
-  showView('brief');
+  showView('dash');
 }
 function wireAuth(){
   if(!window.fb||!window.fb.auth){ var lm=document.getElementById('login-msg'); if(lm)lm.textContent='接続の準備に失敗しました。再読み込みしてください。'; return; }
@@ -1084,6 +1107,7 @@ function showView(v){
   document.querySelectorAll('.si-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(i=>i.classList.add('active'));
+  if(v==='dash')   renderDash();
   if(v==='brief')  renderBrief();
   if(v==='month')  renderCal();
   if(v==='axis')   renderAxis();
@@ -1498,6 +1522,44 @@ function renderAxis(){
   grid.innerHTML=h;
 }
 
+/* ===== ダッシュボード（自分/全体 切替・スケジュール／付箋は次段） ===== */
+var dashMode='self';
+function setDashMode(m){ dashMode=m; document.querySelectorAll('#dash-seg button').forEach(function(b){b.classList.toggle('active',b.dataset.dm===m);}); renderDash(); }
+function myCoreMember(){ var pid=(window.fb.currentMember&&window.fb.currentMember.id)||(window.fb.currentUser&&window.fb.currentUser.uid); if(!pid)return null; for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].portalMemberId===pid||MEMBERS[i].id===pid)return MEMBERS[i]; } return null; }
+function _dashEvMatchesMember(e,m){ if(!m)return false; return (e.who||[]).some(function(w){ if(w===m.id)return true; if(w===m.name)return true; var wm=memberById(w); return !!(wm&&wm.id===m.id); }); }
+function dashEventList(evs){
+  if(!evs.length) return '<div class="empty" style="padding:8px;color:var(--text3)">予定なし</div>';
+  var byd={}; evs.forEach(function(e){ (byd[e.date]=byd[e.date]||[]).push(e); });
+  return Object.keys(byd).sort().map(function(ds){
+    var d=new Date(ds+'T00:00:00'); var lbl=(d.getMonth()+1)+'/'+d.getDate()+'('+DOW[d.getDay()]+')'+(ds===ymd(TODAY)?' <b style="color:var(--acc2)">今日</b>':'');
+    var rows=byd[ds].sort(function(a,b){return (a.time>b.time?1:-1);}).map(function(e){
+      return '<div class="dl-row" onclick=\''+openEvAttr(e)+'\'><span class="dl-tag" style="background:'+eventColor(e)+'"></span><span class="dl-tm">'+(e.time==='終日'||e.time==='—'?'終日':esc(e.time))+'</span><span class="dl-ti">'+dispTitle(e)+'</span><span class="dl-who">'+whoAvatars(e.who,16)+'</span></div>';
+    }).join('');
+    return '<div class="dl-day"><div class="dl-date">'+lbl+'</div>'+rows+'</div>';
+  }).join('');
+}
+function renderDash(){
+  var host=document.getElementById('dash-body'); if(!host)return;
+  var evs=getEvents(TODAY,addDays(TODAY,13)).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+  evs.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:(a.time>b.time?1:-1); });
+  var noteCard='<div class="dash-card"><div class="dash-h">🗒️ 付箋（'+(dashMode==='self'?'自分宛て':'全体')+'）</div><div style="font-size:12px;color:var(--text3)">CarFlow・PitFlow と同期する付箋は次段で実装予定（共有 boardNotes・返信/編集対応）。</div></div>';
+  if(dashMode==='self'){
+    var me=myCoreMember();
+    var mine=evs.filter(function(e){ return _dashEvMatchesMember(e,me); });
+    var myDept=me?memberDeptIds(me).deptId:null, myDeptName=me?memberDeptName(me):'';
+    var deptEvs=evs.filter(function(e){ if(mine.indexOf(e)>=0)return false;
+      if(e.kind==='dept' && myDeptName && e.dept===myDeptName) return true;
+      return (e.who||[]).some(function(w){ var m=memberById(w); return m && myDept && memberDeptIds(m).deptId===myDept; }); });
+    host.innerHTML=
+      '<div class="dash-card"><div class="dash-h">👤 自分のスケジュール'+(me?'（'+esc(memDisp(me))+'）':' <span style="font-size:11px;color:#f59e0b">（あなたのアカウントが名簿と未紐付けです）</span>')+'</div>'+dashEventList(mine)+'</div>'+
+      '<div class="dash-card"><div class="dash-h">🏢 所属部署のスケジュール'+(myDeptName?'（'+esc(myDeptName)+'）':'')+'</div>'+dashEventList(deptEvs)+'</div>'+
+      noteCard;
+  } else {
+    host.innerHTML=
+      '<div class="dash-card"><div class="dash-h">📅 全体のスケジュール（今後2週間）</div>'+dashEventList(evs)+'</div>'+
+      noteCard;
+  }
+}
 function renderBrief(){
   document.getElementById('brief-date').textContent='（'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+' '+DOW[TODAY.getDay()]+'）';
   const td=ymd(TODAY), tm=ymd(addDays(TODAY,1));
