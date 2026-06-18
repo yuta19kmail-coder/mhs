@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.32.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.33.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.32.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.33.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -2024,7 +2024,7 @@ function openEv(json){
   if(manual){
     if(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none'){
       foot='<div style="margin-top:6px;font-size:11.5px;color:var(--text3)">🔁 繰り返し：'+esc(repeatLabel(e))+(e.repeat.until?'（〜'+e.repeat.until+'）':'')+'</div>'+
-        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" onclick="editFromView()">✏️ シリーズを編集</button><button class="btn-del" onclick="deleteOccurrence()">🗑️ この回だけ</button><button class="btn-del" onclick="deleteFromView()">🗑️ 全部</button></div>';
+        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-ghost" onclick="editFromView()">✏️ シリーズを編集</button><button class="btn-del" onclick="deleteOccurrence()">🗑️ この回だけ</button><button class="btn-del" onclick="deleteFromHere()">🗑️ ここから先</button></div>';
     } else {
       foot='<div style="margin-top:14px;display:flex;gap:8px"><button class="btn-ghost" onclick="editFromView()">✏️ 編集</button><button class="btn-del" onclick="deleteFromView()">🗑️ 削除</button></div>';
     }
@@ -2065,6 +2065,18 @@ function closeEv(){document.getElementById('ev-modal').classList.remove('show');
 function editFromView(){ var s=USER_EVENTS.find(function(x){return x.id===curEv.id;})||curEv; closeEv(); openEventForm(s); }
 function deleteFromView(){ if(!curEv||!curEv.id)return; var rep=curEv.repeat&&curEv.repeat.freq&&curEv.repeat.freq!=='none'; if(!confirm(rep?'この繰り返し予定を「すべて」削除しますか？':'この予定を削除しますか？'))return; schedDelete(curEv.id); closeEv(); toast('削除しました'); }
 function deleteOccurrence(){ if(!curEv||!curEv.id)return; var s=USER_EVENTS.find(function(x){return x.id===curEv.id;}); if(!s){ schedDelete(curEv.id); closeEv(); return; } if(!confirm(curEv.date+' の回だけ非表示にしますか？（他の回は残ります）'))return; s.repeat=s.repeat||{}; s.repeat.skip=(s.repeat.skip||[]).slice(); if(s.repeat.skip.indexOf(curEv.date)<0)s.repeat.skip.push(curEv.date); schedSave(s); closeEv(); toast('この回だけ非表示にしました'); }
+/* クリックした回から先（未来）を削除。これより前の回は実績として残す＝繰り返し終了日(until)をこの回の前日に縮める。 */
+function deleteFromHere(){
+  if(!curEv||!curEv.id)return;
+  var s=USER_EVENTS.find(function(x){return x.id===curEv.id;});
+  if(!s){ if(confirm(curEv.date+' 以降を削除しますか？')){ schedDelete(curEv.id); closeEv(); toast('削除しました'); } return; }
+  // 最初の回（開始日と同じか前）なら、残す実績が無いので丸ごと削除
+  if(!s.date || curEv.date<=s.date){ if(!confirm('この繰り返し予定をすべて削除しますか？（'+curEv.date+' より前の回はありません）'))return; schedDelete(curEv.id); closeEv(); toast('削除しました'); return; }
+  if(!confirm(curEv.date+' 以降の回を削除します。\n'+curEv.date+' より前の回は実績として残ります。よろしいですか？'))return;
+  var prev=ymd(addDays(new Date(curEv.date+'T00:00:00'),-1));
+  s.repeat=s.repeat||{}; s.repeat.until=prev;
+  schedSave(s); closeEv(); toast(curEv.date+' 以降を削除しました（前の回は残ります）');
+}
 /* 実行完了の報告（TODO予定を完了で締める。完了は必ず報告経由） */
 function reportDoneFromView(){
   if(!curEv||!curEv.id)return;
