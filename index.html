@@ -223,6 +223,15 @@
   .donebar textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;min-height:40px;resize:vertical;margin-bottom:8px}
   .donebar .repnote{font-size:12px;color:#22c55e}
   .btn-done{background:#16a34a;color:#fff;border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  /* シフトPDF ドロップゾーン */
+  .pdf-drop{border:2px dashed var(--border);border-radius:14px;padding:34px 18px;text-align:center;color:var(--text2);background:var(--bg3);transition:.15s;cursor:default}
+  .pdf-drop.over{border-color:var(--acc);background:rgba(220,38,38,.07);color:var(--text)}
+  .pdf-drop .pd-ic{font-size:34px;margin-bottom:8px}
+  .pdf-drop .pd-sub{font-size:12px;color:var(--text3);margin-top:8px}
+  .pdf-drop .pd-pick{color:var(--acc2);cursor:pointer;text-decoration:underline}
+  .shift-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .shift-tbl tr{border-bottom:1px solid var(--border)}
+  .shift-tbl td{padding:5px 9px;vertical-align:top}
   .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
   .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
@@ -349,7 +358,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.16.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.17.0</div>
   </div>
 </div>
 
@@ -367,7 +376,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.16.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -386,8 +395,9 @@
     <div class="si-item active" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
     <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>カレンダー</span></div>
     <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">🔀</span><span>多軸ビュー</span></div>
-    <div class="si-title">マスター</div>
-    <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>会社カレンダー設定</span></div>
+    <div class="si-title">管理</div>
+    <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
+    <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
     <div class="si-title">情報</div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このモックについて</span></div>
 
@@ -453,6 +463,15 @@
         ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は MasterHub Schedule に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
       </p>
       <div id="calset-body"></div>
+    </section>
+
+    <!-- シフトPDF入力（管理） -->
+    <section id="view-shiftpdf" class="view">
+      <div class="vhead"><div class="vtitle">📄 シフトPDF入力 <span class="dev-badge">管理</span></div></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 14px;line-height:1.7">
+        シフト表PDF（Excel出力）を下にドラッグ＆ドロップすると、「<b>休</b>」を読み取って各日の<b>休みの人</b>をMHSに取り込みます（<code>staffShifts</code>）。週・日ビューの「休みアバター」やシフト専用ビューがこのデータを参照します。<br>※読み取り後にプレビューで確認してから反映します。空欄＝出勤・「休」＝休みとして判定。
+      </p>
+      <div id="shiftpdf-body"></div>
     </section>
 
     <!-- About -->
@@ -939,6 +958,7 @@ function showView(v){
   if(v==='month')  renderCal();
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
+  if(v==='shiftpdf') renderShiftPdf();
 }
 document.getElementById('cal-mode-seg').addEventListener('click',function(e){ if(e.target.dataset.m) setCalMode(e.target.dataset.m); });
 
@@ -950,6 +970,106 @@ function renderLayers(containerId){
     renderLayers('layers-month'); renderLayers('layers-axis');
     renderCal(); renderAxis(); renderBrief();
   }));
+}
+
+/* ===== シフトPDF入力（pdf.jsで「休」を読み取り→staffShifts） ===== */
+let SHIFT_PARSE=null;
+function shiftCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('staffShifts'); }
+function renderShiftPdf(){
+  var b=document.getElementById('shiftpdf-body'); if(!b)return;
+  b.innerHTML=
+    '<div id="pdf-drop" class="pdf-drop"><div class="pd-ic">📄⬇️</div><div>ここにシフトPDFをドラッグ＆ドロップ</div>'+
+      '<div class="pd-sub">または <label class="pd-pick">ファイルを選ぶ<input type="file" accept="application/pdf" style="display:none" onchange="onShiftFile(this.files)"></label></div></div>'+
+    '<div id="pdf-status" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>'+
+    '<div id="pdf-preview" style="margin-top:12px"></div>';
+  var dz=document.getElementById('pdf-drop'); if(!dz)return;
+  ['dragover','dragenter'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+  ['dragleave','dragend'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+  dz.addEventListener('drop',function(e){ e.preventDefault(); dz.classList.remove('over'); onShiftFile(e.dataTransfer&&e.dataTransfer.files); });
+}
+function shiftStatus(msg){ var s=document.getElementById('pdf-status'); if(s)s.innerHTML=msg; }
+function onShiftFile(files){
+  if(!files||!files.length)return;
+  var f=files[0];
+  if(f.type!=='application/pdf' && !/\.pdf$/i.test(f.name)){ shiftStatus('⚠ PDFファイルを入れてください'); return; }
+  shiftStatus('読み込み中… '+esc(f.name));
+  loadPdfJs(function(ok){
+    if(!ok){ shiftStatus('⚠ PDFライブラリの読込に失敗しました（通信環境をご確認ください）'); return; }
+    var r=new FileReader();
+    r.onload=function(){ try{ parseShiftPdf(new Uint8Array(r.result), f.name); }catch(e){ console.error(e); shiftStatus('⚠ 解析に失敗：'+esc(String(e.message||e))); } };
+    r.onerror=function(){ shiftStatus('⚠ ファイル読込に失敗'); };
+    r.readAsArrayBuffer(f);
+  });
+}
+var _pdfjsLoading=false, _pdfjsCb=[];
+function loadPdfJs(cb){
+  if(window.pdfjsLib){ cb(true); return; }
+  _pdfjsCb.push(cb);
+  if(_pdfjsLoading) return; _pdfjsLoading=true;
+  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload=function(){ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){} var ok=!!window.pdfjsLib; _pdfjsCb.splice(0).forEach(function(f){f(ok);}); };
+  s.onerror=function(){ _pdfjsLoading=false; _pdfjsCb.splice(0).forEach(function(f){f(false);}); };
+  document.head.appendChild(s);
+}
+function parseShiftPdf(data, fname){
+  window.pdfjsLib.getDocument({data:data}).promise.then(function(pdf){ return pdf.getPage(1); }).then(function(page){
+    return page.getTextContent().then(function(tc){
+      var items=tc.items.map(function(it){ return { s:(it.str||'').trim(), x:it.transform[4], y:it.transform[5] }; }).filter(function(it){ return it.s!==''; });
+      SHIFT_PARSE=extractShift(items);
+      renderShiftPreview(SHIFT_PARSE, fname);
+    });
+  }).catch(function(e){ console.error('[MHS] PDF解析失敗',e); shiftStatus('⚠ PDF解析に失敗：'+esc(String(e.message||e))); });
+}
+/* 座標から（メンバー×日）の「休」を抽出。pdf.jsのtext+座標で動作（原点方向に依存しない近傍マッチ） */
+function extractShift(items){
+  var ym=null; items.forEach(function(it){ var m=it.s.match(/(20\d{2})年\s*(\d{1,2})月/); if(m)ym={y:+m[1],mo:+m[2]}; });
+  var ints=items.filter(function(it){ return /^\d{1,2}$/.test(it.s)&&+it.s>=1&&+it.s<=31; });
+  var byY={}; ints.forEach(function(it){ var k=Math.round(it.y/3)*3; (byY[k]=byY[k]||[]).push(it); });
+  var bestK=null,bestN=0; Object.keys(byY).forEach(function(k){ if(byY[k].length>bestN){bestN=byY[k].length;bestK=k;} });
+  var hdr=(byY[bestK]||[]).slice().sort(function(a,b){return a.x-b.x;});
+  var dayCols=hdr.map(function(it){ return {day:+it.s,x:it.x}; });
+  if(!dayCols.length) return {ym:ym,days:[],rows:[]};
+  var minDayX=Math.min.apply(null,dayCols.map(function(d){return d.x;}));
+  var nameItems=items.filter(function(it){ return it.x<minDayX-4 && it.s.length>=2 && !/^\d+$/.test(it.s) && !/年|月|出勤|休日|勤務|遅刻/.test(it.s) && /[぀-ヿ一-鿿]/.test(it.s); });
+  var rows=nameItems.map(function(it){ return {name:it.s,y:it.y,off:[]}; });
+  items.filter(function(it){return it.s==='休';}).forEach(function(k){
+    if(!rows.length)return;
+    var row=rows.reduce(function(a,b){ return Math.abs(b.y-k.y)<Math.abs(a.y-k.y)?b:a; });
+    if(Math.abs(row.y-k.y)>12)return;
+    var col=dayCols.reduce(function(a,b){ return Math.abs(b.x-k.x)<Math.abs(a.x-k.x)?b:a; });
+    if(row.off.indexOf(col.day)<0)row.off.push(col.day);
+  });
+  rows.forEach(function(r){ r.off.sort(function(a,b){return a-b;}); r.memberId=shiftMatchMember(r.name); });
+  rows=rows.filter(function(r){ return r.off.length>0; });
+  return {ym:ym, days:dayCols.map(function(d){return d.day;}).sort(function(a,b){return a-b;}), rows:rows};
+}
+function shiftMatchMember(name){ for(var i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].name===name)return MEMBERS[i].id; } return null; }
+function renderShiftPreview(p, fname){
+  shiftStatus('読み取り完了：'+esc(fname));
+  var pv=document.getElementById('pdf-preview'); if(!pv)return;
+  if(!p.ym||!p.rows.length){ pv.innerHTML='<div style="color:#f59e0b;font-size:13px">⚠ うまく読み取れませんでした（年月や「休」の位置が想定と違う可能性）。フォーマットを共有いただければ調整します。</div>'; return; }
+  var unmatched=p.rows.filter(function(r){return !r.memberId;}).length;
+  var head='<div style="font-size:13px;margin-bottom:8px"><b>'+p.ym.y+'年'+p.ym.mo+'月</b>のシフトを検出：休みのある人 <b>'+p.rows.length+'名</b>／日付 '+p.days.length+'日'+(unmatched?'　<span style="color:#f59e0b">（名簿未照合 '+unmatched+'名）</span>':'')+'</div>';
+  var rowsH=p.rows.map(function(r){
+    var mt=r.memberId?'<span style="color:#22c55e">✓照合</span>':'<span style="color:#f59e0b">未照合</span>';
+    return '<tr><td style="font-weight:600;white-space:nowrap">'+esc(r.name)+'</td><td style="font-size:11px;white-space:nowrap">'+mt+'</td><td style="color:var(--text2)">休 '+r.off.length+'日：'+r.off.join('・')+'</td></tr>';
+  }).join('');
+  pv.innerHTML=head+'<div style="max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="shift-tbl">'+rowsH+'</table></div>'+
+    '<div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-done" onclick="applyShift()">この内容をMHSに反映</button>'+
+    '<span style="font-size:11px;color:var(--text3)">'+p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+' の各日を staffShifts に保存します</span></div>'+
+    (unmatched?'<div style="font-size:11px;color:var(--text3);margin-top:6px">※未照合は名前のまま保存します（CoreMembersの氏名と表記を合わせると自動照合されます。例：髙橋／箱﨑などの異体字）。</div>':'');
+}
+function applyShift(){
+  var p=SHIFT_PARSE; if(!p||!p.ym||!p.rows.length){ toast('先にPDFを読み込んでください'); return; }
+  var dim=new Date(p.ym.y,p.ym.mo,0).getDate();
+  var byDate={}; for(var d=1;d<=dim;d++) byDate[d]=[];
+  p.rows.forEach(function(r){ r.off.forEach(function(d){ if(byDate[d]) byDate[d].push(r.memberId||('name:'+r.name)); }); });
+  var batch=window.fb.db.batch(), col=shiftCol();
+  for(var dd=1;dd<=dim;dd++){
+    var ds=p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
+    batch.set(col.doc(ds),{ date:ds, off:byDate[dd], source:'pdf', updatedAt:window.fb.serverTimestamp(), updatedBy:(window.fb.currentUser&&window.fb.currentUser.uid)||null },{merge:true});
+  }
+  batch.commit().then(function(){ toast('シフトを反映しました（'+p.ym.y+'/'+p.ym.mo+'・'+dim+'日分）'); shiftStatus('✅ '+p.ym.y+'/'+p.ym.mo+' を反映済み'); }).catch(function(e){ console.error('[MHS] シフト保存失敗',e); toast('⚠ 反映に失敗（権限/通信）。Firestoreルールに staffShifts が必要です'); });
 }
 
 /* ===== カレンダー（月／週／日 切替・ドラッグ移動・ホバー全件） ===== */
