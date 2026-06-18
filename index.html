@@ -232,10 +232,14 @@
   .shift-tbl{width:100%;border-collapse:collapse;font-size:12px}
   .shift-tbl tr{border-bottom:1px solid var(--border)}
   .shift-tbl td{padding:5px 9px;vertical-align:top}
-  /* 週/日の休みアバター */
-  .day-off{display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-top:3px}
-  .off-l{font-size:9px;color:var(--text3)}
-  .off-av{display:inline-flex;filter:grayscale(.6);opacity:.75}
+  /* 休み枠（各日の一番下・カラー＋氏名つき・大きめ） */
+  .tg2-offrow{display:grid;border-top:2px solid var(--border);background:var(--bg2)}
+  .tg2-offrow .lab{font-size:11px;color:var(--text3);padding:8px 6px;border-right:1px solid var(--border);display:flex;align-items:flex-start;position:sticky;left:0;background:var(--bg2)}
+  .tg2-offcell{padding:7px 6px;display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;border-right:1px solid var(--border);min-height:46px}
+  .off-av-b{display:inline-flex;flex-direction:column;align-items:center;gap:2px}
+  .off-nm{font-size:10px;color:var(--text2);line-height:1}
+  .off-closed{font-size:11px;color:var(--text3)}
+  .dm-off{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
   /* シフト表（人×日マトリクス） */
   .shv-scroll{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:70vh}
   .shv-grid{display:inline-block;min-width:100%}
@@ -373,7 +377,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.18.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.18.1</div>
   </div>
 </div>
 
@@ -391,7 +395,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.18.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -668,7 +672,7 @@ function eventColor(e){
   return eventColor(e);                                  // 他アプリ（将来）
 }
 
-const TODAY=new Date(2026,5,2);
+const TODAY=(function(){ var d=new Date(); d.setHours(0,0,0,0); return d; })();   // システムの当日を読む
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function startOfWeek(d){const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;}
@@ -1061,7 +1065,10 @@ function extractShift(items){
   var dayCols=hdr.map(function(it){ return {day:+it.s,x:it.x}; });
   if(!dayCols.length) return {ym:ym,days:[],rows:[]};
   var minDayX=Math.min.apply(null,dayCols.map(function(d){return d.x;}));
-  var nameItems=items.filter(function(it){ return it.x<minDayX-4 && it.s.length>=2 && !/^\d+$/.test(it.s) && !/年|月|出勤|休日|勤務|遅刻/.test(it.s) && /[぀-ヿ一-鿿]/.test(it.s); });
+  var cand=items.filter(function(it){ return it.x<minDayX-4 && !/^\d+$/.test(it.s) && !/年|月|出勤|休日|勤務|遅刻/.test(it.s) && /[぀-ヿ一-鿿]/.test(it.s); });
+  var multi=cand.filter(function(it){ return it.s.length>=2; });
+  var nameColX=multi.length?Math.min.apply(null,multi.map(function(it){return it.x;})):minDayX;
+  var nameItems=cand.filter(function(it){ return it.x>=nameColX-5; });   // 名前列のxで部署縦ラベルを除外しつつ、単字名（林 等）も拾う
   var rows=nameItems.map(function(it){ return {name:it.s,y:it.y,off:[],include:true}; });
   items.filter(function(it){return it.s==='休';}).forEach(function(k){
     if(!rows.length)return;
@@ -1142,7 +1149,8 @@ function subscribeShifts(){
   }, function(err){ console.warn('[MHS] シフト購読エラー',err); });
 }
 function resolveShiftMember(v){ if(typeof v==='string'&&v.indexOf('name:')===0){ var nm=v.slice(5); return {id:v,name:nm,ini:nm.charAt(0)}; } return memberById(v)||{id:v,name:String(v),ini:String(v).charAt(0)}; }
-function offAvatarsHTML(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; var av=off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av" title="休：'+esc(m.name)+'">'+memberAvatar(m,16)+'</span>'; }).join(''); return '<div class="day-off"><span class="off-l">休</span>'+av+'</div>'; }
+/* 大きめ＋カラー＋氏名つき（休み枠・日ポップアップ用） */
+function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av-b" title="休：'+esc(m.name)+'">'+memberAvatar(m,28)+'<span class="off-nm">'+esc(m.name)+'</span></span>'; }).join(''); }
 function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off)return false; return off.indexOf(m.id)>=0 || off.indexOf('name:'+m.name)>=0; }
 let shiftCursor=null;
 function shiftMonthMove(n){ var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1); shiftCursor=new Date(base.getFullYear(),base.getMonth()+n,1); renderShiftView(); }
@@ -1231,7 +1239,7 @@ function timeGridHTML(days,byDate,ncol){
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
   days.forEach(function(d){ var key=ymd(d),t=(key===ymd(TODAY)),hol=holName(key),ev=evalDay(key,d);
-    h+='<div class="tg2-dh'+(t?' today':'')+'"><span class="'+(d.getDay()===0?'sun':(d.getDay()===6?'sat':''))+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'+(hol?'<span class="hn">'+esc(hol)+'</span>':'')+(ev.closed?'<span class="hn" style="color:var(--text3)">休</span>':'')+offAvatarsHTML(key)+'</div>';
+    h+='<div class="tg2-dh'+(t?' today':'')+'"><span class="'+(d.getDay()===0?'sun':(d.getDay()===6?'sat':''))+'">'+DOW[d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+'</span>'+(hol?'<span class="hn">'+esc(hol)+'</span>':'')+(ev.closed?'<span class="hn" style="color:var(--text3)">休</span>':'')+'</div>';
   });
   h+='</div>';
   h+='<div class="tg2-allday" style="grid-template-columns:'+gridCols+'"><div class="lab">終日<br>AM/PM</div>';
@@ -1255,7 +1263,12 @@ function timeGridHTML(days,byDate,ncol){
     });
     h+='</div>';
   });
-  h+='</div></div></div>';
+  h+='</div>';   // close tg2-body
+  // 休み枠（各日の一番下・定休日には出さない）
+  h+='<div class="tg2-offrow" style="grid-template-columns:'+gridCols+'"><div class="lab">休み</div>';
+  days.forEach(function(d){ var key=ymd(d), ev=evalDay(key,d); h+='<div class="tg2-offcell">'+(ev.closed?'<span class="off-closed">定休</span>':offAvatarsBig(key))+'</div>'; });
+  h+='</div>';
+  h+='</div></div>';   // close tg2-scroll, tg2
   return h;
 }
 function renderWeekGrid(){
