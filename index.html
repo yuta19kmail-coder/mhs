@@ -320,6 +320,15 @@
   .bn-menu-it:hover{background:#f4f4f4}
   .bn-menu-danger{color:#c62828}
   .bn-done-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);font-size:60px;font-weight:900;color:rgba(211,47,47,.8);border:5px solid rgba(211,47,47,.8);border-radius:50%;width:92px;height:92px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;font-family:serif}
+  /* 付箋モーダル：色スウォッチ＋担当マルチ */
+  .bn-color-picker{display:flex;gap:10px;flex-wrap:wrap}
+  .bn-cp-lbl{cursor:pointer;display:inline-flex}
+  .bn-cp-lbl input{display:none}
+  .bn-color-swatch{width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.2)}
+  .bn-cp-lbl input:checked + .bn-color-swatch{outline:3px solid var(--acc);outline-offset:2px}
+  .bn-member-list{display:flex;gap:6px;flex-wrap:wrap;max-height:170px;overflow-y:auto;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:8px}
+  .bn-member-pick{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 5px;background:var(--bg);border:1px solid var(--border);border-radius:16px;font-size:12px;color:var(--text);cursor:pointer;user-select:none}
+  .bn-member-pick.is-checked{background:var(--acc);border-color:var(--acc);color:#fff}
   .achip-off{background:rgba(120,134,150,.28)!important;color:var(--text2);font-weight:600}
   .acell-off{background:rgba(120,134,150,.06)}
   /* リマインド＆TODO/実行完了 */
@@ -496,7 +505,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.27.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.27.1</div>
   </div>
 </div>
 
@@ -514,7 +523,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.27.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.27.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -661,6 +670,15 @@
 
 <!-- 🎂 誕生日お祝い（枠なし・全画面オーバーレイ） -->
 <div id="bd-overlay" class="bd-overlay" onclick="if(event.target.id==='bd-overlay'||event.target.id==='bd-stage')closeBirthday()"></div>
+
+<!-- 付箋 追加/編集モーダル（CarFlow風） -->
+<div class="mbg" id="nt-modal" onclick="if(event.target.id==='nt-modal')closeNoteModal()">
+  <div class="mbox wide">
+    <div class="mhead"><span class="mt" id="nt-modal-title">付箋</span><button class="x" onclick="closeNoteModal()">✕</button></div>
+    <div class="mbody scroll" id="nt-modal-body"></div>
+    <div class="mfoot"><button class="btn-del" id="nt-modal-del" style="display:none" onclick="noteDeleteFromModal()">🗑️ 削除</button><div class="grow"></div><button class="btn-ghost" onclick="closeNoteModal()">キャンセル</button><button class="btn-primary" onclick="saveNoteModal()">保存</button></div>
+  </div>
+</div>
 
 <!-- ホバー全件ポップ -->
 <div id="day-pop" onmouseenter="dayPopHold(true)" onmouseleave="dayPopHold(false)"></div>
@@ -1652,16 +1670,10 @@ function dashNotesHTML(mode){
   var notes=allNotes().slice();
   if(mode==='self') notes=notes.filter(noteForMe);
   notes.sort(function(a,b){ var ad=a.status==='done', bd=b.status==='done'; if(ad!==bd)return ad?1:-1; return (b.order||0)-(a.order||0); });
-  var loginMembers=MEMBERS.filter(function(m){return m.portalMemberId;});
-  var asgChips=loginMembers.map(function(m){ var on=_noteCompose.assignees.indexOf(m.portalMemberId)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="noteComposeToggle(\''+escA(m.portalMemberId)+'\')">'+memberAvatar(m,16)+'<span>'+esc(memDisp(m))+'</span></span>'; }).join('');
-  var colorPick=BN_COLORS.map(function(c){ return '<span class="bn-cpick'+(_noteCompose.color===c[0]?' on':'')+'" style="background:'+c[1]+'" onclick="noteComposeColor(\''+c[0]+'\')" title="'+c[0]+'"></span>'; }).join('');
-  var compose='<div class="nt-compose"><textarea id="nt-text" placeholder="付箋を書く…（MHSに投稿）" oninput="_noteCompose.text=this.value">'+esc(_noteCompose.text||'')+'</textarea>'+
-    '<div class="nt-asgrow"><span class="nt-lbl">色</span><div class="bn-cpicker">'+colorPick+'</div></div>'+
-    '<div class="nt-asgrow"><span class="nt-lbl">宛先</span><div class="seg-pick">'+asgChips+'</div></div>'+
-    '<div style="text-align:right;margin-top:6px"><button class="btn-done" style="background:var(--acc)" onclick="addMhsNote()">投稿</button></div></div>';
+  var addBtn='<div style="margin-bottom:12px"><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button></div>';
   var cards=notes.length?('<div class="bn-grid">'+notes.map(noteCardHTML).join('')+'</div>'):'<div class="empty" style="color:var(--text3);padding:6px">付箋なし</div>';
   var err=_notesErr?'<div style="font-size:11.5px;color:#f59e0b;background:rgba(245,158,11,.08);border:1px solid #f59e0b;border-radius:8px;padding:7px 9px;margin-bottom:8px">⚠ '+esc(_notesErr)+'</div>':'';
-  return err+compose+cards;
+  return err+addBtn+cards;
 }
 function noteComposeToggle(uid){ var i=_noteCompose.assignees.indexOf(uid); if(i>=0)_noteCompose.assignees.splice(i,1); else _noteCompose.assignees.push(uid); if(curView==='dash')renderDash(); }
 function addMhsNote(){
@@ -1670,8 +1682,46 @@ function addMhsNote(){
   var data={ id:id, body:text, title:'', color:_noteCompose.color||'yellow', authorUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, memberUids:_noteCompose.assignees.slice(), replies:[], status:'open', order:Date.now(), createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp() };
   noteColRef('mhs').doc(id).set(data).then(function(){ _noteCompose.text=''; _noteCompose.assignees=[]; toast('投稿しました'); if(curView==='dash')renderDash(); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
 }
+/* 付箋 追加/編集モーダル（CarFlow風：タイトル・本文・色スウォッチ・担当マルチ選択） */
+var _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[]};
+function openNoteModal(id,app){
+  if(id){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } _ntEditor={id:id, app:app, title:n.title||'', body:noteBody(n), color:(['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow'), members:noteAssignees(n).slice()}; }
+  else { _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[]}; }
+  document.getElementById('nt-modal-title').textContent=id?'付箋を編集':'付箋を追加';
+  document.getElementById('nt-modal-del').style.display=id?'inline-block':'none';
+  renderNoteModalBody();
+  document.getElementById('nt-modal').classList.add('show');
+}
+function closeNoteModal(){ document.getElementById('nt-modal').classList.remove('show'); }
+function renderNoteModalBody(){
+  var sw=BN_COLORS.map(function(c){ return '<label class="bn-cp-lbl"><input type="radio" name="ntcolor" '+(_ntEditor.color===c[0]?'checked':'')+' onclick="_ntEditor.color=\''+c[0]+'\'"><span class="bn-color-swatch" style="background:'+c[1]+'"></span></label>'; }).join('');
+  var loginMembers=MEMBERS.filter(function(m){return m.portalMemberId;});
+  var chips=loginMembers.map(function(m){ var on=_ntEditor.members.indexOf(m.portalMemberId)>=0; return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="noteModalToggleMember(\''+escA(m.portalMemberId)+'\',this)">'+memberAvatar(m,18)+'<span>'+esc(memDisp(m))+'</span></span>'; }).join('');
+  document.getElementById('nt-modal-body').innerHTML=
+    '<div class="fld"><label>タイトル（任意）</label><input type="text" id="nt-m-title" value="'+esc(_ntEditor.title)+'"></div>'+
+    '<div class="fld"><label>本文</label><textarea id="nt-m-body" style="min-height:96px">'+esc(_ntEditor.body)+'</textarea></div>'+
+    '<div class="fld"><label>色</label><div class="bn-color-picker">'+sw+'</div></div>'+
+    '<div class="fld"><label>担当（宛先）</label><div class="bn-member-list">'+(chips||'<span style="font-size:11px;color:var(--text3)">ログインメンバーがいません</span>')+'</div></div>';
+}
+function noteModalToggleMember(uid,el){ var i=_ntEditor.members.indexOf(uid); if(i>=0)_ntEditor.members.splice(i,1); else _ntEditor.members.push(uid); if(el)el.classList.toggle('is-checked'); }
+function saveNoteModal(){
+  var title=(document.getElementById('nt-m-title').value||'').trim();
+  var body=(document.getElementById('nt-m-body').value||'').trim();
+  if(!title && !body){ toast('タイトルか本文を入力してください'); return; }
+  if(_ntEditor.id){
+    var n=findNote(_ntEditor.id,_ntEditor.app);
+    var patch={ title:title, body:body, color:_ntEditor.color, memberUids:_ntEditor.members.slice(), updatedAt:window.fb.serverTimestamp() };
+    if(n && n.body==null) patch.text=body;
+    noteColRef(_ntEditor.app).doc(_ntEditor.id).set(patch,{merge:true}).then(function(){ closeNoteModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限）'); });
+  } else {
+    var id='n'+Date.now()+Math.floor(Math.random()*1000);
+    var data={ id:id, title:title, body:body, color:_ntEditor.color, authorUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, memberUids:_ntEditor.members.slice(), replies:[], status:'open', order:Date.now(), createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp() };
+    noteColRef('mhs').doc(id).set(data).then(function(){ closeNoteModal(); toast('投稿しました'); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
+  }
+}
+function noteDeleteFromModal(){ if(!_ntEditor.id)return; if(!confirm('この付箋を削除しますか？'))return; noteColRef(_ntEditor.app).doc(_ntEditor.id).delete().then(function(){ closeNoteModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
 function noteReply(id,app){ var n=findNote(id,app); if(!n)return; var t=prompt('返信を入力'); if(t==null)return; t=t.trim(); if(!t)return; var replies=(n.replies||[]).slice(); replies.push({id:'r'+Date.now(),uid:(window.fb.currentUser&&window.fb.currentUser.uid)||null,text:t,at:Date.now()}); noteColRef(app).doc(id).set({replies:replies,updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 返信に失敗（権限）'); }); }
-function noteEdit(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } var t=prompt('編集',noteBody(n)); if(t==null)return; var patch={updatedAt:window.fb.serverTimestamp()}; if(n.body!=null)patch.body=t.trim(); else patch.text=t.trim(); noteColRef(app).doc(id).set(patch,{merge:true}).catch(function(e){ console.error(e); toast('⚠ 編集に失敗（権限）'); }); }
+function noteEdit(id,app){ openNoteModal(id,app); }
 function noteToggleDone(id,app){ var n=findNote(id,app); if(!n)return; var done=n.status==='done'; noteColRef(app).doc(id).set({status:done?'open':'done',doneAt:done?null:window.fb.serverTimestamp(),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗'); }); }
 function noteDelete(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('削除権限がありません'); return; } if(!confirm('この付箋を削除しますか？'))return; noteColRef(app).doc(id).delete().catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
 
