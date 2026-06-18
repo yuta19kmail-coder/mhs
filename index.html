@@ -519,7 +519,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.28.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.28.1</div>
   </div>
 </div>
 
@@ -537,7 +537,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.28.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.28.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1654,7 +1654,7 @@ function noteDeptIds(n){ return n.deptIds||[]; }
 function _myUid(){ return (window.fb.currentUser&&window.fb.currentUser.uid)||null; }
 function noteIsSecret(n){ if(n.secret)return true; var m=n.m||[]; return m.length===1 && !!n.authorUid && m[0]===n.authorUid; }
 function noteVisible(n){ return noteIsSecret(n)?(n.authorUid===_myUid()):true; }
-function noteForMe(n){ var uid=_myUid(); if(uid && noteAssignees(n).indexOf(uid)>=0)return true; var me=myCoreMember(); if(me){ var d=memberDeptIds(me); var ds=noteDeptIds(n); if((d.deptId&&ds.indexOf(d.deptId)>=0)||(d.sectionId&&ds.indexOf(d.sectionId)>=0))return true; } return false; }
+function noteForMe(n){ var uid=_myUid(); return !!(uid && noteAssignees(n).indexOf(uid)>=0); }
 function markCirculateSelf(id,app){ var n=findNote(id,app); if(!n)return; var uid=_myUid(); if(!uid)return; var done=(n.doneByUids||[]).slice(); var i=done.indexOf(uid); if(i>=0)done.splice(i,1); else done.push(uid); var asg=noteAssignees(n); var allDone=asg.length>0 && asg.every(function(u){return done.indexOf(u)>=0;}); noteColRef(app).doc(id).set({doneByUids:done,status:(allDone?'done':'open'),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗（権限）'); }); }
 function findNote(id,app){ var arr=app==='carflow'?CAR_NOTES:(app==='pitflow'?PIT_NOTES:MHS_NOTES); for(var i=0;i<arr.length;i++){ if(arr[i].id===id)return arr[i]; } return null; }
 function noteCanEdit(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return n.app==='mhs' || (n.authorUid&&uid&&n.authorUid===uid); }
@@ -1669,7 +1669,6 @@ function noteCardHTML(n){
   var appB=(n.app==='carflow'?'<span class="bn-srcbadge bn-src-car">CarFlow</span>':(n.app==='pitflow'?'<span class="bn-srcbadge" style="background:#0f6e56;color:#fff">PitFlow</span>':'<span class="bn-srcbadge bn-src-mhs">MHS</span>'));
   var carB=(n.app==='carflow'&&n.autoSource&&n.autoSource.carId)?'<a class="bn-carlink2" href="'+CARFLOW_URL+'/?car='+encodeURIComponent(n.autoSource.carId)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🚙 '+esc(n.autoSource.carId)+'</a>':'';
   var secB=noteIsSecret(n)?'<span class="bn-secret-badge2">🔒 自分用</span>':'';
-  var deptB=(noteDeptIds(n)||[]).map(function(id){ var dp=deptById(id); return dp?'<span class="bn-dept-badge">'+esc(dp.name)+'</span>':''; }).join('');
   var typeB=circ?'<span class="bn-circ-chip">🔁 回覧 '+doneSet.length+'/'+asgUids.length+'</span>':'';
   var title=n.title||''; var body=noteBody(n);
   var replies=(n.replies||[]).map(function(r){ var rm=r.uid?memberById(r.uid):null; var rav=rm?memberAvatar(rm,18):''; return '<div class="bn-reply"><span class="bn-reply-av">'+rav+'</span><div class="bn-reply-bubble"><div class="bn-reply-text">'+esc(r.text||'')+'</div></div></div>'; }).join('');
@@ -1683,7 +1682,7 @@ function noteCardHTML(n){
     (done?'<div class="bn-done-stamp">済</div>':'')+
     '<button class="bn-menu-btn" onclick="event.stopPropagation();toggleNoteMenu(\''+n.id+'\')" title="メニュー">⋮</button>'+
     '<div class="bn-menu" id="bnm-'+n.id+'">'+menu+'</div>'+
-    '<div class="bn-srcrow">'+appB+secB+typeB+deptB+carB+'</div>'+
+    '<div class="bn-srcrow">'+appB+secB+typeB+carB+'</div>'+
     (title?'<div class="bn-title">'+esc(title)+'</div>':'')+
     (body?'<div class="bn-body">'+esc(body)+'</div>':'')+
     circRow+
@@ -1723,8 +1722,8 @@ function openNoteModal(id,app){
 function closeNoteModal(){ document.getElementById('nt-modal').classList.remove('show'); }
 function ntSetApp(a){ _ntEditor.app=a; renderNoteModalBody(); }
 function ntSetType(t){ _ntEditor.noteType=t; renderNoteModalBody(); }
-function ntToggleSecret(on){ _ntEditor.secret=!!on; if(on)_ntEditor.deptIds=[]; renderNoteModalBody(); }
-function ntToggleDept(id,el){ var i=_ntEditor.deptIds.indexOf(id); if(i>=0)_ntEditor.deptIds.splice(i,1); else _ntEditor.deptIds.push(id); if(el)el.classList.toggle('is-checked'); }
+/* 部署チップ＝その部署の（ログイン）メンバーを個人担当に一括トグル。部署自体は保存しない */
+function ntToggleDept(deptId){ var uids=membersOfDeptId(deptId).filter(function(m){return m.portalMemberId;}).map(function(m){return m.portalMemberId;}); var allIn=uids.length>0 && uids.every(function(u){return _ntEditor.members.indexOf(u)>=0;}); uids.forEach(function(u){ var i=_ntEditor.members.indexOf(u); if(allIn){ if(i>=0)_ntEditor.members.splice(i,1); } else { if(i<0)_ntEditor.members.push(u); } }); renderNoteModalBody(); }
 function renderNoteModalBody(){
   var _t=(document.getElementById('nt-m-title')||{}).value; if(_t!=null)_ntEditor.title=_t;
   var _b=(document.getElementById('nt-m-body')||{}).value; if(_b!=null)_ntEditor.body=_b;
@@ -1734,28 +1733,27 @@ function renderNoteModalBody(){
   var sw=BN_COLORS.map(function(c){ return '<label class="bn-cp-lbl"><input type="radio" name="ntcolor" '+(_ntEditor.color===c[0]?'checked':'')+' onclick="_ntEditor.color=\''+c[0]+'\'"><span class="bn-color-swatch" style="background:'+c[1]+'"></span></label>'; }).join('');
   var loginMembers=MEMBERS.filter(function(m){return m.portalMemberId;});
   var chips=loginMembers.map(function(m){ var on=_ntEditor.members.indexOf(m.portalMemberId)>=0; return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="noteModalToggleMember(\''+escA(m.portalMemberId)+'\',this)">'+memberAvatar(m,18)+'<span>'+esc(memDisp(m))+'</span></span>'; }).join('');
-  var deptChips=CORE_DEPTS.map(function(dp){ var on=_ntEditor.deptIds.indexOf(dp.id)>=0; return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="ntToggleDept(\''+escA(dp.id)+'\',this)"><span class="mpick-dot" style="background:'+((dp.color)||'#94a3b8')+'"></span><span>'+esc(dp.name)+'</span></span>'; }).join('');
-  var secret=_ntEditor.secret;
+  var deptChips=CORE_DEPTS.map(function(dp){ var uids=membersOfDeptId(dp.id).filter(function(m){return m.portalMemberId;}).map(function(m){return m.portalMemberId;}); var on=uids.length>0 && uids.every(function(u){return _ntEditor.members.indexOf(u)>=0;}); return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="ntToggleDept(\''+escA(dp.id)+'\')"><span class="mpick-dot" style="background:'+((dp.color)||'#94a3b8')+'"></span><span>'+esc(dp.name)+'</span></span>'; }).join('');
+  var myUid=_myUid(); var isSecret=(_ntEditor.members.length===1 && !!myUid && _ntEditor.members[0]===myUid);
   document.getElementById('nt-modal-body').innerHTML=
     '<div class="fld"><label>投稿先</label>'+appSeg+'</div>'+
     '<div class="fld"><label>種別</label>'+typeSeg+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行＝誰かが「済」で完了／回覧＝担当が各自「確認」して全員で完了</div></div>'+
     '<div class="fld"><label>タイトル（任意）</label><input type="text" id="nt-m-title" value="'+esc(_ntEditor.title)+'"></div>'+
     '<div class="fld"><label>本文</label><textarea id="nt-m-body" style="min-height:90px">'+esc(_ntEditor.body)+'</textarea></div>'+
     '<div class="fld"><label>色</label><div class="bn-color-picker">'+sw+'</div></div>'+
-    '<div class="fld"><label class="bn-secret-row"><input type="checkbox" '+(secret?'checked':'')+' onchange="ntToggleSecret(this.checked)"> 🔒 シークレット（自分だけに見える付箋）</label></div>'+
-    (secret?'':'<div class="fld"><label>担当（個人）</label><div class="bn-member-list">'+(chips||'<span style="font-size:11px;color:var(--text3)">ログインメンバーがいません</span>')+'</div></div>'+
-    '<div class="fld"><label>宛先（部署）</label><div class="bn-member-list">'+(deptChips||'<span style="font-size:11px;color:var(--text3)">部署が未登録です</span>')+'</div></div>');
+    '<div class="fld"><label>部署でまとめて選択</label><div class="bn-member-list">'+(deptChips||'<span style="font-size:11px;color:var(--text3)">部署が未登録です</span>')+'</div></div>'+
+    '<div class="fld"><label>担当（個人）'+(isSecret?' <span class="bn-secret-badge2">🔒 自分だけ＝シークレット</span>':'')+'</label><div class="bn-member-list">'+(chips||'<span style="font-size:11px;color:var(--text3)">ログインメンバーがいません</span>')+'</div></div>';
 }
 function noteModalToggleMember(uid,el){ var i=_ntEditor.members.indexOf(uid); if(i>=0)_ntEditor.members.splice(i,1); else _ntEditor.members.push(uid); if(el)el.classList.toggle('is-checked'); }
 function saveNoteModal(){
   var title=(document.getElementById('nt-m-title').value||'').trim();
   var body=(document.getElementById('nt-m-body').value||'').trim();
   if(!title && !body){ toast('タイトルか本文を入力してください'); return; }
-  var uid=_myUid(); var secret=_ntEditor.secret;
-  var members = secret ? (uid?[uid]:[]) : _ntEditor.members.slice();
-  var mField  = secret ? (uid?[uid]:[]) : [];
-  var deptIds = secret ? [] : _ntEditor.deptIds.slice();
-  var common={ title:title, body:body, color:_ntEditor.color, memberUids:members, m:mField, deptIds:deptIds, noteType:_ntEditor.noteType||'exec', secret:secret, updatedAt:window.fb.serverTimestamp() };
+  var uid=_myUid();
+  var members=_ntEditor.members.slice();
+  var secret=(members.length===1 && !!uid && members[0]===uid);   // 自分1人だけ担当＝シークレット自動発動
+  var mField = secret ? [uid] : [];
+  var common={ title:title, body:body, color:_ntEditor.color, memberUids:members, m:mField, secret:secret, noteType:_ntEditor.noteType||'exec', updatedAt:window.fb.serverTimestamp() };
   if(_ntEditor.id){
     var n=findNote(_ntEditor.id,_ntEditor.app);
     if(n && n.body==null) common.text=body;
