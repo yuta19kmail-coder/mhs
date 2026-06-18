@@ -408,7 +408,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.22.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.22.1</div>
   </div>
 </div>
 
@@ -426,7 +426,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.22.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.22.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1620,7 +1620,8 @@ function openReminderDetail(e){
 }
 /* 🎉 クラッカー（canvas-confetti をCDN遅延ロード） */
 function fireConfetti(){
-  function burst(){ if(!window.confetti)return; window.confetti({particleCount:130,spread:95,startVelocity:45,origin:{y:0.65}}); var end=Date.now()+900; (function frame(){ window.confetti({particleCount:5,angle:60,spread:70,origin:{x:0}}); window.confetti({particleCount:5,angle:120,spread:70,origin:{x:1}}); if(Date.now()<end)requestAnimationFrame(frame); })(); }
+  var Z=100000;   // モーダル(z-index 200)より前に出す
+  function burst(){ if(!window.confetti)return; window.confetti({particleCount:130,spread:95,startVelocity:45,origin:{y:0.65},zIndex:Z}); var end=Date.now()+900; (function frame(){ window.confetti({particleCount:5,angle:60,spread:70,origin:{x:0},zIndex:Z}); window.confetti({particleCount:5,angle:120,spread:70,origin:{x:1},zIndex:Z}); if(Date.now()<end)requestAnimationFrame(frame); })(); }
   if(window.confetti){ burst(); return; }
   var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js'; s.onload=burst; s.onerror=function(){ console.warn('[MHS] confetti読込失敗'); }; document.head.appendChild(s);
 }
