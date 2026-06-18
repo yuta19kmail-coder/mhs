@@ -190,6 +190,22 @@
   .mbg.pip .mbox.ef{width:min(94vw,640px)}
   .mbg.pip .mhead{cursor:move;user-select:none}
   .mbg.pip .mbody.scroll{max-height:72vh}
+  /* フォームのチェッカー枠＋カレンダーバーの済バッジ */
+  .ef-checker{font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 10px;min-height:34px}
+  .ef-ck-ok{color:#22c55e}
+  .ef-ck-warn{color:#f59e0b;padding:2px 0}
+  .ef-ck-note{font-size:11px;color:var(--text3);margin-top:4px}
+  .done-pill{background:#16a34a;color:#fff;border-radius:3px;padding:0 4px;font-size:9px;margin-right:3px;font-weight:700}
+  .sw-line{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
+  /* カレンダー下部 確認リスト */
+  .ckl{margin-top:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:10px 12px}
+  .ckl-h{font-size:13px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ckl-sub{font-size:11px;color:var(--text3);font-weight:400}
+  .ckl-empty{font-size:12px;color:var(--text3);padding:4px 0}
+  .ckl-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border)}
+  .ckl-tx{flex:1;font-size:12px}
+  .ckl-ok{background:var(--acc);color:#fff;border:0;border-radius:7px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .ckl-ok:hover{background:var(--acc2)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:480px){.row2{grid-template-columns:1fr}}
   .fld{margin-bottom:12px}
@@ -383,7 +399,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.19.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.20.0</div>
   </div>
 </div>
 
@@ -401,7 +417,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.19.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.20.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -461,6 +477,7 @@
       <div class="layers" id="layers-month" style="margin-bottom:12px"></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 10px">予定は<b>ドラッグで別の日へ移動</b>（社内予定のみ）。月ビューはセルに<b>マウスを乗せるとその日の全件</b>を表示。各日の「＋」から追加。</p>
       <div id="cal-host" class="cal-host-pad"></div>
+      <div id="cal-checklist"></div>
     </section>
 
     <!-- 多軸ビュー -->
@@ -697,7 +714,7 @@ const SF_HOL={map:{}};
 const holName=s=>SF_HOL.map[s]||null;
 
 /* 会社カレンダー設定（マスター・将来は共有Firestoreへ） */
-const CAL_DEFAULT={closedDow:[],holidaysClosed:false,closedDates:[],openDates:[],bizStart:'09:00',bizEnd:'18:00',rules:null,recurring:[
+const CAL_DEFAULT={closedDow:[],holidaysClosed:false,closedDates:[],openDates:[],bizStart:'09:00',bizEnd:'18:00',avoidClosed:false,rules:null,recurring:[
   {id:'r-seed1',title:'ノー残DAY',freq:'weekly',dow:5,time:'',layer:'company',prefix:'全社'},
   {id:'r-seed2',title:'月例報告会',freq:'monthlyNth',nth:2,dow:2,time:'15:00',layer:'company',prefix:''}
 ]};
@@ -733,7 +750,7 @@ function subscribeCal(){
   }, function(e){ console.warn('[MHS] 会社カレンダー購読エラー',e); setSyncState(false); });
 }
 function saveCal(){
-  var data={ rules:CAL.rules||[], recurring:CAL.recurring||[], closedDow:CAL.closedDow||[], holidaysClosed:!!CAL.holidaysClosed, closedDates:CAL.closedDates||[], openDates:CAL.openDates||[], bizStart:CAL.bizStart||'09:00', bizEnd:CAL.bizEnd||'18:00', updatedAt:window.fb.serverTimestamp() };
+  var data={ rules:CAL.rules||[], recurring:CAL.recurring||[], closedDow:CAL.closedDow||[], holidaysClosed:!!CAL.holidaysClosed, closedDates:CAL.closedDates||[], openDates:CAL.openDates||[], bizStart:CAL.bizStart||'09:00', bizEnd:CAL.bizEnd||'18:00', avoidClosed:!!CAL.avoidClosed, updatedAt:window.fb.serverTimestamp() };
   calDoc().set(data,{merge:true}).catch(function(e){ console.error('[MHS] 会社カレンダー保存失敗',e); toast('⚠ 設定の保存に失敗（権限/通信）'); });
 }
 /* 休業ルールの判定（上から積み上げ・営業が最優先） */
@@ -759,6 +776,9 @@ function evalDay(dStr,d){
   return {closed:(closeHit&&!openWin), warns:warns, openWin:openWin, closeHit:closeHit};
 }
 function isClosedDay(dateStr,dateObj){ return evalDay(dateStr,dateObj).closed; }
+/* 定休日を避ける：その日が休業なら直前の営業日へ。自動振替された予定は _shifted を立てる */
+function prevOpenDay(dateStr){ var d=new Date(dateStr+'T00:00:00'); for(var i=0;i<31;i++){ if(!isClosedDay(ymd(d),d)) return ymd(d); d=addDays(d,-1); } return dateStr; }
+function applyAvoidClosed(occ){ if(!CAL.avoidClosed||!occ||!occ.date)return occ; var d=new Date(occ.date+'T00:00:00'); if(isClosedDay(occ.date,d)){ var nd=prevOpenDay(occ.date); if(nd&&nd!==occ.date){ occ._origDate=occ.date; occ.date=nd; occ._shifted=true; } } return occ; }
 
 /* 他アプリ（CarFlow納車/PitFlow整備/StockFlow納品）の予定は Phase 3 で Firestore から重ねる。
    いまは社内予定（scheduleEvents）と締切・行事のみ。EVENTS は将来の他アプリ読み取り用の器（現状は空）。 */
@@ -872,7 +892,7 @@ function evLead(e,sz){
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
-function evTitleW(e){ return esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
+function evTitleW(e){ var done=(e.todo&&e.done)?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
 function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder')?'':whoAvatars(e.who,sz); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
@@ -904,7 +924,7 @@ function expandRecurring(start,end){
       let m=false;
       if(r.freq==='weekly') m=(d.getDay()===r.dow);
       else if(r.freq==='monthlyNth') m=(d.getDay()===r.dow && nthOfMonth(d)===r.nth);
-      if(m) out.push({layer:r.layer||'company',kind:'all',date:ymd(d),time:r.time||'終日',title:r.title,prefix:r.prefix||'',who:(r.who||[]),source:'recurring'});
+      if(m) out.push(applyAvoidClosed({layer:r.layer||'company',kind:'all',date:ymd(d),time:r.time||'終日',title:r.title,prefix:r.prefix||'',who:(r.who||[]),source:'recurring'}));
     });
   }
   return out;
@@ -948,7 +968,7 @@ function eventOccurrences(ev,start,end){
     if(ds<ev.date) continue;
     if(r.until && ds>r.until) break;
     if(skip.indexOf(ds)>=0) continue;
-    if(matchRepeat(r,anchor,d)) out.push(Object.assign({},ev,{date:ds,_occ:true}));
+    if(matchRepeat(r,anchor,d)) out.push(applyAvoidClosed(Object.assign({},ev,{date:ds,_occ:true})));
   }
   return out;
 }
@@ -1147,7 +1167,7 @@ function applyShift(){
   var p=SHIFT_PARSE; if(!p||!p.ym||!p.rows.length){ toast('先にPDFを読み込んでください'); return; }
   var dim=new Date(p.ym.y,p.ym.mo,0).getDate();
   var byDate={}; for(var d=1;d<=dim;d++) byDate[d]=[];
-  p.rows.forEach(function(r){ if(r.include===false)return; r.off.forEach(function(d){ if(byDate[d]) byDate[d].push(r.memberId||('name:'+r.name)); }); });
+  p.rows.forEach(function(r){ if(r.include===false)return; r.off.forEach(function(d){ if(byDate[d]) byDate[d].push({id:r.memberId||null, nm:r.name}); }); });
   var batch=window.fb.db.batch(), col=shiftCol();
   for(var dd=1;dd<=dim;dd++){
     var ds=p.ym.y+'-'+String(p.ym.mo).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
@@ -1168,10 +1188,15 @@ function subscribeShifts(){
     if(curView==='shift') renderShiftView();
   }, function(err){ console.warn('[MHS] シフト購読エラー',err); });
 }
-function resolveShiftMember(v){ if(typeof v==='string'&&v.indexOf('name:')===0){ var nm=v.slice(5); return {id:v,name:nm,ini:nm.charAt(0)}; } return memberById(v)||{id:v,name:String(v),ini:String(v).charAt(0)}; }
-/* 大きめ＋カラー＋氏名つき（休み枠・日ポップアップ用） */
-function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var m=resolveShiftMember(v); return '<span class="off-av-b" title="休：'+esc(m.name)+'">'+memberAvatar(m,28)+'<span class="off-nm">'+esc(surname(m.name))+'</span></span>'; }).join(''); }
-function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off)return false; return off.indexOf(m.id)>=0 || off.indexOf('name:'+m.name)>=0; }
+/* シフトの1エントリ → {member(アバター用), label(苗字表示)}。新形式{id,nm}＋旧形式(文字列)両対応 */
+function shiftEntryInfo(v){
+  if(v && typeof v==='object'){ var m=v.id?memberById(v.id):null; return {member:m||{name:v.nm,ini:String(v.nm||'？').charAt(0)}, label:surname(v.nm||(m&&m.name)||'')}; }
+  if(typeof v==='string' && v.indexOf('name:')===0){ var nm=v.slice(5); return {member:{name:nm,ini:nm.charAt(0)}, label:surname(nm)}; }
+  var mm=memberById(v); return {member:mm||{name:String(v),ini:String(v).charAt(0)}, label:surname(mm?mm.name:String(v))};
+}
+/* 大きめ＋カラー＋苗字（休み枠・日ポップアップ用） */
+function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var info=shiftEntryInfo(v); return '<span class="off-av-b" title="休：'+esc(info.label)+'">'+memberAvatar(info.member,28)+'<span class="off-nm">'+esc(info.label)+'</span></span>'; }).join(''); }
+function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off||!m)return false; for(var i=0;i<off.length;i++){ var v=off[i]; if(v&&typeof v==='object'){ if(v.id&&v.id===m.id)return true; if(!v.id&&v.nm&&normName(v.nm)===normName(m.name))return true; } else { if(v===m.id||v==='name:'+m.name)return true; } } return false; }
 let shiftCursor=null;
 function shiftMonthMove(n){ var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1); shiftCursor=new Date(base.getFullYear(),base.getMonth()+n,1); renderShiftView(); }
 function renderShiftView(){
@@ -1220,7 +1245,35 @@ function renderCal(){
   if(calMode==='month') renderMonthGrid();
   else if(calMode==='week') renderWeekGrid();
   else renderDayGrid();
+  renderChecklist();
 }
+/* ===== カレンダー下部 確認リスト（ダブり・不在予定・自動振替／承認で消える） ===== */
+var APPROVED=(function(){ try{ return JSON.parse(localStorage.getItem('mhs_approved')||'[]'); }catch(e){ return []; } })();
+var _checklist=[];
+function checklistKey(it){ return it.type+'|'+it.id+'|'+it.extra; }
+function collectIssues(){
+  var issues=[], start=new Date(TODAY), end=addDays(TODAY,60);
+  var evs=getEvents(start,end), seen={};
+  evs.forEach(function(e){
+    if(e.source==='reminder')return;
+    if(e._shifted){ issues.push({type:'shift',id:(e.id||e.title),extra:e.date,label:'🔁 「'+esc(e.title)+'」は定休日のため '+(e._origDate||'').slice(5)+' → '+e.date.slice(5)+' に自動振替'}); }
+    (e.who||[]).forEach(function(w){
+      var m=memberById(w); var mo=m||{id:w,name:String(w)}; var nm=surname(mo.name);
+      if(isOff(mo,e.date)){ issues.push({type:'off',id:(e.id||e.title)+'_'+w,extra:e.date,label:'🟠 '+esc(nm)+' は休みなのに予定「'+esc(e.title)+'」（'+e.date.slice(5)+'）'}); }
+      var key=e.date+'|'+(m?m.id:w); (seen[key]=seen[key]||[]).push(e);
+    });
+  });
+  Object.keys(seen).forEach(function(k){ var arr=seen[k]; if(arr.length>=2){ var pa=k.split('|'); var m=memberById(pa[1]); var nm=m?surname(m.name):pa[1]; issues.push({type:'dup',id:k,extra:arr.length,label:'🔴 '+esc(nm)+'：'+pa[0].slice(5)+' に予定'+arr.length+'件（'+arr.map(function(e){return esc(e.title);}).join('／')+'）'}); } });
+  return issues.filter(function(it){ return APPROVED.indexOf(checklistKey(it))<0; });
+}
+function renderChecklist(){
+  var box=document.getElementById('cal-checklist'); if(!box)return;
+  _checklist=collectIssues();
+  if(!_checklist.length){ box.innerHTML='<div class="ckl"><div class="ckl-h">📋 確認リスト <span class="ckl-sub">ダブり・不在予定・自動振替</span></div><div class="ckl-empty">未承認の確認はありません。</div></div>'; return; }
+  box.innerHTML='<div class="ckl"><div class="ckl-h">📋 確認リスト（'+_checklist.length+'）<span class="ckl-sub">承認すると消えます</span></div>'+
+    _checklist.map(function(it,idx){ return '<div class="ckl-row"><span class="ckl-tx">'+it.label+'</span><button class="ckl-ok" onclick="approveItem('+idx+')">承認</button></div>'; }).join('')+'</div>';
+}
+function approveItem(idx){ var it=_checklist[idx]; if(!it)return; var key=checklistKey(it); if(APPROVED.indexOf(key)<0){ APPROVED.push(key); try{localStorage.setItem('mhs_approved',JSON.stringify(APPROVED));}catch(e){} } renderChecklist(); }
 /* 互換：レイヤー切替などから呼ばれる */
 function renderMonth(){ renderCal(); }
 
@@ -1419,11 +1472,13 @@ function renderBrief(){
 function renderCalSet(){
   const b=document.getElementById('calset-body'); if(!b)return;
   b.innerHTML=
+    calCard('🚫 定休日を避ける','ONにすると、<b>手入力で定休日に登録</b>するときは確認が入ります（OKすれば登録可）。<b>定期予定など自動で入る分は、定休日に当たると直前の営業日へ自動で振替</b>えます（カレンダー下部のチェックリストに「振替」として表示）。','<label class="sw-line"><span class="sw'+(CAL.avoidClosed?' on':'')+'" id="avoid-sw" onclick="toggleAvoidClosed()"></span><span style="font-size:13px">'+(CAL.avoidClosed?'ON：定休日を避ける':'OFF：避けない')+'</span></label>')+
     calCard('🕐 営業時間','週・日ビューの時間軸の表示範囲です。開始〜終了の間を時間グリッドで表示します（朝礼・最短入庫など将来の計算の基準にも）。','<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:13px">開始 <input type="time" class="cal-date" value="'+(CAL.bizStart||'09:00')+'" onchange="bizSet(\'bizStart\',this.value)"></label><span style="color:var(--text3)">〜</span><label style="font-size:13px">終了 <input type="time" class="cal-date" value="'+(CAL.bizEnd||'18:00')+'" onchange="bizSet(\'bizEnd\',this.value)"></label></div>')+
     ruleCardHTML()+
     calCard('🔁 行事・全社定期予定','毎週・毎月の繰り返し予定（ノー残DAY・月例報告会など）を1回登録。カレンダーと朝礼に自動で表示されます。',recurListHTML()+recurAddHTML());
 }
 function bizSet(field,val){ if(!val)return; CAL[field]=val; saveCal(); if(calMode==='week'||calMode==='day')renderCal(); }
+function toggleAvoidClosed(){ CAL.avoidClosed=!CAL.avoidClosed; saveCal(); renderCalSet(); if(curView==='month')renderCal(); }
 
 /* ===== 休業日 積み上げルール（PitFlow流） ===== */
 function ruleCardHTML(){
@@ -1655,8 +1710,9 @@ function renderEventForm(){
         '<div class="fld" id="row-kind"'+(notDeadline?'':' style="display:none"')+'><label>階層</label><div class="seg-pick" id="g-kind">'+kindPick+'</div></div>'+
         '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバー（兼務の人も含む）が担当に自動セットされます（個別に外せます）。</div></div>'+
         '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
-        '<div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
-        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div>'+
+        '<div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind();efRunChecks()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
+        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" step="900" onchange="round15(this);efRunChecks()" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" step="900" onchange="round15(this)" value="'+esc(EF.endTime||'')+'"></div></div>'+
+        '<div class="fld"><label>チェック（担当のダブり・当日休み）</label><div id="ef-checker" class="ef-checker"></div></div>'+
         '<div id="ef-closednote" style="font-size:11.5px;color:#f59e0b;margin:-4px 0 10px"></div>'+
       '</div>'+
       '<div class="ef-c">'+
@@ -1669,11 +1725,11 @@ function renderEventForm(){
         '<div class="fld"><label>補足メモ</label><textarea id="ef-memo" placeholder="補足・連絡先・持ち物など">'+esc(EF.memo||'')+'</textarea></div>'+
       '</div>'+
     '</div>';
-  efClosedNote();
+  efClosedNote(); efRunChecks();
 }
 function setOnly(gid,el){document.getElementById(gid).querySelectorAll('.pick').forEach(function(p){p.classList.remove('on');}); el.classList.add('on');}
 function toggleArr(a,v){const i=a.indexOf(v); if(i>=0)a.splice(i,1); else a.push(v);}
-function efWhoToggle(id,el){ toggleArr(EF.who,id); el.classList.toggle('on'); }
+function efWhoToggle(id,el){ toggleArr(EF.who,id); el.classList.toggle('on'); efRunChecks(); }
 /* 担当ピッカーを現在の EF.who で再描画（部署オートセット後など） */
 function refreshWhoPicker(){ var box=document.getElementById('g-who'); if(!box)return; box.innerHTML=whoPickerHTML(function(m){return EF.who.indexOf(m.id)>=0||EF.who.indexOf(m.name)>=0;}, function(m){return 'efWhoToggle(\''+escA(m.id)+'\',this)';}, 20); }
 /* リマインド：チップHTML・プレビュー・トグル */
@@ -1693,7 +1749,7 @@ function efPick(group,val,el){
   else if(group==='kind'){ EF.kind=val; document.getElementById('row-dept').style.display=(val==='dept'?'':'none'); document.getElementById('row-secret').style.display=(val==='personal'?'':'none'); setOnly('g-kind',el); }
   else if(group==='tmode'){ EF.timeMode=val; setOnly('g-tmode',el); document.getElementById('row-time').style.display=(val==='time')?'flex':'none'; }
   else if(group==='sec'){ EF.secret=(val==='yes'); setOnly('g-sec',el); }
-  else if(group==='dept'){ EF.dept=val; setOnly('g-dept',el); var dp=deptByName(val); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length){ EF.who=ids; refreshWhoPicker(); } } }
+  else if(group==='dept'){ EF.dept=val; setOnly('g-dept',el); var dp=deptByName(val); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length){ EF.who=ids; refreshWhoPicker(); } } efRunChecks(); }
   else if(group==='who'){ toggleArr(EF.who,val); el.classList.toggle('on'); }
   else if(group==='tag'){ toggleArr(EF.tags,val); el.classList.toggle('on'); }
   else if(group==='repeat'){ EF.repeat.freq=val; setOnly('g-repeat',el); document.getElementById('row-rdays').style.display=(val==='weekly'||val==='biweekly')?'':'none'; document.getElementById('row-runtil').style.display=(val&&val!=='none')?'':'none'; }
@@ -1705,11 +1761,33 @@ function efClosedNote(){
   if(v&&isClosedDay(v,new Date(v+'T00:00:00'))){ const h=holName(v); n.textContent='※ この日は休業日です'+(h?'（'+h+'）':'')+'。登録はできますが念のためご確認を。'; }
   else n.textContent='';
 }
+function round15(el){ var v=el.value; if(!/^\d{1,2}:\d{2}$/.test(v))return; var p=v.split(':'); var h=+p[0], m=Math.round((+p[1])/15)*15; if(m===60){m=0;h=(h+1)%24;} el.value=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+/* 担当のダブり・当日休みを検出（フォームのチェッカー／下部チェックリスト共用） */
+function whoConflicts(date, who, excludeId){
+  var dups=[], offs=[]; if(!date) return {dups:dups,offs:offs};
+  var dayEvents=getEvents(new Date(date+'T00:00:00'), new Date(date+'T00:00:00')).filter(function(e){ return e.source!=='reminder' && e.id!==excludeId; });
+  (who||[]).forEach(function(id){
+    var m=memberById(id); var mo=m||{id:id,name:String(id),ini:String(id).charAt(0)};
+    if(isOff(mo,date)) offs.push(mo);
+    dayEvents.forEach(function(e){ if((e.who||[]).some(function(w){ return w===id||(m&&w===m.name); })) dups.push({member:mo,other:e}); });
+  });
+  return {dups:dups,offs:offs};
+}
+function efRunChecks(){
+  var box=document.getElementById('ef-checker'); if(!box||!EF)return;
+  var date=(document.getElementById('ef-date')||{}).value||EF.date;
+  if(!EF.who||!EF.who.length){ box.innerHTML='<span class="ef-ck-ok">担当を選ぶと、ダブり予定・当日休みを自動チェックします。</span>'; return; }
+  var c=whoConflicts(date, EF.who, EF.id), lines=[];
+  c.offs.forEach(function(m){ lines.push('<div class="ef-ck-warn">🟠 '+esc(surname(m.name))+' はこの日「休み」です</div>'); });
+  c.dups.forEach(function(d){ lines.push('<div class="ef-ck-warn">🔴 '+esc(surname(d.member.name))+' は同日に別予定「'+esc(d.other.title||'')+'」あり</div>'); });
+  box.innerHTML = lines.length? (lines.join('')+'<div class="ef-ck-note">※ このままでも保存できます（確認のみ）。</div>') : '<span class="ef-ck-ok">✓ ダブり・不在なし</span>';
+}
 function saveEventForm(){
   const title=document.getElementById('ef-titlein').value.trim();
   const date=document.getElementById('ef-date').value;
   if(!title){alert('件名を入力してください。');return;}
   if(!date){alert('日付を選んでください。');return;}
+  if(CAL.avoidClosed && isClosedDay(date, new Date(date+'T00:00:00'))){ if(!confirm('この日は定休日です（「定休日を避ける」がON）。それでもこの日に登録しますか？')) return; }
   const tmode=EF.timeMode||'allday';
   const time=tmode==='allday'?'終日':tmode==='am'?'AM':tmode==='pm'?'PM':(document.getElementById('ef-time').value||'—');
   const endTime=(tmode==='time')?((document.getElementById('ef-endtime')||{}).value||''):'';
