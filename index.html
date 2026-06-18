@@ -320,6 +320,9 @@
   .bn-menu-it:hover{background:#f4f4f4}
   .bn-menu-danger{color:#c62828}
   .bn-done-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);font-size:60px;font-weight:900;color:rgba(211,47,47,.8);border:5px solid rgba(211,47,47,.8);border-radius:50%;width:92px;height:92px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;font-family:serif}
+  .bn-card-label{position:absolute;top:7px;right:38px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.62);color:#2c2c2c;max-width:52%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.5px}
+  .bn-lbl-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+  .bn-lbl-row input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 9px;font-size:13px;font-family:inherit}
   /* 付箋モーダル：色スウォッチ＋担当マルチ */
   .bn-color-picker{display:flex;gap:10px;flex-wrap:wrap}
   .bn-cp-lbl{cursor:pointer;display:inline-flex}
@@ -519,7 +522,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.28.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.29.0</div>
   </div>
 </div>
 
@@ -537,7 +540,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.28.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.29.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -789,6 +792,7 @@ async function enterApp(member,user){
   subscribeShifts();
   loadShiftAliases();
   subscribeNotes();
+  subscribeLabels();
   renderLayers('layers-month'); renderLayers('layers-axis');
   setSyncState(navigator.onLine!==false);
   showView('dash');
@@ -1658,6 +1662,23 @@ function noteForMe(n){ var uid=_myUid(); return !!(uid && noteAssignees(n).index
 function markCirculateSelf(id,app){ var n=findNote(id,app); if(!n)return; var uid=_myUid(); if(!uid)return; var done=(n.doneByUids||[]).slice(); var i=done.indexOf(uid); if(i>=0)done.splice(i,1); else done.push(uid); var asg=noteAssignees(n); var allDone=asg.length>0 && asg.every(function(u){return done.indexOf(u)>=0;}); noteColRef(app).doc(id).set({doneByUids:done,status:(allDone?'done':'open'),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗（権限）'); }); }
 function findNote(id,app){ var arr=app==='carflow'?CAR_NOTES:(app==='pitflow'?PIT_NOTES:MHS_NOTES); for(var i=0;i<arr.length;i++){ if(arr[i].id===id)return arr[i]; } return null; }
 function noteCanEdit(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return n.app==='mhs' || (n.authorUid&&uid&&n.authorUid===uid); }
+/* 付箋ラベル（色→意味）。CarFlow=settings/main.boardLabels／MHS=settings/mhsBoardLabels.labels */
+var CAR_LABELS={red:'緊急',orange:'今日中',yellow:'今週中',green:'連絡',blue:'余裕'};
+var MHS_LABELS={red:'緊急',orange:'今日中',yellow:'今週中',green:'連絡',blue:'余裕'};
+function settingsDoc(id){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('settings').doc(id); }
+var _labelsSub=false;
+function subscribeLabels(){
+  if(_labelsSub)return; _labelsSub=true;
+  settingsDoc('main').onSnapshot(function(d){ if(d.exists){ var bl=(d.data()||{}).boardLabels; if(bl){ ['red','orange','yellow','green','blue'].forEach(function(c){ if(bl[c]!=null)CAR_LABELS[c]=bl[c]; }); if(curView==='dash')renderDash(); } } }, function(e){});
+  settingsDoc('mhsBoardLabels').onSnapshot(function(d){ if(d.exists){ var l=(d.data()||{}).labels; if(l){ ['red','orange','yellow','green','blue'].forEach(function(c){ if(l[c]!=null)MHS_LABELS[c]=l[c]; }); if(curView==='dash')renderDash(); if(curView==='calset')renderCalSet(); } } }, function(e){});
+}
+function labelFor(n){ var labels=(n.app==='carflow')?CAR_LABELS:MHS_LABELS; var c=['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow'; return labels[c]||''; }
+function mhsLabelSet(color,val){ MHS_LABELS[color]=val; clearTimeout(window._lblT); window._lblT=setTimeout(function(){ settingsDoc('mhsBoardLabels').set({labels:MHS_LABELS,updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ ラベル保存に失敗（管理者のみ編集可）'); }); },600); }
+function labelEditorHTML(){
+  var jp={red:'赤',orange:'橙',yellow:'黄',green:'緑',blue:'青'};
+  var rows=BN_COLORS.map(function(c){ return '<div class="bn-lbl-row"><span class="bn-color-swatch" style="width:22px;height:22px;background:'+c[1]+'"></span><span style="font-size:12px;color:var(--text3);min-width:30px">'+jp[c[0]]+'</span><input type="text" value="'+esc(MHS_LABELS[c[0]]||'')+'" oninput="mhsLabelSet(\''+c[0]+'\',this.value)" placeholder="例：緊急 / 今日中 / 連絡"></div>'; }).join('');
+  return calCard('🏷️ 付箋ラベル（色の意味）','MHSで打つ付箋の色に意味（緊急など）を付けると、付箋カードに表示されます。CarFlowの付箋はCarFlow側の設定が出ます。',rows);
+}
 function noteCardHTML(n){
   var color=['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow';
   var done=n.status==='done';
@@ -1678,8 +1699,10 @@ function noteCardHTML(n){
     '<button class="bn-menu-it" onclick="noteReply(\''+n.id+'\',\''+n.app+'\')">💬 返信</button>'+
     (circ?'':'<button class="bn-menu-it" onclick="noteToggleDone(\''+n.id+'\',\''+n.app+'\')">'+(done?'↩ 戻す':'✓ 済にする')+'</button>')+
     (noteCanEdit(n)?'<button class="bn-menu-it bn-menu-danger" onclick="noteDelete(\''+n.id+'\',\''+n.app+'\')">🗑 削除</button>':'');
+  var lbl=labelFor(n);
   return '<div class="bn-card bn-color-'+color+(done?' is-done':'')+'" onclick="event.stopPropagation()">'+
     (done?'<div class="bn-done-stamp">済</div>':'')+
+    (lbl?'<div class="bn-card-label">'+esc(lbl)+'</div>':'')+
     '<button class="bn-menu-btn" onclick="event.stopPropagation();toggleNoteMenu(\''+n.id+'\')" title="メニュー">⋮</button>'+
     '<div class="bn-menu" id="bnm-'+n.id+'">'+menu+'</div>'+
     '<div class="bn-srcrow">'+appB+secB+typeB+carB+'</div>'+
@@ -1799,6 +1822,7 @@ function renderCalSet(){
     calCard('🚫 定休日を避ける','ONにすると、<b>手入力で定休日に登録</b>するときは確認が入ります（OKすれば登録可）。<b>定期予定など自動で入る分は、定休日に当たると直前の営業日へ自動で振替</b>えます（カレンダー下部のチェックリストに「振替」として表示）。','<label class="sw-line"><span class="sw'+(CAL.avoidClosed?' on':'')+'" id="avoid-sw" onclick="toggleAvoidClosed()"></span><span style="font-size:13px">'+(CAL.avoidClosed?'ON：定休日を避ける':'OFF：避けない')+'</span></label>')+
     calCard('🕐 営業時間','週・日ビューの時間軸の表示範囲です。開始〜終了の間を時間グリッドで表示します（朝礼・最短入庫など将来の計算の基準にも）。','<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:13px">開始 <input type="time" class="cal-date" value="'+(CAL.bizStart||'09:00')+'" onchange="bizSet(\'bizStart\',this.value)"></label><span style="color:var(--text3)">〜</span><label style="font-size:13px">終了 <input type="time" class="cal-date" value="'+(CAL.bizEnd||'18:00')+'" onchange="bizSet(\'bizEnd\',this.value)"></label></div>')+
     ruleCardHTML()+
+    labelEditorHTML()+
     calCard('🔁 行事・全社定期予定','毎週・毎月の繰り返し予定（ノー残DAY・月例報告会など）を1回登録。カレンダーと朝礼に自動で表示されます。',recurListHTML()+recurAddHTML());
 }
 function bizSet(field,val){ if(!val)return; CAL[field]=val; saveCal(); if(calMode==='week'||calMode==='day')renderCal(); }
