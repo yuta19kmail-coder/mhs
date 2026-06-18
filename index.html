@@ -358,7 +358,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.17.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.17.2</div>
   </div>
 </div>
 
@@ -376,7 +376,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.17.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -982,6 +982,7 @@ function renderShiftPdf(){
       '<div class="pd-sub">または <label class="pd-pick">ファイルを選ぶ<input type="file" accept="application/pdf" style="display:none" onchange="onShiftFile(this.files)"></label></div></div>'+
     '<div id="pdf-status" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>'+
     '<div id="pdf-preview" style="margin-top:12px"></div>';
+  loadShiftAliases();   // 記憶した名前→メンバー対応を先読み（次回以降の自動照合用）
   var dz=document.getElementById('pdf-drop'); if(!dz)return;
   ['dragover','dragenter'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.add('over'); }); });
   ['dragleave','dragend'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
@@ -1045,8 +1046,14 @@ function extractShift(items){
 }
 /* 氏名の正規化：空白除去＋よくある異体字を統一（髙→高・﨑→崎 等） */
 function normName(s){ s=String(s||'').trim().replace(/[\s　]/g,''); var map={'髙':'高','﨑':'崎','邉':'辺','邊':'辺','齋':'斎','齊':'斉','德':'徳','凜':'凛','濵':'浜','賴':'頼','嶋':'島','沢':'澤'}; return s.replace(/[髙﨑邉邊齋齊德凜濵賴嶋沢]/g,function(c){return map[c]||c;}); }
+/* 名前→メンバーの手動対応を記憶（毎月のPDFで再利用）。staffShifts/_aliases に保存 */
+var SHIFT_ALIAS={};
+function shiftAliasDoc(){ return shiftCol().doc('_aliases'); }
+function loadShiftAliases(cb){ shiftAliasDoc().get().then(function(d){ SHIFT_ALIAS=(d.exists&&d.data().aliases)||{}; if(cb)cb(); }).catch(function(){ SHIFT_ALIAS={}; if(cb)cb(); }); }
+function saveShiftAlias(name,memberId){ var n=normName(name); if(memberId) SHIFT_ALIAS[n]=memberId; else delete SHIFT_ALIAS[n]; shiftAliasDoc().set({aliases:SHIFT_ALIAS,updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.warn('[MHS] エイリアス保存失敗',e); }); }
 function shiftMatchMember(name){
   var n=normName(name); var i;
+  if(SHIFT_ALIAS[n]){ for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===SHIFT_ALIAS[n]) return MEMBERS[i].id; } }   // 記憶した対応を最優先
   for(i=0;i<MEMBERS.length;i++){ if(normName(MEMBERS[i].name)===n) return MEMBERS[i].id; }
   for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].kana && normName(MEMBERS[i].kana)===n) return MEMBERS[i].id; }
   for(i=0;i<MEMBERS.length;i++){ var mn=normName(MEMBERS[i].name); if(mn && (mn.indexOf(n)>=0||n.indexOf(mn)>=0) && Math.min(mn.length,n.length)>=2) return MEMBERS[i].id; }  // 部分一致（苗字だけ等）
@@ -1057,7 +1064,7 @@ function shiftMemberOptions(sel){
   for(var i=0;i<MEMBERS.length;i++){ var m=MEMBERS[i]; var dn=memberDeptName(m); o+='<option value="'+escA(m.id)+'"'+(sel===m.id?' selected':'')+'>'+esc(m.name)+(dn?'（'+esc(dn)+'）':'')+'</option>'; }
   return o;
 }
-function shiftAssign(idx,val){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; SHIFT_PARSE.rows[idx].memberId=val||null; renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
+function shiftAssign(idx,val){ if(!SHIFT_PARSE||!SHIFT_PARSE.rows[idx])return; var r=SHIFT_PARSE.rows[idx]; r.memberId=val||null; saveShiftAlias(r.name, r.memberId); renderShiftPreview(SHIFT_PARSE, SHIFT_PARSE.fname||''); }
 function renderShiftPreview(p, fname){
   if(fname) p.fname=fname;
   shiftStatus('読み取り完了：'+esc(p.fname||''));
@@ -1066,7 +1073,7 @@ function renderShiftPreview(p, fname){
   var unmatched=p.rows.filter(function(r){return !r.memberId;}).length;
   var rosterNote=MEMBERS.length? ('名簿 '+MEMBERS.length+'名と照合') : '<span style="color:#f59e0b">⚠ CoreMembers名簿が0名（先にCoreMembersで「📥 portalMembersから取り込み」を実行してください）</span>';
   var head='<div style="font-size:13px;margin-bottom:4px"><b>'+p.ym.y+'年'+p.ym.mo+'月</b>のシフトを検出：休みのある人 <b>'+p.rows.length+'名</b>／日付 '+p.days.length+'日'+(unmatched?'　<span style="color:#f59e0b">（未照合 '+unmatched+'名）</span>':'　<span style="color:#22c55e">（全員照合）</span>')+'</div>'+
-    '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+rosterNote+'　／　未照合は右の欄で手動割り当てできます（名前のままでも保存可）。</div>';
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+rosterNote+'　／　未照合は右の欄で手動割り当て。<b>割り当ては記憶され、次回のPDFから自動照合</b>されます（名簿に居ない人はCoreMembersに追加が必要）。</div>';
   var rowsH='<tr style="border-bottom:1px solid var(--border)"><td style="font-size:11px;color:var(--text3)">PDFの名前</td><td style="font-size:11px;color:var(--text3)">名簿の人に割り当て</td><td style="font-size:11px;color:var(--text3)">休み</td></tr>'+
     p.rows.map(function(r,idx){
     var sel='<select onchange="shiftAssign('+idx+',this.value)" style="background:var(--bg3);border:1px solid '+(r.memberId?'var(--border)':'#f59e0b')+';color:var(--text);border-radius:7px;padding:4px 6px;font-size:12px;max-width:200px">'+shiftMemberOptions(r.memberId)+'</select>';
