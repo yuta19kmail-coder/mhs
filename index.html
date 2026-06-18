@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.31.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.32.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.31.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.32.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -952,6 +952,7 @@ const TAGS=['顧客来店','支払日','休日','MTG','出張','その他'];
    人と組織の真実＝CoreMembers（coreMembers / coreDepts）。
    ログインの鍵＝CoreFlow(portalMembers)。担当・部署はここ（CoreMembers）から引く。 */
 let MEMBERS=[];
+let FORMER_IDS={}; // 退職者（coreMembers active:false）の id/portalMemberId 集合。担当表示から消す用
 let CORE_DEPTS=[];   // coreDepts 生データ（部/課/班/拠点）
 let PORTAL_PHOTO={}; // portalMembers の“今の”Googleアバター（doc id → photo URL）
 let _portalUnsub=null;
@@ -993,7 +994,7 @@ let _memUnsub=null;
 function subscribeMembers(){
   if(_memUnsub) return;
   _memUnsub=membersColMHS().onSnapshot(function(snap){
-    var arr=[]; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false) arr.push(m); });
+    var arr=[],former={}; snap.forEach(function(d){ var m=d.data()||{}; m.id=d.id; if(m.active!==false){ arr.push(m); } else { former[d.id]=1; if(m.portalMemberId)former[m.portalMemberId]=1; } }); FORMER_IDS=former;
     arr.sort(function(a,b){ var sa=(typeof a.sortOrder==='number')?a.sortOrder:999999, sb=(typeof b.sortOrder==='number')?b.sortOrder:999999; if(sa!==sb)return sa-sb; return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
     MEMBERS=arr; if(curView) showView(curView); refreshDayModal();
   }, function(err){ console.warn('[MHS] メンバー(coreMembers)購読エラー',err); });
@@ -1001,6 +1002,9 @@ function subscribeMembers(){
 function memberList(){ return MEMBERS.length?MEMBERS:STAFF.map(function(n){return {id:n,name:n,ini:String(n).charAt(0)};}); }
 /* id 解決：coreMember.id 優先。旧イベントの who は portalMember id の場合があるので portalMemberId でもフォールバック照合 */
 function memberById(id){ if(id==null)return null; var i; for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].id===id)return MEMBERS[i]; } for(i=0;i<MEMBERS.length;i++){ if(MEMBERS[i].portalMemberId&&MEMBERS[i].portalMemberId===id)return MEMBERS[i]; } return null; }
+/* 退職者（名簿でactive:false）の担当エントリは表示・チェックから外す。名前で取り込んだ未照合の担当（IDでない自由名）は退職者集合に入らないので残る。 */
+function isFormerMember(w){ return !!(w!=null && FORMER_IDS[w]); }
+function liveWho(arr){ return (arr||[]).filter(function(w){ return !isFormerMember(w); }); }
 /* 部署（部）ごとにメンバーをまとめる。[{dept:{id,name,color}|null, members:[...]}]（未所属は最後）。
    部署情報(coreDepts)が無いときは1グループ(dept=null)＝従来のフラット表示にフォールバック。 */
 function membersGrouped(){
@@ -1047,8 +1051,8 @@ function memSurname(m){ return (m&&m.dispName)||(m&&m.lastName)||surname(m&&m.na
 /* フル表示名：呼び名(dispName)＞氏名 */
 function memDisp(m){ return (m&&m.dispName)||(m&&m.name)||''; }
 /* 担当をアバター＋氏名で（予定詳細用） */
-function whoLineAvatars(who){ return (who||[]).map(function(id){ var m=memberById(id); var nm=m?memDisp(m):id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
-function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
+function whoLineAvatars(who){ return liveWho(who).map(function(id){ var m=memberById(id); var nm=m?memDisp(m):id; return '<span style="display:inline-flex;align-items:center;gap:5px;margin:2px 10px 2px 0">'+(m?memberAvatar(m,22):'')+'<span>'+esc(nm)+'</span></span>'; }).join(''); }
+function whoAvatars(who,sz){ who=liveWho(who); if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
   if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz);
@@ -1436,7 +1440,7 @@ function collectIssues(){
   evs.forEach(function(e){
     if(e.source==='reminder')return;
     if(e._shifted){ issues.push({type:'shift',id:(e.id||e.title),extra:e.date,label:'🔁 「'+esc(e.title)+'」は定休日のため '+(e._origDate||'').slice(5)+' → '+e.date.slice(5)+' に自動振替'}); }
-    (e.who||[]).forEach(function(w){
+    liveWho(e.who).forEach(function(w){
       var m=memberById(w); var mo=m||{id:w,name:String(w)}; var nm=memSurname(mo);
       if(isOff(mo,e.date)){ issues.push({type:'off',id:(e.id||e.title)+'_'+w,extra:e.date,label:'🟠 '+esc(nm)+' は休みなのに予定「'+esc(e.title)+'」（'+e.date.slice(5)+'）'}); }
       var key=e.date+'|'+(m?m.id:w); (seen[key]=seen[key]||[]).push(e);
@@ -1822,7 +1826,7 @@ function renderBrief(){
     document.getElementById(nId).textContent=list.length+'件';
     const el=document.getElementById(elId);
     if(!list.length){el.innerHTML='<div class="empty">予定なし</div>';return;}
-    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+eventColor(e)+'"></span>'+whoAvatars(e.who,15)+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(e.who&&e.who.length?'・'+e.who.map(memberLabel).join('、'):'')+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
+    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+eventColor(e)+'"></span>'+whoAvatars(e.who,15)+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(liveWho(e.who).length?'・'+liveWho(e.who).map(memberLabel).join('、'):'')+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
   };
   fill('brief-today','brief-today-n',td);
   fill('brief-tom','brief-tom-n',tm);
@@ -2202,7 +2206,7 @@ function efTimeSync(){ ['ef-time','ef-endtime'].forEach(function(idp){ var hs=do
 function whoConflicts(date, who, excludeId){
   var dups=[], offs=[]; if(!date) return {dups:dups,offs:offs};
   var dayEvents=getEvents(new Date(date+'T00:00:00'), new Date(date+'T00:00:00')).filter(function(e){ return e.source!=='reminder' && e.id!==excludeId; });
-  (who||[]).forEach(function(id){
+  liveWho(who).forEach(function(id){
     var m=memberById(id); var mo=m||{id:id,name:String(id),ini:String(id).charAt(0)};
     if(isOff(mo,date)) offs.push(mo);
     dayEvents.forEach(function(e){ if((e.who||[]).some(function(w){ return w===id||(m&&w===m.name); })) dups.push({member:mo,other:e}); });
