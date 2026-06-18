@@ -389,6 +389,20 @@
   .btn-del:hover{background:rgba(220,38,38,.1)}
   .btn-ghost{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer}
   .btn-ghost:hover{border-color:var(--acc)}
+  .btn-primary{background:var(--acc);border:0;color:#fff;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-primary:hover{background:var(--acc2)}
+  /* 付箋：種別/投稿先のセグメント・部署チップ・シークレット */
+  .bn-seg{display:inline-flex;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:3px;gap:3px}
+  .bn-seg button{border:0;background:transparent;color:var(--text2);font-size:12.5px;padding:6px 13px;border-radius:7px;cursor:pointer;font-family:inherit;font-weight:600}
+  .bn-seg button.on{background:var(--acc);color:#fff}
+  .bn-secret-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+  .bn-secret-badge2{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(79,70,229,.18);color:#4338ca;border:1px solid rgba(79,70,229,.35)}
+  .bn-dept-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(0,0,0,.18);color:#fff}
+  .bn-circ-chip{font-size:10px;padding:2px 7px;border-radius:7px;background:rgba(99,102,241,.18);color:#3730a3;border:1px solid rgba(99,102,241,.35)}
+  .bn-circ-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .bn-circ-self{font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid rgba(0,0,0,.2);background:rgba(255,255,255,.5);color:#1f2937;cursor:pointer}
+  .bn-mav.cdone{opacity:.4}
+  .bn-mav .cchk{position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:#16a34a;color:#fff;font-size:9px;line-height:13px;text-align:center;border:1.5px solid #fff}
 
   /* 月カレンダーの＋追加 */
   .cell:hover{background:rgba(220,38,38,.04)}
@@ -505,7 +519,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.27.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.28.0</div>
   </div>
 </div>
 
@@ -523,7 +537,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.27.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.28.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1623,42 +1637,56 @@ function renderDash(){
   }
 }
 /* ===== 付箋（MHS発=mhsNotes ＋ CarFlow=boardNotes を集約・返信/編集/済） ===== */
-var MHS_NOTES=[], CAR_NOTES=[], _mhsNotesUnsub=null, _carNotesUnsub=null, _notesErr='';
+var MHS_NOTES=[], CAR_NOTES=[], PIT_NOTES=[], _mhsNotesUnsub=null, _carNotesUnsub=null, _pitNotesUnsub=null, _notesErr='';
 var _noteCompose={assignees:[], text:'', color:'yellow'};
 var BN_COLORS=[['red','#ff8c8c'],['orange','#ffb774'],['yellow','#ffea7a'],['green','#98d695'],['blue','#93c2fa']];
 var CARFLOW_URL='https://carflow.kobayashi-motors.com';
-function noteColRef(app){ var base=window.fb.db.collection('companies').doc(COMPANY_ID); return app==='carflow'?base.collection('boardNotes'):base.collection('mhsNotes'); }
+function noteColRef(app){ var base=window.fb.db.collection('companies').doc(COMPANY_ID); if(app==='carflow')return base.collection('boardNotes'); if(app==='pitflow')return base.collection('pitNotes'); return base.collection('mhsNotes'); }
 function subscribeNotes(){
   if(!_mhsNotesUnsub){ _mhsNotesUnsub=noteColRef('mhs').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='mhs'; a.push(n); }); MHS_NOTES=a; _notesErr=''; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] mhsNotes購読',e); _notesErr='付箋(mhsNotes)の読込に失敗：'+(e&&e.code||e)+'（Firestoreルールに mhsNotes を追加してデプロイ済みか確認）'; if(curView==='dash')renderDash(); }); }
   if(!_carNotesUnsub){ _carNotesUnsub=noteColRef('carflow').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='carflow'; a.push(n); }); CAR_NOTES=a; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] boardNotes購読',e); }); }
+  if(!_pitNotesUnsub){ _pitNotesUnsub=noteColRef('pitflow').onSnapshot(function(snap){ var a=[]; snap.forEach(function(d){ var n=d.data()||{}; n.id=d.id; n.app='pitflow'; a.push(n); }); PIT_NOTES=a; if(curView==='dash')renderDash(); }, function(e){ console.warn('[MHS] pitNotes購読',e); }); }
 }
-function allNotes(){ return MHS_NOTES.concat(CAR_NOTES); }
+function allNotes(){ return MHS_NOTES.concat(CAR_NOTES).concat(PIT_NOTES); }
 function noteAssignees(n){ return n.memberUids||n.assignees||n.m||[]; }
 function noteBody(n){ return (n.body!=null?n.body:(n.text||'')); }
-function noteForMe(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return !!(uid && noteAssignees(n).indexOf(uid)>=0); }
-function findNote(id,app){ var arr=app==='carflow'?CAR_NOTES:MHS_NOTES; for(var i=0;i<arr.length;i++){ if(arr[i].id===id)return arr[i]; } return null; }
+function noteDeptIds(n){ return n.deptIds||[]; }
+function _myUid(){ return (window.fb.currentUser&&window.fb.currentUser.uid)||null; }
+function noteIsSecret(n){ if(n.secret)return true; var m=n.m||[]; return m.length===1 && !!n.authorUid && m[0]===n.authorUid; }
+function noteVisible(n){ return noteIsSecret(n)?(n.authorUid===_myUid()):true; }
+function noteForMe(n){ var uid=_myUid(); if(uid && noteAssignees(n).indexOf(uid)>=0)return true; var me=myCoreMember(); if(me){ var d=memberDeptIds(me); var ds=noteDeptIds(n); if((d.deptId&&ds.indexOf(d.deptId)>=0)||(d.sectionId&&ds.indexOf(d.sectionId)>=0))return true; } return false; }
+function markCirculateSelf(id,app){ var n=findNote(id,app); if(!n)return; var uid=_myUid(); if(!uid)return; var done=(n.doneByUids||[]).slice(); var i=done.indexOf(uid); if(i>=0)done.splice(i,1); else done.push(uid); var asg=noteAssignees(n); var allDone=asg.length>0 && asg.every(function(u){return done.indexOf(u)>=0;}); noteColRef(app).doc(id).set({doneByUids:done,status:(allDone?'done':'open'),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗（権限）'); }); }
+function findNote(id,app){ var arr=app==='carflow'?CAR_NOTES:(app==='pitflow'?PIT_NOTES:MHS_NOTES); for(var i=0;i<arr.length;i++){ if(arr[i].id===id)return arr[i]; } return null; }
 function noteCanEdit(n){ var uid=window.fb.currentUser&&window.fb.currentUser.uid; return n.app==='mhs' || (n.authorUid&&uid&&n.authorUid===uid); }
 function noteCardHTML(n){
   var color=['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow';
   var done=n.status==='done';
+  var circ=(n.noteType==='circulate');
   var au=n.authorUid?memberById(n.authorUid):null; var auAv=au?memberAvatar(au,16):''; var auName=au?memDisp(au):'';
   var asgUids=noteAssignees(n);
-  var memberAvs=asgUids.map(function(uid){ var m=memberById(uid); return m?'<span class="bn-mav">'+memberAvatar(m,22)+'</span>':''; }).join('')||'<span class="bn-no-member">担当なし</span>';
-  var appB=(n.app==='carflow'?'<span class="bn-srcbadge bn-src-car">CarFlow</span>':'<span class="bn-srcbadge bn-src-mhs">MHS</span>');
+  var doneSet=n.doneByUids||[];
+  var memberAvs=asgUids.map(function(uid){ var m=memberById(uid); if(!m)return ''; var d=circ&&doneSet.indexOf(uid)>=0; return '<span class="bn-mav'+(d?' cdone':'')+'" style="position:relative">'+memberAvatar(m,22)+(d?'<span class="cchk">✓</span>':'')+'</span>'; }).join('')||'<span class="bn-no-member">担当なし</span>';
+  var appB=(n.app==='carflow'?'<span class="bn-srcbadge bn-src-car">CarFlow</span>':(n.app==='pitflow'?'<span class="bn-srcbadge" style="background:#0f6e56;color:#fff">PitFlow</span>':'<span class="bn-srcbadge bn-src-mhs">MHS</span>'));
   var carB=(n.app==='carflow'&&n.autoSource&&n.autoSource.carId)?'<a class="bn-carlink2" href="'+CARFLOW_URL+'/?car='+encodeURIComponent(n.autoSource.carId)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">🚙 '+esc(n.autoSource.carId)+'</a>':'';
+  var secB=noteIsSecret(n)?'<span class="bn-secret-badge2">🔒 自分用</span>':'';
+  var deptB=(noteDeptIds(n)||[]).map(function(id){ var dp=deptById(id); return dp?'<span class="bn-dept-badge">'+esc(dp.name)+'</span>':''; }).join('');
+  var typeB=circ?'<span class="bn-circ-chip">🔁 回覧 '+doneSet.length+'/'+asgUids.length+'</span>':'';
   var title=n.title||''; var body=noteBody(n);
   var replies=(n.replies||[]).map(function(r){ var rm=r.uid?memberById(r.uid):null; var rav=rm?memberAvatar(rm,18):''; return '<div class="bn-reply"><span class="bn-reply-av">'+rav+'</span><div class="bn-reply-bubble"><div class="bn-reply-text">'+esc(r.text||'')+'</div></div></div>'; }).join('');
+  var circRow='';
+  if(circ){ var myDone=doneSet.indexOf(_myUid())>=0; var inIt=asgUids.indexOf(_myUid())>=0; circRow='<div class="bn-circ-row">'+(inIt?'<button class="bn-circ-self" onclick="markCirculateSelf(\''+n.id+'\',\''+n.app+'\')">'+(myDone?'確認済み（取消）':'✓ 自分が確認')+'</button>':'')+'</div>'; }
   var menu=(noteCanEdit(n)?'<button class="bn-menu-it" onclick="noteEdit(\''+n.id+'\',\''+n.app+'\')">✏️ 編集</button>':'')+
     '<button class="bn-menu-it" onclick="noteReply(\''+n.id+'\',\''+n.app+'\')">💬 返信</button>'+
-    '<button class="bn-menu-it" onclick="noteToggleDone(\''+n.id+'\',\''+n.app+'\')">'+(done?'↩ 戻す':'✓ 済にする')+'</button>'+
+    (circ?'':'<button class="bn-menu-it" onclick="noteToggleDone(\''+n.id+'\',\''+n.app+'\')">'+(done?'↩ 戻す':'✓ 済にする')+'</button>')+
     (noteCanEdit(n)?'<button class="bn-menu-it bn-menu-danger" onclick="noteDelete(\''+n.id+'\',\''+n.app+'\')">🗑 削除</button>':'');
   return '<div class="bn-card bn-color-'+color+(done?' is-done':'')+'" onclick="event.stopPropagation()">'+
     (done?'<div class="bn-done-stamp">済</div>':'')+
     '<button class="bn-menu-btn" onclick="event.stopPropagation();toggleNoteMenu(\''+n.id+'\')" title="メニュー">⋮</button>'+
     '<div class="bn-menu" id="bnm-'+n.id+'">'+menu+'</div>'+
-    '<div class="bn-srcrow">'+appB+carB+'</div>'+
+    '<div class="bn-srcrow">'+appB+secB+typeB+deptB+carB+'</div>'+
     (title?'<div class="bn-title">'+esc(title)+'</div>':'')+
     (body?'<div class="bn-body">'+esc(body)+'</div>':'')+
+    circRow+
     (replies?'<div class="bn-replies">'+replies+'</div>':'')+
     '<div class="bn-footer"><div class="bn-members">'+memberAvs+'</div>'+(au?'<div class="bn-author">'+auAv+'<span class="bn-author-name">'+esc(auName)+'</span></div>':'')+'</div>'+
   '</div>';
@@ -1667,7 +1695,7 @@ function toggleNoteMenu(id){ var el=document.getElementById('bnm-'+id); if(!el)r
 function noteComposeColor(c){ _noteCompose.color=c; if(curView==='dash')renderDash(); }
 document.addEventListener('click',function(e){ if(e.target&&e.target.closest&&e.target.closest('.bn-menu-btn,.bn-menu'))return; document.querySelectorAll('.bn-menu.open').forEach(function(m){m.classList.remove('open');}); });
 function dashNotesHTML(mode){
-  var notes=allNotes().slice();
+  var notes=allNotes().filter(noteVisible);
   if(mode==='self') notes=notes.filter(noteForMe);
   notes.sort(function(a,b){ var ad=a.status==='done', bd=b.status==='done'; if(ad!==bd)return ad?1:-1; return (b.order||0)-(a.order||0); });
   var addBtn='<div style="margin-bottom:12px"><button class="btn-primary" onclick="openNoteModal()">＋ 付箋を追加</button></div>';
@@ -1683,40 +1711,59 @@ function addMhsNote(){
   noteColRef('mhs').doc(id).set(data).then(function(){ _noteCompose.text=''; _noteCompose.assignees=[]; toast('投稿しました'); if(curView==='dash')renderDash(); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
 }
 /* 付箋 追加/編集モーダル（CarFlow風：タイトル・本文・色スウォッチ・担当マルチ選択） */
-var _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[]};
+var _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[], deptIds:[], noteType:'exec', secret:false};
 function openNoteModal(id,app){
-  if(id){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } _ntEditor={id:id, app:app, title:n.title||'', body:noteBody(n), color:(['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow'), members:noteAssignees(n).slice()}; }
-  else { _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[]}; }
+  if(id){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('編集権限がありません'); return; } _ntEditor={id:id, app:app, title:n.title||'', body:noteBody(n), color:(['red','orange','yellow','green','blue'].indexOf(n.color)>=0?n.color:'yellow'), members:noteAssignees(n).slice(), deptIds:(n.deptIds||[]).slice(), noteType:(n.noteType==='circulate'?'circulate':'exec'), secret:noteIsSecret(n)}; }
+  else { _ntEditor={id:null, app:'mhs', title:'', body:'', color:'yellow', members:[], deptIds:[], noteType:'exec', secret:false}; }
   document.getElementById('nt-modal-title').textContent=id?'付箋を編集':'付箋を追加';
   document.getElementById('nt-modal-del').style.display=id?'inline-block':'none';
   renderNoteModalBody();
   document.getElementById('nt-modal').classList.add('show');
 }
 function closeNoteModal(){ document.getElementById('nt-modal').classList.remove('show'); }
+function ntSetApp(a){ _ntEditor.app=a; renderNoteModalBody(); }
+function ntSetType(t){ _ntEditor.noteType=t; renderNoteModalBody(); }
+function ntToggleSecret(on){ _ntEditor.secret=!!on; if(on)_ntEditor.deptIds=[]; renderNoteModalBody(); }
+function ntToggleDept(id,el){ var i=_ntEditor.deptIds.indexOf(id); if(i>=0)_ntEditor.deptIds.splice(i,1); else _ntEditor.deptIds.push(id); if(el)el.classList.toggle('is-checked'); }
 function renderNoteModalBody(){
+  var _t=(document.getElementById('nt-m-title')||{}).value; if(_t!=null)_ntEditor.title=_t;
+  var _b=(document.getElementById('nt-m-body')||{}).value; if(_b!=null)_ntEditor.body=_b;
+  var appSeg=_ntEditor.id?('<span class="bn-srcbadge bn-src-mhs">'+(_ntEditor.app==='carflow'?'CarFlow':_ntEditor.app==='pitflow'?'PitFlow':'MHS')+'（編集中）</span>')
+    :'<div class="bn-seg">'+[['mhs','MHS'],['carflow','CarFlow'],['pitflow','PitFlow']].map(function(a){return '<button class="'+(_ntEditor.app===a[0]?'on':'')+'" onclick="ntSetApp(\''+a[0]+'\')">'+a[1]+'</button>';}).join('')+'</div>';
+  var typeSeg='<div class="bn-seg">'+[['exec','実行'],['circulate','回覧']].map(function(t){return '<button class="'+(_ntEditor.noteType===t[0]?'on':'')+'" onclick="ntSetType(\''+t[0]+'\')">'+(t[0]==='exec'?'✓ ':'🔁 ')+t[1]+'</button>';}).join('')+'</div>';
   var sw=BN_COLORS.map(function(c){ return '<label class="bn-cp-lbl"><input type="radio" name="ntcolor" '+(_ntEditor.color===c[0]?'checked':'')+' onclick="_ntEditor.color=\''+c[0]+'\'"><span class="bn-color-swatch" style="background:'+c[1]+'"></span></label>'; }).join('');
   var loginMembers=MEMBERS.filter(function(m){return m.portalMemberId;});
   var chips=loginMembers.map(function(m){ var on=_ntEditor.members.indexOf(m.portalMemberId)>=0; return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="noteModalToggleMember(\''+escA(m.portalMemberId)+'\',this)">'+memberAvatar(m,18)+'<span>'+esc(memDisp(m))+'</span></span>'; }).join('');
+  var deptChips=CORE_DEPTS.map(function(dp){ var on=_ntEditor.deptIds.indexOf(dp.id)>=0; return '<span class="bn-member-pick'+(on?' is-checked':'')+'" onclick="ntToggleDept(\''+escA(dp.id)+'\',this)"><span class="mpick-dot" style="background:'+((dp.color)||'#94a3b8')+'"></span><span>'+esc(dp.name)+'</span></span>'; }).join('');
+  var secret=_ntEditor.secret;
   document.getElementById('nt-modal-body').innerHTML=
+    '<div class="fld"><label>投稿先</label>'+appSeg+'</div>'+
+    '<div class="fld"><label>種別</label>'+typeSeg+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行＝誰かが「済」で完了／回覧＝担当が各自「確認」して全員で完了</div></div>'+
     '<div class="fld"><label>タイトル（任意）</label><input type="text" id="nt-m-title" value="'+esc(_ntEditor.title)+'"></div>'+
-    '<div class="fld"><label>本文</label><textarea id="nt-m-body" style="min-height:96px">'+esc(_ntEditor.body)+'</textarea></div>'+
+    '<div class="fld"><label>本文</label><textarea id="nt-m-body" style="min-height:90px">'+esc(_ntEditor.body)+'</textarea></div>'+
     '<div class="fld"><label>色</label><div class="bn-color-picker">'+sw+'</div></div>'+
-    '<div class="fld"><label>担当（宛先）</label><div class="bn-member-list">'+(chips||'<span style="font-size:11px;color:var(--text3)">ログインメンバーがいません</span>')+'</div></div>';
+    '<div class="fld"><label class="bn-secret-row"><input type="checkbox" '+(secret?'checked':'')+' onchange="ntToggleSecret(this.checked)"> 🔒 シークレット（自分だけに見える付箋）</label></div>'+
+    (secret?'':'<div class="fld"><label>担当（個人）</label><div class="bn-member-list">'+(chips||'<span style="font-size:11px;color:var(--text3)">ログインメンバーがいません</span>')+'</div></div>'+
+    '<div class="fld"><label>宛先（部署）</label><div class="bn-member-list">'+(deptChips||'<span style="font-size:11px;color:var(--text3)">部署が未登録です</span>')+'</div></div>');
 }
 function noteModalToggleMember(uid,el){ var i=_ntEditor.members.indexOf(uid); if(i>=0)_ntEditor.members.splice(i,1); else _ntEditor.members.push(uid); if(el)el.classList.toggle('is-checked'); }
 function saveNoteModal(){
   var title=(document.getElementById('nt-m-title').value||'').trim();
   var body=(document.getElementById('nt-m-body').value||'').trim();
   if(!title && !body){ toast('タイトルか本文を入力してください'); return; }
+  var uid=_myUid(); var secret=_ntEditor.secret;
+  var members = secret ? (uid?[uid]:[]) : _ntEditor.members.slice();
+  var mField  = secret ? (uid?[uid]:[]) : [];
+  var deptIds = secret ? [] : _ntEditor.deptIds.slice();
+  var common={ title:title, body:body, color:_ntEditor.color, memberUids:members, m:mField, deptIds:deptIds, noteType:_ntEditor.noteType||'exec', secret:secret, updatedAt:window.fb.serverTimestamp() };
   if(_ntEditor.id){
     var n=findNote(_ntEditor.id,_ntEditor.app);
-    var patch={ title:title, body:body, color:_ntEditor.color, memberUids:_ntEditor.members.slice(), updatedAt:window.fb.serverTimestamp() };
-    if(n && n.body==null) patch.text=body;
-    noteColRef(_ntEditor.app).doc(_ntEditor.id).set(patch,{merge:true}).then(function(){ closeNoteModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限）'); });
+    if(n && n.body==null) common.text=body;
+    noteColRef(_ntEditor.app).doc(_ntEditor.id).set(common,{merge:true}).then(function(){ closeNoteModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限）'); });
   } else {
     var id='n'+Date.now()+Math.floor(Math.random()*1000);
-    var data={ id:id, title:title, body:body, color:_ntEditor.color, authorUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, memberUids:_ntEditor.members.slice(), replies:[], status:'open', order:Date.now(), createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp() };
-    noteColRef('mhs').doc(id).set(data).then(function(){ closeNoteModal(); toast('投稿しました'); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
+    var data=Object.assign({ id:id, authorUid:uid, replies:[], status:'open', doneByUids:[], order:Date.now(), createdAt:window.fb.serverTimestamp() }, common);
+    noteColRef(_ntEditor.app).doc(id).set(data).then(function(){ closeNoteModal(); toast('投稿しました（'+(_ntEditor.app==='carflow'?'CarFlow':_ntEditor.app==='pitflow'?'PitFlow':'MHS')+'）'); }).catch(function(e){ console.error(e); toast('⚠ 投稿に失敗（権限/通信）'); });
   }
 }
 function noteDeleteFromModal(){ if(!_ntEditor.id)return; if(!confirm('この付箋を削除しますか？'))return; noteColRef(_ntEditor.app).doc(_ntEditor.id).delete().then(function(){ closeNoteModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
