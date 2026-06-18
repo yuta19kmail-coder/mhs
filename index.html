@@ -349,7 +349,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.15.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.16.0</div>
   </div>
 </div>
 
@@ -367,7 +367,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.15.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.16.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -609,6 +609,7 @@ const nameOf=k=>(LAYERS.find(l=>l.key===k)||{}).name||k;
 let DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'#378ADD','受付':'#ec4899','デザイン':'#a855f7','service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};
 let DEPTS=['整備','1課','2課','車販','受付','デザイン'];
 function eventColor(e){
+  if(e.source==='reminder'||e.kind==='reminder') return '#f59e0b';   // 🔔リマインド＝アンバー
   if(e.layer==='company'){
     if(e.kind==='all') return '#dc2626';                 // 全体＝赤
     if(e.kind==='personal') return '#64748b';            // 個人＝グレー
@@ -793,6 +794,7 @@ function memberAvatar(m,sz){ sz=sz||22; if(!m)return ''; if(m.photo)return '<spa
 function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=who.slice(0,4).map(function(id){var m=memberById(id);return m?memberAvatar(m,sz):'';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle">'+av+(who.length>4?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
+  if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
   if(e.kind==='personal') return whoAvatars(e.who,sz)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
@@ -893,10 +895,23 @@ function getEvents(start,end){
     else if(ev.endDate && ev.endDate>ev.date){ list=list.concat(spanOccurrences(ev,start,end)); }
     else if(ev.date>=s && ev.date<=e){ list.push(ev); }
   });
+  // 🔔 リマインドを「終日の擬似予定」として各リマインド日に表示（本予定はそのまま）
+  USER_EVENTS.forEach(function(ev){
+    if(ev.done) return;                                                  // 完了したらリマインドも消える
+    if(ev.repeat && ev.repeat.freq && ev.repeat.freq!=='none') return;    // 定期は当面対象外
+    if((!ev.remind||!ev.remind.length)&&(!ev.remindCustom||!ev.remindCustom.length)) return;
+    if(ev.secret && ev.ownerUid && window.fb.currentUser && ev.ownerUid!==window.fb.currentUser.uid) return;
+    remindList(ev.remind,ev.remindCustom,ev.date).forEach(function(r){
+      var ds=ymd(r.t); if(ds<s||ds>e) return;
+      list.push({ id:ev.id+'__rem_'+ds, source:'reminder', layer:'company', etype:'リマインド', kind:'reminder',
+        date:ds, time:'終日', allDay:true, title:ev.title, who:(ev.who||[]).slice(),
+        remOf:ev.id, remLabel:r.label, remTargetDate:ev.date, remTargetTime:ev.time, dept:ev.dept||'' });
+    });
+  });
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
 }
-function dispTitle(e){return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title;}
+function dispTitle(e){ if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
 /* ===== リマインド（当日朝/前日/3日前/1週間前＋カスタムn日前） ===== */
 const REMIND_OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
 function remDate(dt){ var w=['日','月','火','水','木','金','土']; return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')'; }
@@ -1265,7 +1280,9 @@ function calCard(t,sub,inner){return '<div class="bcard" style="margin-bottom:14
 
 let curEv=null;
 function openEv(json){
-  const e=JSON.parse(json); curEv=e;
+  const e=JSON.parse(json);
+  if(e.source==='reminder'){ var src=USER_EVENTS.find(function(x){return x.id===e.remOf;}); if(src){ openEv(JSON.stringify(src)); return; } }
+  curEv=e;
   const manual=(e.source==='manual');
   document.getElementById('ev-title').textContent=dispTitle(e);
   let foot='';
@@ -1378,8 +1395,8 @@ function renderEventForm(){
         '<div class="fld" id="row-kind"'+(notDeadline?'':' style="display:none"')+'><label>階層</label><div class="seg-pick" id="g-kind">'+kindPick+'</div></div>'+
         '<div class="fld" id="row-dept"'+((notDeadline&&EF.kind==='dept')?'':' style="display:none"')+'><label>部署</label><div class="seg-pick" id="g-dept">'+deptPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">部署を選ぶと、その課/部のメンバー（兼務の人も含む）が担当に自動セットされます（個別に外せます）。</div></div>'+
         '<div class="fld" id="row-secret"'+((notDeadline&&EF.kind==='personal')?'':' style="display:none"')+'><label>公開範囲</label><div class="seg-pick" id="g-sec">'+secPick+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">🔒 シークレットは自分にしか表示されません。</div></div>'+
-        '<div class="row2"><div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
-        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div></div>'+
+        '<div class="fld"><label>日付 *（〜終了で複数日）</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ef-date" value="'+EF.date+'" oninput="efClosedNote();refreshRemind()"><span style="color:var(--text3)">〜</span><input type="date" id="ef-enddate" value="'+esc(EF.endDate||'')+'"></div></div>'+
+        '<div class="fld"><label>時間</label><div class="seg-pick" id="g-tmode">'+tmodePick+'</div><div id="row-time" style="margin-top:6px;display:'+(EF.timeMode==='time'?'flex':'none')+';gap:6px;align-items:center"><input type="time" id="ef-time" value="'+esc(EF.timeMode==='time'?(EF.time||''):'')+'"><span style="color:var(--text3)">〜</span><input type="time" id="ef-endtime" value="'+esc(EF.endTime||'')+'"></div></div>'+
         '<div id="ef-closednote" style="font-size:11.5px;color:#f59e0b;margin:-4px 0 10px"></div>'+
       '</div>'+
       '<div class="ef-c">'+
