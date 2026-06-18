@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.35.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.36.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.35.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.36.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1443,7 +1443,7 @@ function collectIssues(){
       var key=e.date+'|'+(m?m.id:w); (seen[key]=seen[key]||[]).push(e);
     });
   });
-  Object.keys(seen).forEach(function(k){ var arr=seen[k]; if(arr.length>=2){ var pa=k.split('|'); var m=memberById(pa[1]); var nm=m?memSurname(m):pa[1]; issues.push({type:'dup',id:k,extra:arr.length,label:'🔴 '+esc(nm)+'：'+pa[0].slice(5)+' に予定'+arr.length+'件（'+arr.map(function(e){return esc(e.title);}).join('／')+'）'}); } });
+  Object.keys(seen).forEach(function(k){ var arr=seen[k]; if(arr.length<2)return; var clash=[]; for(var i=0;i<arr.length;i++)for(var j=i+1;j<arr.length;j++){ if(evTimeOverlap(arr[i],arr[j])){ if(clash.indexOf(arr[i])<0)clash.push(arr[i]); if(clash.indexOf(arr[j])<0)clash.push(arr[j]); } } if(clash.length){ var pa=k.split('|'); var m=memberById(pa[1]); var nm=m?memSurname(m):pa[1]; issues.push({type:'dup',id:k,extra:clash.length,label:'🔴 '+esc(nm)+'：'+pa[0].slice(5)+' に時間が重なる予定'+clash.length+'件（'+clash.map(function(e){return esc(e.title);}).join('／')+'）'}); } });
   return issues.filter(function(it){ return APPROVED.indexOf(checklistKey(it))<0; });
 }
 function renderChecklist(){
@@ -1485,7 +1485,10 @@ function renderMonthGrid(){
 function bizHours(){ var ps=String(CAL.bizStart||'09:00').split(':'), pe=String(CAL.bizEnd||'18:00').split(':'); var s=parseInt(ps[0],10), e=parseInt(pe[0],10), em=parseInt(pe[1]||'0',10); if(isNaN(s))s=9; if(isNaN(e))e=18; if(em>0)e+=1; if(e<=s)e=s+1; return {s:s,e:e}; }
 function parseHM(t){ if(!t||!/^\d{1,2}:\d{2}$/.test(t))return null; var p=t.split(':'); return (+p[0])+(+p[1])/60; }
 function isTimedEvent(e){ return parseHM(e.time)!=null; }
-function evIcons(e){ return (e.repeat&&e.repeat.freq&&e.repeat.freq!=='none'?'🔁':'')+(e.secret?'🔒':''); }
+function evIcons(e){ return (e.secret?'🔒':''); }
+/* 予定の時間帯（時間ベースのブッキング判定用）。終日/時間なしは null＝時間の概念なしで衝突しない。AM=営業開始〜12時／PM=12時〜営業終了／時刻は終了未指定なら1時間とみなす。 */
+function evInterval(e){ var t=e&&e.time; if(!t||t==='終日'||t==='—')return null; if(t==='AM'){var b=bizHours();return {s:b.s,en:12};} if(t==='PM'){var b2=bizHours();return {s:12,en:b2.e};} var s=parseHM(t); if(s==null)return null; var en=parseHM(e.endTime); if(en==null||en<=s)en=s+1; return {s:s,en:en}; }
+function evTimeOverlap(a,b){ var ia=evInterval(a), ib=evInterval(b); if(!ia||!ib)return false; return ia.s<ib.en && ib.s<ia.en; }
 function timeGridHTML(days,byDate,ncol){
   var bh=bizHours(), hpx=54, nh=bh.e-bh.s;
   var gridCols='var(--tg-axw) repeat('+ncol+',minmax(92px,1fr))';
@@ -2214,13 +2217,13 @@ function timeSelectHTML(idp, val){
 }
 function efTimeSync(){ ['ef-time','ef-endtime'].forEach(function(idp){ var hs=document.getElementById(idp+'-h'), ms=document.getElementById(idp+'-m'), hid=document.getElementById(idp); if(!hs||!ms||!hid)return; hid.value=hs.value?(hs.value+':'+(ms.value||'00')):''; }); efRunChecks(); }
 /* 担当のダブり・当日休みを検出（フォームのチェッカー／下部チェックリスト共用） */
-function whoConflicts(date, who, excludeId){
+function whoConflicts(date, who, excludeId, selfEv){
   var dups=[], offs=[]; if(!date) return {dups:dups,offs:offs};
   var dayEvents=getEvents(new Date(date+'T00:00:00'), new Date(date+'T00:00:00')).filter(function(e){ return e.source!=='reminder' && e.id!==excludeId; });
   liveWho(who).forEach(function(id){
     var m=memberById(id); var mo=m||{id:id,name:String(id),ini:String(id).charAt(0)};
     if(isOff(mo,date)) offs.push(mo);
-    dayEvents.forEach(function(e){ if((e.who||[]).some(function(w){ return w===id||(m&&w===m.name); })) dups.push({member:mo,other:e}); });
+    dayEvents.forEach(function(e){ if((e.who||[]).some(function(w){ return w===id||(m&&w===m.name); }) && (!selfEv || evTimeOverlap(selfEv,e))) dups.push({member:mo,other:e}); });
   });
   return {dups:dups,offs:offs};
 }
@@ -2228,9 +2231,13 @@ function efRunChecks(){
   var box=document.getElementById('ef-checker'); if(!box||!EF)return;
   var date=(document.getElementById('ef-date')||{}).value||EF.date;
   if(!EF.who||!EF.who.length){ box.innerHTML='<span class="ef-ck-ok">担当を選ぶと、ダブり予定・当日休みを自動チェックします。</span>'; return; }
-  var c=whoConflicts(date, EF.who, EF.id), lines=[];
+  var tmode=EF.timeMode||'allday';
+  var stime=tmode==='allday'?'終日':tmode==='am'?'AM':tmode==='pm'?'PM':((document.getElementById('ef-time')||{}).value||'');
+  var setime=(tmode==='time')?((document.getElementById('ef-endtime')||{}).value||''):'';
+  var self={time:stime,endTime:setime};
+  var c=whoConflicts(date, EF.who, EF.id, self), lines=[];
   c.offs.forEach(function(m){ lines.push('<div class="ef-ck-warn">🟠 '+esc(memSurname(m))+' はこの日「休み」です</div>'); });
-  c.dups.forEach(function(d){ lines.push('<div class="ef-ck-warn">🔴 '+esc(memSurname(d.member))+' は同日に別予定「'+esc(d.other.title||'')+'」あり</div>'); });
+  c.dups.forEach(function(d){ lines.push('<div class="ef-ck-warn">🔴 '+esc(memSurname(d.member))+' は時間が重なる予定「'+esc(d.other.title||'')+'」あり</div>'); });
   box.innerHTML = lines.length? (lines.join('')+'<div class="ef-ck-note">※ このままでも保存できます（確認のみ）。</div>') : '<span class="ef-ck-ok">✓ ダブり・不在なし</span>';
 }
 function saveEventForm(){
