@@ -530,7 +530,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.34.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.35.0</div>
   </div>
 </div>
 
@@ -548,7 +548,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.34.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.35.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1092,16 +1092,9 @@ function schedDelete(id){ return scheduleCol().doc(id).delete().catch(function(e
 /* 定期予定の展開（指定範囲の各日にイベント化） */
 function nthOfMonth(d){return Math.floor((d.getDate()-1)/7)+1;}
 function expandRecurring(start,end){
-  const out=[]; const rs=CAL.recurring||[];
-  for(let d=new Date(start); ymd(d)<=ymd(end); d=addDays(d,1)){
-    rs.forEach(function(r){
-      let m=false;
-      if(r.freq==='weekly') m=(d.getDay()===r.dow);
-      else if(r.freq==='monthlyNth') m=(d.getDay()===r.dow && nthOfMonth(d)===r.nth);
-      if(m) out.push(applyAvoidClosed({layer:r.layer||'company',kind:'all',date:ymd(d),time:r.time||'終日',title:r.title,prefix:r.prefix||'',who:(r.who||[]),source:'recurring'}));
-    });
-  }
-  return out;
+  // 「行事・全社定期予定」機能は廃止（設定画面ごと撤去）。データ(CAL.recurring)は保持するが表示はしない。
+  // 繰り返しは各予定の「🔁 繰り返し」を使う。
+  return [];
 }
 /* 社内予定の繰り返し（repeat）展開 */
 function repeatLabel(ev){
@@ -1850,8 +1843,7 @@ function renderCalSet(){
     calCard('🚫 定休日を避ける','ONにすると、<b>手入力で定休日に登録</b>するときは確認が入ります（OKすれば登録可）。<b>定期予定など自動で入る分は、定休日に当たると直前の営業日へ自動で振替</b>えます（カレンダー下部のチェックリストに「振替」として表示）。','<label class="sw-line"><span class="sw'+(CAL.avoidClosed?' on':'')+'" id="avoid-sw" onclick="toggleAvoidClosed()"></span><span style="font-size:13px">'+(CAL.avoidClosed?'ON：定休日を避ける':'OFF：避けない')+'</span></label>')+
     calCard('🕐 営業時間','週・日ビューの時間軸の表示範囲です。開始〜終了の間を時間グリッドで表示します（朝礼・最短入庫など将来の計算の基準にも）。','<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:13px">開始 <input type="time" class="cal-date" value="'+(CAL.bizStart||'09:00')+'" onchange="bizSet(\'bizStart\',this.value)"></label><span style="color:var(--text3)">〜</span><label style="font-size:13px">終了 <input type="time" class="cal-date" value="'+(CAL.bizEnd||'18:00')+'" onchange="bizSet(\'bizEnd\',this.value)"></label></div>')+
     ruleCardHTML()+
-    labelEditorHTML()+
-    calCard('🔁 行事・全社定期予定','毎週・毎月の繰り返し予定（ノー残DAY・月例報告会など）を1回登録。カレンダーと朝礼に自動で表示されます。',recurListHTML()+recurAddHTML());
+    labelEditorHTML();
 }
 function bizSet(field,val){ if(!val)return; CAL[field]=val; saveCal(); if(calMode==='week'||calMode==='day')renderCal(); }
 function toggleAvoidClosed(){ CAL.avoidClosed=!CAL.avoidClosed; saveCal(); renderCalSet(); if(curView==='month')renderCal(); }
