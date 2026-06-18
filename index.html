@@ -200,6 +200,11 @@
   /* リマインド専用ポップアップ */
   .rem-banner{background:rgba(245,158,11,.14);border:1px solid #f59e0b;color:#f59e0b;border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;margin-bottom:10px}
   .rem-note{font-size:11.5px;color:var(--text3);margin-top:10px}
+  /* 誕生日ポップアップ */
+  .bday-card{text-align:center;padding:8px 4px}
+  .bday-emoji{font-size:46px;margin-bottom:6px}
+  .bday-name{font-size:18px;font-weight:700}
+  .bday-msg{font-size:13px;color:#e0218a;margin-top:4px;font-weight:600}
   .sw-line{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
   /* カレンダー下部 確認リスト */
   .ckl{margin-top:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:10px 12px}
@@ -403,7 +408,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.21.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.22.0</div>
   </div>
 </div>
 
@@ -421,7 +426,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.21.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.22.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -690,6 +695,7 @@ let DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'
 let DEPTS=['整備','1課','2課','車販','受付','デザイン'];
 function eventColor(e){
   if(e.source==='reminder'||e.kind==='reminder') return '#f59e0b';   // 🔔リマインド＝アンバー
+  if(e.source==='birthday'||e.kind==='birthday') return '#e0218a';   // 🎂誕生日＝マゼンタ（専用色）
   if(e.layer==='company'){
     if(e.kind==='all') return '#dc2626';                 // 全体＝赤
     if(e.kind==='personal') return '#64748b';            // 個人＝グレー
@@ -891,13 +897,14 @@ function whoAvatars(who,sz){ if(!who||!who.length)return ''; sz=sz||14; var av=w
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz){
   if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz);
+  if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
   if(e.kind==='personal') return whoAvatars(e.who,sz)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
   return '<span class="grp">全社</span>';
 }
 function evTitleW(e){ var done=(e.todo&&e.done)?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder')?'':whoAvatars(e.who,sz); }
+function evTrail(e,sz){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -1006,10 +1013,17 @@ function getEvents(start,end){
         remOf:ev.id, remLabel:r.label, remTargetDate:ev.date, remTargetTime:ev.time, dept:ev.dept||'' });
     });
   });
+  // 🎂 誕生日（CoreMembers.birthday＝YYYY-MM-DD → 毎年その月日に終日表示）
+  MEMBERS.forEach(function(m){
+    if(!m.birthday) return; var mt=String(m.birthday).match(/(\d{1,2})-(\d{1,2})$/); if(!mt) return;
+    var mo=mt[1].padStart(2,'0'), da=mt[2].padStart(2,'0');
+    for(var y=start.getFullYear(); y<=end.getFullYear(); y++){ var ds=y+'-'+mo+'-'+da; if(ds<s||ds>e) continue;
+      list.push({ id:'bday_'+m.id+'_'+ds, source:'birthday', layer:'company', kind:'birthday', date:ds, time:'終日', allDay:true, title:surname(m.name)+'さん 誕生日', bMember:m.id, bName:m.name }); }
+  });
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
 }
-function dispTitle(e){ if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
+function dispTitle(e){ if(e.source==='birthday'||e.kind==='birthday') return '🎂 '+e.title; if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&e.done?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
 /* ===== リマインド（当日朝/前日/3日前/1週間前＋カスタムn日前） ===== */
 const REMIND_OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
 function remDate(dt){ var w=['日','月','火','水','木','金','土']; return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')'; }
@@ -1604,9 +1618,28 @@ function openReminderDetail(e){
     (src?'<div style="margin-top:12px"><button class="btn-ghost" onclick="'+openEvAttr(src)+'">▶ 本予定を開く</button></div>':'<div class="rem-note" style="margin-top:6px">※本予定が表示範囲外、またはサンプルのため開けません。</div>');
   document.getElementById('ev-modal').classList.add('show');
 }
+/* 🎉 クラッカー（canvas-confetti をCDN遅延ロード） */
+function fireConfetti(){
+  function burst(){ if(!window.confetti)return; window.confetti({particleCount:130,spread:95,startVelocity:45,origin:{y:0.65}}); var end=Date.now()+900; (function frame(){ window.confetti({particleCount:5,angle:60,spread:70,origin:{x:0}}); window.confetti({particleCount:5,angle:120,spread:70,origin:{x:1}}); if(Date.now()<end)requestAnimationFrame(frame); })(); }
+  if(window.confetti){ burst(); return; }
+  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js'; s.onload=burst; s.onerror=function(){ console.warn('[MHS] confetti読込失敗'); }; document.head.appendChild(s);
+}
+/* 🎂 誕生日は専用ポップアップ＋クラッカー */
+function openBirthdayDetail(e){
+  curEv=e; var m=memberById(e.bMember);
+  document.getElementById('ev-title').textContent='🎂 お誕生日';
+  document.getElementById('ev-body').innerHTML=
+    '<div class="bday-card">'+(m?'<div style="display:flex;justify-content:center;margin-bottom:10px">'+memberAvatar(m,64)+'</div>':'<div class="bday-emoji">🎂</div>')+
+    '<div class="bday-name">'+esc((m?m.name:e.bName)||'')+' さん</div>'+
+    '<div class="bday-msg">お誕生日おめでとうございます！</div>'+
+    '<button class="btn-done" style="margin-top:14px;background:#e0218a" onclick="fireConfetti()">🎊 もう一回</button></div>';
+  document.getElementById('ev-modal').classList.add('show');
+  fireConfetti();
+}
 function openEv(json){
   const e=JSON.parse(json);
   if(e.source==='reminder'){ openReminderDetail(e); return; }
+  if(e.source==='birthday'){ openBirthdayDetail(e); return; }
   curEv=e;
   const manual=(e.source==='manual');
   document.getElementById('ev-title').textContent=dispTitle(e);
