@@ -310,6 +310,60 @@
   body.board-portrait .dcard-t{font-size:14px}
   body.board-portrait .dcard-m{font-size:13px}
   body.board-portrait .dcard-n{font-size:12px}
+  /* PitFlow当日ビュー移植（入庫/返車・休憩バー・バッジ） */
+  .pit-counts{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .count-chip{display:flex;align-items:baseline;gap:6px;border:1px solid var(--border);border-radius:var(--r);padding:6px 14px}
+  .count-chip.in{background:rgba(29,185,122,.10);border-color:#1db97a}
+  .count-chip.out{background:rgba(59,130,246,.10);border-color:#3b82f6}
+  .count-chip .num{font-size:22px;font-weight:800;line-height:1}
+  .count-chip.in .num{color:#1db97a}
+  .count-chip.out .num{color:#3b82f6}
+  .count-chip .lbl{font-size:11px;color:var(--text2);font-weight:700}
+  .count-chip .rem{font-size:12px;font-weight:800;color:var(--acc2);margin-left:2px}
+  .today-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  .today-col{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden}
+  .today-col-head{padding:9px 13px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+  .today-col-head .ic{font-size:16px}
+  .today-col-head .cnt{margin-left:auto;font-size:11px;background:var(--bg3);padding:2px 10px;border-radius:10px;color:var(--text2)}
+  .today-col-head.intake{color:#1db97a}
+  .today-col-head.return{color:#3b82f6}
+  .today-col-body{display:flex;flex-direction:column}
+  .today-empty{padding:26px 16px;text-align:center;color:var(--text3);font-size:12px}
+  .today-row{display:grid;grid-template-columns:54px 20px 1fr 188px;gap:9px;padding:0 10px 0 12px;height:56px;box-sizing:border-box;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;border-left:6px solid var(--team);align-items:center;overflow:hidden}
+  .today-row:hover{background:var(--bg3)}
+  .today-row.is-urgent{background:rgba(239,68,68,.06)}
+  .today-row.in-break{background:rgba(234,179,8,.05)}
+  .today-row.tr-done{opacity:.4}
+  .tr-time{color:var(--text);font-weight:800;font-size:15px;white-space:nowrap}
+  .tr-front{writing-mode:vertical-rl;text-orientation:upright;font-size:11px;font-weight:800;color:#fff;border-radius:5px;padding:3px 1px;text-align:center;letter-spacing:1px;align-self:stretch;display:flex;align-items:center;justify-content:center;min-height:34px}
+  .tr-front.empty{background:transparent}
+  .tr-main{min-width:0}
+  .tr-headline{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .tr-customer{font-weight:800;font-size:16px;white-space:nowrap}
+  .tr-carname{font-weight:700;font-size:15px;color:var(--text);white-space:nowrap}
+  .tr-plate{font-size:12px;color:var(--text2);margin-top:1px}
+  .tr-tags{display:grid;grid-template-columns:60px 28px 72px;gap:6px;align-items:center;justify-content:end}
+  .tr-tag-slot{display:flex;gap:3px;align-items:center;justify-content:flex-end;min-width:0}
+  .tag-drop{width:100%;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px}
+  .tag-drop-wait{background:#64748b}
+  .tag-drop-sameDay{background:#f59e0b}
+  .tag-drop-drop{background:#10b981}
+  .tag-work{width:100%;height:26px;font-weight:800;border-radius:5px;border:1px solid;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;line-height:1.05;font-size:13px}
+  .tag-work.long{font-size:11px}
+  .tag-side{font-size:10.5px;font-weight:700;padding:3px 6px;border-radius:5px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);white-space:nowrap}
+  .tag-side.consult{background:rgba(234,179,8,.15);color:#a16207;border-color:#eab308}
+  .tag-side.loaner{background:rgba(245,158,11,.12);color:#b45309;border-color:#f59e0b}
+  .tag-side.wash{background:rgba(59,130,246,.1);color:#2563eb;border-color:#3b82f6}
+  .tod-break{background:repeating-linear-gradient(45deg, rgba(110,140,180,.16), rgba(110,140,180,.16) 10px, rgba(110,140,180,.05) 10px, rgba(110,140,180,.05) 20px);border-top:1px dashed #6b87a8;border-bottom:1px dashed #6b87a8}
+  .tod-break-bar{color:#3a5273;font-size:12px;font-weight:800;text-align:center;padding:5px 0;border-bottom:1px dashed rgba(110,140,180,.5);background:rgba(110,140,180,.14)}
+  [data-theme="dark"] .tod-break-bar{color:#a9c2e0}
+  .tod-break .today-row,.tod-break .today-row.in-break{background:transparent}
+  .tod-break .today-row:hover{background:rgba(110,140,180,.12)}
+  .tod-break .today-row{border-bottom:1px dashed rgba(110,140,180,.28);height:56px}
+  body.board-portrait .tr-customer{font-size:19px}
+  body.board-portrait .tr-carname{font-size:17px}
+  body.board-portrait .tr-time{font-size:17px}
+  body.board-portrait .today-row{height:60px}
   #portrait-exit{display:none;position:fixed;top:10px;right:12px;z-index:500;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
   /* 縦表示（壁掛けモニター・縦特化） */
   body.board-portrait #topbar{display:none}
@@ -580,7 +634,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.45.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.46.0</div>
   </div>
 </div>
 
@@ -598,7 +652,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.45.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.46.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2640,22 +2694,75 @@ function subscribeCars(){
   }, function(err){ console.warn('[MHS] cars(納車)購読エラー',err); });
 }
 var CARFLOW_BASE='https://carflow.kobayashi-motors.com';
-/* 入庫・返車は仮（PitFlow本実装で実データに差し替え） */
-var BOARD_MOCK_INTAKE=[
-  {name:'ナカムラ様', car:'モコ/ラパン', time:'17:00', meta:'専務・車検・代MRワゴン'},
-  {name:'ハスミ様', car:'ソリオ', time:'18:00', meta:'椎名・車検・預'},
-  {name:'コンドウ様', car:'F56', time:'18:30', meta:'菅谷・一般・預'},
-  {name:'東洋コーポレーション', car:'荷ハイゼット', time:'14:00', meta:'社長・車検・預'}
+/* 入庫・返車＝PitFlow当日ビューを移植（仮データ・PitFlow本実装で実カードに差し替え） */
+var PIT_BREAKS=[{from:'12:00',to:'13:00',label:'休憩'},{from:'15:30',to:'16:30',label:'休憩'}];
+var BOARD_PIT_INTAKE=[
+  {customer:'ナカムラ',car:'モコ/ラパン',time:'17:00',team:'domestic',front:'専務',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6',loaner:true},
+  {customer:'ハスミ',car:'ソリオ',time:'18:00',team:'domestic',front:'椎名',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'},
+  {customer:'コンドウ',maker:'MINI',car:'F56',time:'18:30',team:'import',front:'菅谷',drop:'wait',dropLabel:'預',work:'一般',workColor:'#64748b'},
+  {customer:'東洋コーポレーション',car:'荷ハイゼット',time:'14:00',team:'domestic',front:'社長',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'}
 ];
-var BOARD_MOCK_RETURN=[
-  {name:'イシイ様', car:'ジムニーノマド', time:'17:00', meta:'社長・当日'},
-  {name:'マキイ様', car:'W176', time:'', meta:'菅谷・明日23時・代F56・洗車'},
-  {name:'イシイ様', car:'セレナ', time:'完成次第', meta:'菅谷・洗車・車検'}
+var BOARD_PIT_RETURN=[
+  {customer:'イシイ',car:'ジムニーノマド',time:'17:00',team:'domestic',front:'社長',drop:'sameDay',dropLabel:'当'},
+  {customer:'マキイ',maker:'メルセデス',car:'W176',time:'',team:'import',front:'菅谷',loaner:true,wash:true},
+  {customer:'イシイ',car:'セレナ',time:'',team:'domestic',front:'菅谷',wash:true,work:'車検',workColor:'#3b82f6'}
 ];
-var BOARD_DONE={};   // 仮：ローカルのみ（PitFlow接続で置換）
-function boardMockToggle(id){ BOARD_DONE[id]=!BOARD_DONE[id]; renderBrief(); toast('（仮）PitFlow本実装で実データに反映します'); }
-function boardMockRow(prefix,i,o){ var id=prefix+i, done=!!BOARD_DONE[id];
-  return '<div class="brd'+(done?' done':'')+'" onclick="boardMockToggle(\''+id+'\')"><div class="b1">'+esc(o.name)+'　'+esc(o.car)+(o.time?'　'+esc(o.time):'')+'</div><div class="b2">'+esc(o.meta)+(done?'　✓済':'')+'</div></div>'; }
+var BOARD_PIT_DONE={};
+function pitMin(t){ var m=String(t||'').match(/(\d{1,2}):(\d{2})/); return m?(+m[1]*60+ +m[2]):99999; }
+function pitMockTap(id){ BOARD_PIT_DONE[id]=!BOARD_PIT_DONE[id]; renderBrief(); toast('（仮）PitFlow本実装で入庫済み/日時移動を実データに反映します'); }
+function pitRow(c,isReturn,inBreak){
+  var teamColor=(c.team==='import')?'#ec4899':'#1db97a';
+  var done=!!BOARD_PIT_DONE[c._id];
+  var h='<div class="today-row'+(c.urgent?' is-urgent':'')+(inBreak?' in-break':'')+(done?' tr-done':'')+'" onclick="pitMockTap(\''+c._id+'\')" style="--team:'+teamColor+'">';
+  h+='<div class="tr-time">'+esc(c.time||'')+'</div>';
+  h+= c.front ? ('<div class="tr-front" style="background:'+teamColor+'">'+esc(c.front)+'</div>') : '<div class="tr-front empty"></div>';
+  h+='<div class="tr-main"><div class="tr-headline"><span class="tr-customer">'+esc(c.customer)+' 様</span>'+(c.car?'<span class="tr-carname">'+esc((c.maker?c.maker+' ':'')+c.car)+'</span>':'')+'</div>'+(c.plate?'<div class="tr-plate">'+esc(c.plate)+'</div>':'')+'</div>';
+  var side='';
+  if(c.consult) side+='<span class="tag-side consult">相談</span>';
+  if(c.loaner) side+='<span class="tag-side loaner">代車</span>';
+  if(isReturn&&c.wash) side+='<span class="tag-side wash">洗車</span>';
+  var dropTag=c.drop?('<span class="tag-drop tag-drop-'+c.drop+'">'+esc(c.dropLabel||'')+'</span>'):'';
+  var workTag=c.work?('<span class="tag-work'+(String(c.work).length>=4?' long':'')+'" style="background:'+c.workColor+'20;color:'+c.workColor+';border-color:'+c.workColor+'">'+esc(c.work)+'</span>'):'';
+  h+='<div class="tr-tags"><div class="tr-tag-slot">'+side+'</div><div class="tr-tag-slot">'+dropTag+'</div><div class="tr-tag-slot">'+workTag+'</div></div>';
+  h+='</div>';
+  return h;
+}
+function pitBuildRows(cards){
+  var blocks=[], ci=0, cut=PIT_BREAKS.map(function(b){return pitMin(b.from);});
+  for(var bi=0; bi<=PIT_BREAKS.length; bi++){
+    var limit=(bi<PIT_BREAKS.length)?cut[bi]:99999, seg=[];
+    while(ci<cards.length && pitMin(cards[ci].time)<limit){ seg.push(cards[ci]); ci++; }
+    blocks.push({type:'seg',cards:seg});
+    if(bi<PIT_BREAKS.length){ var b=PIT_BREAKS[bi], inB=[], bf=pitMin(b.from), bt=pitMin(b.to);
+      while(ci<cards.length && pitMin(cards[ci].time)>=bf && pitMin(cards[ci].time)<bt){ inB.push(cards[ci]); ci++; }
+      blocks.push({type:'break',from:b.from,to:b.to,cards:inB}); }
+  }
+  return blocks;
+}
+function pitColBody(cards,isReturn){
+  var h='';
+  pitBuildRows(cards).forEach(function(b){
+    if(b.type==='break'){ h+='<div class="tod-break"><div class="tod-break-bar">☕ '+b.from+'〜'+b.to+' 休憩</div>'+b.cards.map(function(c){return pitRow(c,isReturn,true);}).join('')+'</div>'; }
+    else { b.cards.forEach(function(c){ h+=pitRow(c,isReturn,false); }); }
+  });
+  return h;
+}
+function pitTodayHTML(){
+  BOARD_PIT_INTAKE.forEach(function(c,i){c._id='in'+i;});
+  BOARD_PIT_RETURN.forEach(function(c,i){c._id='rt'+i;});
+  var intake=BOARD_PIT_INTAKE.slice().sort(function(a,b){return pitMin(a.time)-pitMin(b.time);});
+  var returns=BOARD_PIT_RETURN.slice().sort(function(a,b){return pitMin(a.time)-pitMin(b.time);});
+  var inDone=intake.filter(function(c){return BOARD_PIT_DONE[c._id];}).length;
+  var outDone=returns.filter(function(c){return BOARD_PIT_DONE[c._id];}).length;
+  var counts='<div class="pit-counts">'+
+    '<div class="count-chip in"><span class="num">'+intake.length+'</span><span class="lbl">入庫</span>'+(inDone?'<span class="rem">残'+(intake.length-inDone)+'</span>':'')+'</div>'+
+    '<div class="count-chip out"><span class="num">'+returns.length+'</span><span class="lbl">返車</span>'+(outDone?'<span class="rem">残'+(returns.length-outDone)+'</span>':'')+'</div>'+
+    '<span class="bsrc" style="background:var(--bg4);color:var(--text2);align-self:center">PitFlow当日ビュー（仮）</span></div>';
+  return counts+'<div class="today-cols">'+
+    '<div class="today-col"><div class="today-col-head intake"><span class="ic">📥</span>入庫 <span class="cnt">'+intake.length+'</span></div><div class="today-col-body">'+(pitColBody(intake,false)||'<div class="today-empty">入庫予定なし</div>')+'</div></div>'+
+    '<div class="today-col"><div class="today-col-head return"><span class="ic">📤</span>返車 <span class="cnt">'+returns.length+'</span></div><div class="today-col-body">'+(pitColBody(returns,true)||'<div class="today-empty">返車予定なし</div>')+'</div></div>'+
+  '</div>';
+}
 function boardWho(e){ var ws=(e.who||[]).filter(function(w){return memberVisibility(w,e.date)!=='hide';}); return ws.length?ws.map(function(w){return memberLabel(w);}).join('、'):''; }
 function boardSchedRow(e){
   var done=(e.todo&&occDone(e));
@@ -2706,10 +2813,7 @@ function renderBrief(){
   host.innerHTML=
     '<div class="board">'+
       '<div class="bhdr">'+nav+'<span style="flex:1"></span>'+dutyChips+'</div>'+
-      '<div class="bgrid2">'+
-        '<div class="bsec"><div class="bsec-h"><span>🚗 入庫</span>'+mockBadge+'</div>'+BOARD_MOCK_INTAKE.map(function(o,i){return boardMockRow('in',i,o);}).join('')+'<div style="font-size:10.5px;color:var(--text3);margin-top:4px">クリック→入庫済み（PitFlow本実装で接続・日時移動も対応予定）</div></div>'+
-        '<div class="bsec"><div class="bsec-h"><span>↩ 返車</span>'+mockBadge+'</div>'+BOARD_MOCK_RETURN.map(function(o,i){return boardMockRow('rt',i,o);}).join('')+'</div>'+
-      '</div>'+
+      pitTodayHTML()+
       '<div class="bgrid2">'+
         boardSec('🙋 来店予定','MHS：車販来店',visit)+
         '<div class="bsec"><div class="bsec-h"><span>🚙 納車予定</span><span class="bsrc" style="background:rgba(55,138,221,.18);color:#7fb6f0">CarFlow連携</span></div>'+delivBody+'</div>'+
