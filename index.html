@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.43.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.43.1</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.43.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.43.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2364,8 +2364,8 @@ function dashOverdueCards(items){
 }
 /* チェック（承認待ち）カード（1件1カード） */
 function dashApprovalCards(items){
-  if(!items.length) return '';
   var head='<div class="dash-h">🔔 チェック（承認待ち） <span style="color:var(--acc2)">'+items.length+'</span></div>';
+  if(!items.length) return '<div class="dash-card">'+head+'<div style="font-size:12px;color:var(--text3);padding:4px 2px">承認待ちはありません。</div></div>';
   var cards=items.map(function(e){ var d=occState(e).done||{};
     return '<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid '+eventColor(e)+';border-radius:0 10px 10px 0;padding:9px 11px;margin-bottom:8px">'+
       '<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+srcIcon(e)+' '+esc(plainTitle(e))+' <span style="font-size:11px;color:var(--text3);font-weight:400">'+e.date.slice(5).replace('-','/')+'</span></div>'+
