@@ -567,7 +567,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.44.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.45.0</div>
   </div>
 </div>
 
@@ -585,7 +585,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.44.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.45.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -939,6 +939,7 @@ async function enterApp(member,user){
   subscribeShifts();
   subscribeDuties();
   subscribeRoutines();
+  subscribeCars();
   loadShiftAliases();
   subscribeNotes();
   subscribeLabels();
@@ -2612,6 +2613,20 @@ function noteDelete(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ to
 
 /* ===== Todayボード（店頭ボードの電子版） ===== */
 function togglePortrait(){ document.body.classList.toggle('board-portrait'); var on=document.body.classList.contains('board-portrait'); var sw=document.getElementById('portrait-sw'); if(sw)sw.classList.toggle('on',on); if(on)showView('brief'); }
+let boardCursor=new Date(TODAY);
+function boardMove(n){ boardCursor=addDays(boardCursor,n); renderBrief(); }
+function boardToday(){ boardCursor=new Date(TODAY); renderBrief(); }
+/* CarFlow 納車予定（col='delivery'）を読み取り（MHSは閲覧のみ） */
+var CAR_DELIVERIES=[]; var _carsUnsub=null;
+function carsCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('cars'); }
+function subscribeCars(){
+  if(_carsUnsub) return;
+  _carsUnsub=carsCol().where('col','==','delivery').onSnapshot(function(snap){
+    var a=[]; snap.forEach(function(d){ var c=d.data()||{}; c.id=d.id; a.push(c); }); CAR_DELIVERIES=a;
+    if(curView==='brief') renderBrief();
+  }, function(err){ console.warn('[MHS] cars(納車)購読エラー',err); });
+}
+var CARFLOW_BASE='https://carflow.kobayashi-motors.com';
 /* 入庫・返車は仮（PitFlow本実装で実データに差し替え） */
 var BOARD_MOCK_INTAKE=[
   {name:'ナカムラ様', car:'モコ/ラパン', time:'17:00', meta:'専務・車検・代MRワゴン'},
@@ -2637,40 +2652,55 @@ function boardSchedRow(e){
 function boardSec(title,src,list){ var body=list.length?list.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'<div style="font-size:12px;color:var(--text3)">なし</div>'; return '<div class="bsec"><div class="bsec-h"><span>'+title+'</span><span class="bsrc" style="background:var(--bg4);color:var(--text2)">'+esc(src)+'</span></div>'+body+'</div>'; }
 function boardCol(name,list){ var body=list.length?list.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'<div style="font-size:11.5px;color:var(--text3)">—</div>'; return '<div><div class="bcol-h">'+esc(name)+'</div>'+body+'</div>'; }
 function boardDeptCol(e){
+  if(e.kind==='all') return '全社';
   var nm='';
   if(e.kind==='dept') nm=e.dept||'';
   else if(e.kind==='personal' && e.who&&e.who.length){ var m=memberById(e.who[0]); nm=m?memberDeptName(m):''; }
+  if(/デザイン/.test(nm)) return 'デザイン';
   if(/整備|工場|1課|2課|ピット|PIT/i.test(nm)) return '整備';
-  if(/車販|販売|デザイン/.test(nm)) return '車販';
+  if(/車販|販売/.test(nm)) return '車販';
   if(/受付|事務/.test(nm)) return '受付';
-  return 'その他';
+  return '全社';
 }
+/* CarFlow納車予定の1行（指定日） */
+function carDelivRow(c){
+  var t=(c.deliveryTime&&c.deliveryTimeConfirmed)?(esc(c.deliveryTime)+'　'):'';
+  var nm=c.customerName?esc(c.customerName)+'様　':'';
+  return '<div class="brd" style="border-left-color:#378ADD" onclick="openLink(\''+CARFLOW_BASE+'/?car='+encodeURIComponent(c.num||'')+'\')"><div class="b1">'+t+nm+esc(c.maker||'')+' '+esc(c.model||'')+'</div><div class="b2">管理 '+esc(c.num||'—')+'・CarFlow</div></div>';
+}
+function openLink(u){ try{ window.open(u,'_blank','noopener'); }catch(e){} }
 function renderBrief(){
-  var bd=document.getElementById('brief-date'); if(bd)bd.textContent='（'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+' '+DOW[TODAY.getDay()]+'）';
   var host=document.getElementById('board-host'); if(!host)return;
-  var todayEvs=getEvents(TODAY,TODAY).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
-  var dutyChips=dutyOccurrences(TODAY,TODAY).map(function(o){ var who=(o.who&&o.who[0])?memberLabel(o.who[0]):'—'; return '<span class="bchip">'+esc(o.title)+'：'+esc(who)+'</span>'; }).join('') || '<span class="bchip" style="color:var(--text3)">今日の当番なし</span>';
-  var visit=todayEvs.filter(function(e){return e.etype==='車販来店';});
-  var deliv=todayEvs.filter(function(e){return e.etype==='納車予定';});
-  var moves=todayEvs.filter(function(e){return e.etype==='移動';});
-  var rest=todayEvs.filter(function(e){return ['車販来店','納車予定','移動'].indexOf(e.etype)<0;});
-  var cols={'整備':[],'車販':[],'受付':[],'その他':[]};
+  var bDate=new Date(boardCursor.getFullYear(),boardCursor.getMonth(),boardCursor.getDate());
+  var bStr=ymd(bDate), isToday=(bStr===ymd(TODAY));
+  var bd=document.getElementById('brief-date'); if(bd)bd.textContent='（'+(bDate.getMonth()+1)+'/'+bDate.getDate()+' '+DOW[bDate.getDay()]+'）';
+  var evs=getEvents(bDate,bDate).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+  var dutyChips=dutyOccurrences(bDate,bDate).map(function(o){ var who=(o.who&&o.who[0])?memberLabel(o.who[0]):'—'; return '<span class="bchip">'+esc(o.title)+'：'+esc(who)+'</span>'; }).join('') || '<span class="bchip" style="color:var(--text3)">当番なし</span>';
+  var visit=evs.filter(function(e){return e.etype==='車販来店';});
+  var delivMhs=evs.filter(function(e){return e.etype==='納車予定';});
+  var moves=evs.filter(function(e){return e.etype==='移動';});
+  var carDeliv=(CAR_DELIVERIES||[]).filter(function(c){return c.deliveryDate===bStr;}).sort(function(a,b){ var ta=(a.deliveryTimeConfirmed?a.deliveryTime:'~'), tb=(b.deliveryTimeConfirmed?b.deliveryTime:'~'); return ta>tb?1:-1; });
+  var rest=evs.filter(function(e){return ['車販来店','納車予定','移動'].indexOf(e.etype)<0;});
+  var cols={'全社':[],'整備':[],'車販':[],'デザイン':[],'受付':[]};
   rest.forEach(function(e){ cols[boardDeptCol(e)].push(e); });
   var mockBadge='<span class="bsrc" style="background:var(--bg4);color:var(--text2)">PitFlow（仮）</span>';
+  var nav='<button class="vh-btn" onclick="boardMove(-1)">◀ 前日</button><span class="bdate">'+(bDate.getMonth()+1)+'/'+bDate.getDate()+'（'+DOW[bDate.getDay()]+'）'+(isToday?'<span style="font-size:12px;color:var(--acc2);margin-left:6px">本日</span>':'')+'</span><button class="vh-btn" onclick="boardMove(1)">翌日 ▶</button>'+(isToday?'':'<button class="vh-btn" onclick="boardToday()">今日へ</button>');
+  var delivBody=(carDeliv.map(carDelivRow).join('')+ (delivMhs.length?delivMhs.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'')) || '<div style="font-size:12px;color:var(--text3)">なし</div>';
   host.innerHTML=
     '<div class="board">'+
-      '<div class="bhdr"><span class="bdate">'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+'（'+DOW[TODAY.getDay()]+'）</span>'+dutyChips+'</div>'+
+      '<div class="bhdr">'+nav+'<span style="flex:1"></span>'+dutyChips+'</div>'+
       '<div class="bgrid2">'+
         '<div class="bsec"><div class="bsec-h"><span>🚗 入庫</span>'+mockBadge+'</div>'+BOARD_MOCK_INTAKE.map(function(o,i){return boardMockRow('in',i,o);}).join('')+'<div style="font-size:10.5px;color:var(--text3);margin-top:4px">クリック→入庫済み（PitFlow本実装で接続・日時移動も対応予定）</div></div>'+
         '<div class="bsec"><div class="bsec-h"><span>↩ 返車</span>'+mockBadge+'</div>'+BOARD_MOCK_RETURN.map(function(o,i){return boardMockRow('rt',i,o);}).join('')+'</div>'+
       '</div>'+
       '<div class="bgrid2">'+
         boardSec('🙋 来店予定','MHS：車販来店',visit)+
-        boardSec('🚙 納車予定','CarFlow参照（仮）',deliv)+
+        '<div class="bsec"><div class="bsec-h"><span>🚙 納車予定</span><span class="bsrc" style="background:rgba(55,138,221,.18);color:#7fb6f0">CarFlow連携</span></div>'+delivBody+'</div>'+
       '</div>'+
       '<div class="bsec"><div class="bsec-h"><span>🔧 車検予定</span><span class="bsrc" style="background:var(--bg4);color:var(--text2)">PitFlow車検（準備中）</span></div><div style="font-size:12px;color:var(--text3)">PitFlowの車検スケジュール搭載後にここへ表示します。</div>'+(moves.length?('<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px"><div class="bcol-h">📍 移動類</div>'+moves.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join('')+'</div>'):'')+'</div>'+
       '<div class="bsec"><div class="bsec-h"><span>📋 各部署の予定</span><span style="font-size:11px;color:var(--text3);font-weight:400">終わったらクリック→済</span></div>'+
-        '<div class="bgrid4">'+boardCol('整備',cols['整備'])+boardCol('車販',cols['車販'])+boardCol('受付',cols['受付'])+boardCol('その他（全社）',cols['その他'])+'</div>'+
+        '<div style="margin-bottom:10px"><div class="bcol-h">🏢 全社</div>'+(cols['全社'].length?cols['全社'].sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'<div style="font-size:11.5px;color:var(--text3)">—</div>')+'</div>'+
+        '<div class="bgrid4">'+boardCol('整備',cols['整備'])+boardCol('車販',cols['車販'])+boardCol('デザイン',cols['デザイン'])+boardCol('受付',cols['受付'])+'</div>'+
       '</div>'+
     '</div>';
 }
