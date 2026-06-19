@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.41.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.41.2</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -810,7 +810,7 @@
 
 <!-- 当番 追加/編集モーダル -->
 <div class="mbg" id="duty-modal" onclick="if(event.target.id==='duty-modal')closeDutyForm()">
-  <div class="mbox wide">
+  <div class="mbox wide ef">
     <div class="mhead"><span class="mt" id="duty-modal-title">当番を追加</span><button class="x" onclick="closeDutyForm()">✕</button></div>
     <div class="mbody scroll" id="duty-modal-body"></div>
     <div class="mfoot">
@@ -824,7 +824,7 @@
 
 <!-- ルーティン業務 追加/編集モーダル -->
 <div class="mbg" id="routine-modal" onclick="if(event.target.id==='routine-modal')closeRoutineForm()">
-  <div class="mbox wide">
+  <div class="mbox wide ef">
     <div class="mhead"><span class="mt" id="routine-modal-title">ルーティンを追加</span><button class="x" onclick="closeRoutineForm()">✕</button></div>
     <div class="mbody scroll" id="routine-modal-body"></div>
     <div class="mfoot">
@@ -1397,13 +1397,19 @@ function routineRenderForm(){
   else if(RF.kind==='personal'){ lvDetail='<div style="margin-top:8px">'+rfWhoPicker+'</div>'; }
   var sw=['','#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#ec4899','#64748b'].map(function(c){ var label=(c===''); return '<span onclick="rfColor(\''+c+'\')" title="'+(label?'自動':'')+'" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:'+(c||'var(--bg3)')+';cursor:pointer;margin-right:6px;font-size:10px;color:#fff;box-shadow:'+(RF.color===c?'0 0 0 3px var(--bg),0 0 0 5px '+(c||'#64748b'):'none')+'">'+(label?'自':'')+'</span>'; }).join('');
   b.innerHTML=
-    '<div class="fld"><label>業務名</label><input type="text" value="'+esc(RF.name||'')+'" placeholder="例：受付：月末支払 / 全体：月例報告会" oninput="rfText(\'name\',this.value)" style="width:100%"></div>'+
-    '<div class="fld"><label>頻度</label>'+freqSel+'<span style="font-size:11px;color:var(--text3);margin-left:8px">'+esc(anchorNote)+'</span>'+dowPick+'</div>'+
-    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">開始日 <input type="date" value="'+esc(RF.date||'')+'" onchange="rfText(\'date\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(RF.until||'')+'" onchange="rfText(\'until\',this.value)" style="margin-left:4px"></label></div>'+
-    '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
-    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(RF.time||'')+'" onchange="rfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(RF.endTime||'')+'" onchange="rfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
-    '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
-    '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(RF.memo||'')+'" placeholder="補足があれば" oninput="rfText(\'memo\',this.value)" style="width:100%"></div>';
+    '<div class="ef-2col">'+
+      '<div class="ef-c">'+
+        '<div class="fld"><label>業務名</label><input type="text" value="'+esc(RF.name||'')+'" placeholder="例：受付：月末支払 / 全体：月例報告会" oninput="rfText(\'name\',this.value)" style="width:100%"></div>'+
+        '<div class="fld"><label>頻度</label>'+freqSel+'<span style="font-size:11px;color:var(--text3);margin-left:8px">'+esc(anchorNote)+'</span>'+dowPick+'</div>'+
+        '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">開始日 <input type="date" value="'+esc(RF.date||'')+'" onchange="rfText(\'date\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(RF.until||'')+'" onchange="rfText(\'until\',this.value)" style="margin-left:4px"></label></div>'+
+        '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(RF.time||'')+'" onchange="rfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(RF.endTime||'')+'" onchange="rfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
+        '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
+        '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(RF.memo||'')+'" placeholder="補足があれば" oninput="rfText(\'memo\',this.value)" style="width:100%"></div>'+
+      '</div>'+
+      '<div class="ef-c">'+
+        '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
+      '</div>'+
+    '</div>';
 }
 function saveRoutineForm(){
   if(!RF)return;
@@ -1525,21 +1531,29 @@ function dutyRenderForm(){
       '</div>';
   }
   b.innerHTML=
-    '<div class="fld"><label>当番名</label><input id="df-name" type="text" value="'+esc(DF.name||'')+'" placeholder="例：ゴミ出し当番" oninput="dfText(\'name\',this.value)" style="width:100%"></div>'+
-    '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
-    '<div class="fld"><label>曜日（複数可）</label><div class="mpick-chips">'+dows+'</div></div>'+
-    '<div class="fld"><label>担当の決め方</label><div class="seg" style="display:inline-flex">'+
-      '<button class="'+(DF.mode==='fixed'?'active':'')+'" onclick="dfMode(\'fixed\')">曜日ごとに固定</button>'+
-      '<button class="'+(DF.mode==='rotate'?'active':'')+'" onclick="dfMode(\'rotate\')">担当を回す（ローテ）</button>'+
-    '</div></div>'+
-    '<div class="fld" style="background:var(--bg3);border-radius:10px;padding:12px">'+assign+'</div>'+
-    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap">'+
-      '<label style="font-size:13px">開始日 <input type="date" value="'+esc(DF.start||'')+'" onchange="dfText(\'start\',this.value)" style="margin-left:4px"></label>'+
-      '<label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(DF.until||'')+'" onchange="dfText(\'until\',this.value)" style="margin-left:4px"></label>'+
-      '<label style="font-size:13px">間隔 <select onchange="dfInterval(this.value)" style="margin-left:4px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 6px"><option value="1"'+(DF.interval===1?' selected':'')+'>毎週</option><option value="2"'+(DF.interval===2?' selected':'')+'>隔週</option><option value="3"'+(DF.interval===3?' selected':'')+'>3週ごと</option><option value="4"'+(DF.interval===4?' selected':'')+'>4週ごと</option></select></label>'+
-    '</div>'+
-    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
-    '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>';
+    '<div class="ef-2col">'+
+      '<div class="ef-c">'+
+        '<div class="fld"><label>当番名</label><input id="df-name" type="text" value="'+esc(DF.name||'')+'" placeholder="例：ゴミ出し当番" oninput="dfText(\'name\',this.value)" style="width:100%"></div>'+
+        '<div class="fld"><label>曜日（複数可）</label><div class="mpick-chips">'+dows+'</div></div>'+
+        '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap">'+
+          '<label style="font-size:13px">開始日 <input type="date" value="'+esc(DF.start||'')+'" onchange="dfText(\'start\',this.value)" style="margin-left:4px"></label>'+
+          '<label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(DF.until||'')+'" onchange="dfText(\'until\',this.value)" style="margin-left:4px"></label>'+
+        '</div>'+
+        '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap">'+
+          '<label style="font-size:13px">間隔 <select onchange="dfInterval(this.value)" style="margin-left:4px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 6px"><option value="1"'+(DF.interval===1?' selected':'')+'>毎週</option><option value="2"'+(DF.interval===2?' selected':'')+'>隔週</option><option value="3"'+(DF.interval===3?' selected':'')+'>3週ごと</option><option value="4"'+(DF.interval===4?' selected':'')+'>4週ごと</option></select></label>'+
+        '</div>'+
+        '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
+        '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
+        '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>'+
+      '</div>'+
+      '<div class="ef-c">'+
+        '<div class="fld"><label>担当の決め方</label><div class="seg" style="display:inline-flex">'+
+          '<button class="'+(DF.mode==='fixed'?'active':'')+'" onclick="dfMode(\'fixed\')">曜日ごとに固定</button>'+
+          '<button class="'+(DF.mode==='rotate'?'active':'')+'" onclick="dfMode(\'rotate\')">担当を回す（ローテ）</button>'+
+        '</div></div>'+
+        '<div class="fld" style="background:var(--bg3);border-radius:10px;padding:12px">'+assign+'</div>'+
+      '</div>'+
+    '</div>';
 }
 function saveDutyForm(){
   if(!DF)return;
