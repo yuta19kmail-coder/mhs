@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.41.5</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.42.0</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.5</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.42.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -1218,7 +1218,7 @@ function subscribeDuties(){
   _dutyUnsub=dutyCol().onSnapshot(function(snap){
     DUTIES=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; DUTIES.push(x); });
     DUTIES.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
-    if(curView==='duty'||curView==='master') showView(curView);
+    if(curView==='duty'||curView==='master'||curView==='dash') showView(curView);
     refreshDayModal();
   }, function(err){ console.error('[MHS] dutyDefs購読エラー',err); });
 }
@@ -1259,7 +1259,8 @@ function dutyOccurrences(start,end){
       }
       out.push({ id:'duty_'+D.id+'_'+ds, source:'duty', layer:'duty', kind:'duty', dutyId:D.id,
         date:ds, time:D.time||'', endTime:D.endTime||'', allDay:!D.time,
-        title:D.name||'当番', who: who?[who]:[], color:D.color||'#0ea5e9', place:D.place||'', memo:D.memo||'' });
+        title:D.name||'当番', who: who?[who]:[], color:D.color||'#0ea5e9', place:D.place||'', memo:D.memo||'',
+        todo:!!D.todo, approvers:(D.approvers||[]).slice(), done:(D.doneDates&&D.doneDates[ds])||null, approved:(D.approvedDates&&D.approvedDates[ds])||null });
     }
   });
   return out;
@@ -1277,7 +1278,7 @@ function subscribeRoutines(){
   _routineUnsub=routineCol().onSnapshot(function(snap){
     ROUTINES=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; ROUTINES.push(x); });
     ROUTINES.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
-    if(curView==='routine'||curView==='master') showView(curView);
+    if(curView==='routine'||curView==='master'||curView==='dash') showView(curView);
     refreshDayModal();
   }, function(err){ console.error('[MHS] routineDefs購読エラー',err); });
 }
@@ -1303,10 +1304,122 @@ function routineOccurrences(start,end){
       if(!matchRepeat(r.repeat,anchor,d)) continue;
       out.push({ id:'rt_'+r.id+'_'+ds, source:'routine', layer:'routine', kind:r.kind||'all', routineId:r.id,
         date:ds, time:r.time||'', endTime:r.endTime||'', allDay:!r.time, title:r.name||'ルーティン',
-        who:(r.who||[]).slice(), color:r.color||'', dept:r.dept||'', place:r.place||'', memo:r.memo||'' });
+        who:(r.who||[]).slice(), color:r.color||'', dept:r.dept||'', place:r.place||'', memo:r.memo||'',
+        todo:!!r.todo, approvers:(r.approvers||[]).slice(), done:(r.doneDates&&r.doneDates[ds])||null, approved:(r.approvedDates&&r.approvedDates[ds])||null });
     }
   });
   return out;
+}
+
+/* ===== TODO完了通知＆承認（スケジュール/当番/ルーティン共通） =====
+   実行者が「済」にする → 承認者（＝担当の上長・自由に変更可）へ完了通知 → 承認者orマスターがOK → 完全に完了。 */
+const MHS_MASTER_UID='cIZsMOEsaaWWVVM957TFe6tvql53';   // マスター＝ゆうた（OK承認は承認者＋マスターのみ）
+function isMaster(){ return !!(window.fb.currentUser && window.fb.currentUser.uid===MHS_MASTER_UID); }
+function myName(){ return (window.fb.currentMember&&window.fb.currentMember.name)||(window.fb.currentUser&&(window.fb.currentUser.displayName||window.fb.currentUser.email))||''; }
+/* 担当(coreMember id配列)→上長(managerId)を集めて承認者候補に */
+function autoApprovers(whoArr){ var out=[]; (whoArr||[]).forEach(function(id){ var m=memberById(id); var mg=m&&m.managerId; if(mg && out.indexOf(mg)<0) out.push(mg); }); return out; }
+function isApproverOf(approvers){ var me=myCoreMember(); if(!me)return false; return (approvers||[]).indexOf(me.id)>=0; }
+function canApprove(approvers){ return isMaster() || isApproverOf(approvers); }
+/* レンダリング済みoccから TODO状態を統一的に取り出す */
+function occState(e){
+  if(!e) return {todo:false,approvers:[],done:null,approved:null};
+  if(e.source==='duty'||e.source==='routine'){ return {todo:!!e.todo, approvers:e.approvers||[], done:e.done||null, approved:e.approved||null}; }
+  var approved = occIsRec(e) ? ((e.approvedDates&&e.approvedDates[e.date])||null) : (e.approvedBy?{by:e.approvedBy,at:e.approvedAt}:null);
+  return {todo:!!e.todo, approvers:e.approvers||[], done:occDoneInfo(e), approved:approved};
+}
+/* 完了の段階：'none'(TODOでない) / 'open'(未完了) / 'reported'(実行済・承認待ち) / 'done'(承認済 or 承認者なしで完了) */
+function todoStage(e){ var st=occState(e); if(!st.todo)return 'none'; if(!st.done)return 'open'; if(st.approved)return 'done'; if(!st.approvers||!st.approvers.length)return 'done'; return 'reported'; }
+function _defFor(e){ if(e.source==='duty')return {def:dutyById(e.dutyId), save:dutySave}; if(e.source==='routine')return {def:routineById(e.routineId), save:routineSave}; return null; }
+/* 実行完了を報告（済）。記録＝実行者＋日時＋メモ */
+function todoMarkDone(e, note){
+  var who=myName(), at=new Date().toISOString(), rec={by:who, at:at, note:note||''};
+  if(e.source==='duty'||e.source==='routine'){ var df=_defFor(e); if(!df||!df.def)return; df.def.doneDates=Object.assign({},df.def.doneDates); df.def.doneDates[e.date]=rec; df.save(df.def); return; }
+  var s=USER_EVENTS.find(function(x){return x.id===e.id;})||e;
+  if(occIsRec(s)){ s.doneDates=s.doneDates||{}; s.doneDates[e.date]=rec; s.todo=true; schedSave(s); }
+  else { s.done=true; s.reportNote=note||''; s.reportedAt=at; s.reportedBy=who; s.todo=true; schedSave(s); }
+}
+function todoUnDone(e){
+  if(e.source==='duty'||e.source==='routine'){ var df=_defFor(e); if(!df||!df.def)return; df.def.doneDates=Object.assign({},df.def.doneDates); df.def.doneDates[e.date]=null; df.def.approvedDates=Object.assign({},df.def.approvedDates); df.def.approvedDates[e.date]=null; df.save(df.def); return; }
+  var s=USER_EVENTS.find(function(x){return x.id===e.id;})||e;
+  if(occIsRec(s)){ s.doneDates=s.doneDates||{}; s.doneDates[e.date]=null; s.approvedDates=s.approvedDates||{}; s.approvedDates[e.date]=null; schedSave(s); }
+  else { s.done=false; s.reportNote=''; s.reportedAt=''; s.reportedBy=''; s.approvedBy=''; s.approvedAt=''; schedSave(s); }
+}
+/* 承認（OK）。記録＝承認者＋日時 */
+function todoApprove(e){
+  var st=occState(e); if(!canApprove(st.approvers)){ toast('承認できるのは承認者本人かマスターだけです'); return; }
+  var who=myName(), at=new Date().toISOString(), rec={by:who, at:at};
+  if(e.source==='duty'||e.source==='routine'){ var df=_defFor(e); if(!df||!df.def)return; df.def.approvedDates=Object.assign({},df.def.approvedDates); df.def.approvedDates[e.date]=rec; df.save(df.def); return; }
+  var s=USER_EVENTS.find(function(x){return x.id===e.id;})||e;
+  if(occIsRec(s)){ s.approvedDates=s.approvedDates||{}; s.approvedDates[e.date]=rec; schedSave(s); }
+  else { s.approvedBy=who; s.approvedAt=at; schedSave(s); }
+}
+function todoUnApprove(e){
+  if(e.source==='duty'||e.source==='routine'){ var df=_defFor(e); if(!df||!df.def)return; df.def.approvedDates=Object.assign({},df.def.approvedDates); df.def.approvedDates[e.date]=null; df.save(df.def); return; }
+  var s=USER_EVENTS.find(function(x){return x.id===e.id;})||e;
+  if(occIsRec(s)){ s.approvedDates=s.approvedDates||{}; s.approvedDates[e.date]=null; schedSave(s); }
+  else { s.approvedBy=''; s.approvedAt=''; schedSave(s); }
+}
+/* この予定が「期限到来で未完了」か（未完了一覧用）。時刻あり＝終了時刻を過ぎたら／終日＝営業終了の1時間前から。 */
+function todoOverdue(e){
+  if(todoStage(e)!=='open') return false;
+  var now=new Date(), today=ymd(now);
+  if(e.date<today) return true;            // 過去日で未完了
+  if(e.date>today) return false;           // 未来は対象外
+  // 当日：時刻で判定
+  var endHM = e.endTime||e.time;
+  var bh=bizHours();
+  if(!e.time || e.time==='終日' || e.time==='—'){ return (now.getHours()+now.getMinutes()/60) >= (bh.e-1); }  // 終日＝終業1h前
+  if(e.time==='AM'){ return now.getHours()>=12; }
+  if(e.time==='PM'){ return (now.getHours()+now.getMinutes()/60) >= bh.e; }
+  var en=parseHM(e.endTime)||((parseHM(e.time)||0)+1); return (now.getHours()+now.getMinutes()/60) >= en;
+}
+/* 承認者ピッカー（部署ごと・担当ピッカーと同じ見た目）。fn＝トグル関数名 */
+function approverPickerInner(approvers, fn){ return whoPickerHTML(function(m){return (approvers||[]).indexOf(m.id)>=0;}, function(m){return fn+'(\''+escA(m.id)+'\')';}, 18); }
+/* 当番の担当メンバー（承認者の自動算出用）＝曜日固定の全員 or ローテの全員 */
+function dutyMembers(D){ if(!D)return []; if(D.mode==='fixed'){ var fm=D.fixedMap||{}; return Object.keys(fm).map(function(k){return fm[k];}).filter(Boolean); } return (D.roster||[]).slice(); }
+/* 予定詳細に出す「実行報告＋承認」バー（スケジュール/当番/ルーティン共通） */
+function todoActAttr(e, action){ var j=JSON.stringify(e).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); return jsAttr("todoAct('"+action+"','"+j+"')"); }
+function todoBarHTML(e){
+  var st=occState(e); if(!st.todo) return '';
+  var stage=todoStage(e);
+  var apNames=(st.approvers||[]).map(function(id){var m=memberById(id);return m?memSurname(m):id;}).join('、')||'（未設定＝報告で完了）';
+  var h='<div class="donebar'+(stage==='done'?' is-done':'')+'" style="margin-top:12px">';
+  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:4px">✅ 承認者：'+esc(apNames)+'</div>';
+  if(stage==='open'){
+    h+='<div class="dst">⬜ 未完了（実行できたら報告）</div>';
+    h+='<textarea id="todo-note" placeholder="実行内容・結果をひと言（任意）"></textarea>';
+    h+='<button class="btn-done" onclick="'+todoActAttr(e,'done')+'">✅ 実行完了を報告</button>';
+  } else {
+    var d=st.done||{};
+    h+='<div class="dst">✅ 実行済み'+(stage==='reported'?'（承認待ち）':'（完了）')+'</div>';
+    h+='<div class="repnote">'+(d.by?esc(d.by)+'・':'')+(d.at?fmtReportTs(d.at):'')+(d.note?'<br>📝 '+esc(d.note):'')+'</div>';
+    if(stage==='reported'){
+      if(canApprove(st.approvers)) h+='<button class="btn-done" style="margin-top:6px" onclick="'+todoActAttr(e,'approve')+'">👍 OK（承認して完了）</button>';
+      else h+='<div style="font-size:11px;color:#f59e0b;margin-top:4px">承認者のOK待ちです。</div>';
+    } else if(st.approved){
+      h+='<div class="repnote" style="color:#22c55e">👍 承認：'+(st.approved.by?esc(st.approved.by)+'・':'')+(st.approved.at?fmtReportTs(st.approved.at):'')+'</div>';
+      if(canApprove(st.approvers)) h+='<button class="btn-ghost" style="margin-top:6px" onclick="'+todoActAttr(e,'unapprove')+'">↩ 承認を取消</button>';
+    }
+    h+='<button class="btn-ghost" style="margin-top:6px" onclick="'+todoActAttr(e,'undone')+'">↩ 未完了に戻す</button>';
+  }
+  h+='</div>';
+  return h;
+}
+function todoAct(action, json){
+  var e=JSON.parse(json);
+  if(action==='done'){ var note=((document.getElementById('todo-note')||{}).value||'').trim(); todoMarkDone(e,note); toast('実行完了を報告しました'); }
+  else if(action==='undone'){ if(!confirm('実行完了を取り消して未完了に戻しますか？'))return; todoUnDone(e); toast('未完了に戻しました'); }
+  else if(action==='approve'){ todoApprove(e); toast('承認しました（完了）'); }
+  else if(action==='unapprove'){ if(!confirm('承認を取り消しますか？'))return; todoUnApprove(e); toast('承認を取り消しました'); }
+  _reopenDetail(e);
+  if(curView==='dash') renderDash();
+}
+function _reopenDetail(e){
+  if(e.source==='duty'){ openDuty(e.dutyId,e.date); return; }
+  if(e.source==='routine'){ openRoutine(e.routineId,e.date); return; }
+  var s=USER_EVENTS.find(function(x){return x.id===e.id;}); if(!s){ closeEv(); return; }
+  var occ = occIsRec(s) ? Object.assign({},s,{date:e.date,_occ:true}) : s;
+  openEv(JSON.stringify(occ));
 }
 
 /* ===== ルーティン業務：ビュー＆編集UI ===== */
@@ -1334,12 +1447,14 @@ function routineDeleteConfirm(id){ var r=routineById(id); if(!r)return; if(!conf
 function openRoutine(routineId,dateStr){
   var r=routineById(routineId); if(!r){ toast('ルーティンが見つかりません'); return; }
   var d=new Date(dateStr+'T00:00:00');
+  var occs=routineOccurrences(d,d), occ=null; for(var i=0;i<occs.length;i++){ if(occs[i].routineId===routineId){ occ=occs[i]; break; } }
   document.getElementById('ev-title').textContent='♻️ '+(r.name||'ルーティン');
   document.getElementById('ev-body').innerHTML=
     '<div class="fr"><span class="k">日付</span><span>'+dateStr+'（'+DOW[d.getDay()]+'）'+(r.time?'　'+esc(r.time)+(r.endTime?'〜'+esc(r.endTime):''):'　終日')+'</span></div>'+
     '<div class="fr"><span class="k">内容</span><span style="font-size:12px">'+esc(routineSummary(r))+'</span></div>'+
     ((r.who&&r.who.length)?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(r.who,dateStr)+'</span></div>':'')+
     (r.memo?'<div class="fr"><span class="k">メモ</span><span>'+esc(r.memo)+'</span></div>':'')+
+    (occ?todoBarHTML(occ):'')+
     '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
       '<button class="btn-del" onclick="routineSkipOcc(\''+escA(routineId)+'\',\''+escA(dateStr)+'\')">🚫 この回だけ消す</button>'+
       '<button class="btn-ghost" onclick="closeEv();openRoutineForm(\''+escA(routineId)+'\')">⚙️ ルーティンの設定を編集</button>'+
@@ -1354,7 +1469,7 @@ function openRoutineForm(routineId){
   var r=routineId?routineById(routineId):null;
   if(r){ RF=JSON.parse(JSON.stringify(r)); if(!RF.repeat)RF.repeat={freq:'monthlyDay'}; document.getElementById('routine-modal-title').textContent='ルーティンを編集'; document.getElementById('routine-modal-del').style.display=''; }
   else {
-    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'' };
+    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'', todo:false, approvers:[] };
     document.getElementById('routine-modal-title').textContent='ルーティンを追加'; document.getElementById('routine-modal-del').style.display='none';
   }
   routineRenderForm();
@@ -1366,6 +1481,9 @@ function rfFreq(v){ RF.repeat=RF.repeat||{}; RF.repeat.freq=v; if(v!=='weekly'&&
 function rfDow(dw){ RF.repeat=RF.repeat||{}; RF.repeat.days=(RF.repeat.days||[]).slice(); var i=RF.repeat.days.indexOf(dw); if(i>=0)RF.repeat.days.splice(i,1); else RF.repeat.days.push(dw); RF.repeat.days.sort(function(a,b){return a-b;}); routineRenderForm(); }
 function rfKind(k){ RF.kind=k; routineRenderForm(); }
 function rfDept(v){ RF.dept=v; }
+function rfTodo(){ RF.todo=!RF.todo; if(RF.todo&&(!RF.approvers||!RF.approvers.length))RF.approvers=autoApprovers(RF.who); routineRenderForm(); }
+function rfAppToggle(id){ RF.approvers=(RF.approvers||[]).slice(); var i=RF.approvers.indexOf(id); if(i>=0)RF.approvers.splice(i,1); else RF.approvers.push(id); routineRenderForm(); }
+function rfAutoApprovers(){ RF.approvers=autoApprovers(RF.who); routineRenderForm(); }
 /* 部署チップを選ぶ＝スケジュールと同じ挙動：その部署のメンバーを担当に自動セット */
 function rfDeptPick(nm){ RF.dept=nm; var dp=deptByName(nm); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length)RF.who=ids; } routineRenderForm(); }
 function rfWho(id){ RF.who=(RF.who||[]).slice(); var i=RF.who.indexOf(id); if(i>=0)RF.who.splice(i,1); else RF.who.push(id); routineRenderForm(); }
@@ -1408,6 +1526,8 @@ function routineRenderForm(){
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
+        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.todo?' on':'')+'" onclick="rfTodo()"></span><span style="font-weight:600;font-size:13px">この業務をTODOにする（完了通知＆承認）</span></label></div>'+
+        (RF.todo?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(RF.approvers,'rfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="rfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
       '</div>'+
     '</div>';
 }
@@ -1451,6 +1571,7 @@ function openDuty(dutyId,dateStr){
     '<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap;align-items:center">'+(who?whoLineAvatars([who],dateStr):'<span style="color:var(--text3)">未定</span>')+(overridden?'　<span class="rbadge">この回だけ変更</span>':'')+'</span></div>'+
     '<div class="fr"><span class="k">組み方</span><span style="font-size:12px">'+esc(dutySummary(D))+'</span></div>'+
     (D.memo?'<div class="fr"><span class="k">メモ</span><span>'+esc(D.memo)+'</span></div>':'')+
+    (occ?todoBarHTML(occ):'')+
     '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">'+
       '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">この回（'+dateStr.slice(5).replace('-','/')+'）だけ調整：</div>'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
@@ -1487,7 +1608,7 @@ function openDutyForm(dutyId){
   var D=dutyId?dutyById(dutyId):null;
   if(D){ DF=JSON.parse(JSON.stringify(D)); document.getElementById('duty-modal-title').textContent='当番を編集'; document.getElementById('duty-modal-del').style.display=''; }
   else {
-    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'' };
+    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'', todo:false, approvers:[] };
     document.getElementById('duty-modal-title').textContent='当番を追加'; document.getElementById('duty-modal-del').style.display='none';
   }
   dutyRenderForm();
@@ -1498,6 +1619,9 @@ function dfDow(dw){ var i=DF.dows.indexOf(dw); if(i>=0)DF.dows.splice(i,1); else
 function dfMode(m){ DF.mode=m; dutyRenderForm(); }
 function dfColor(c){ DF.color=c; dutyRenderForm(); }
 function dfFixed(dw,v){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=v; }
+function dfTodo(){ DF.todo=!DF.todo; if(DF.todo&&(!DF.approvers||!DF.approvers.length))DF.approvers=autoApprovers(dutyMembers(DF)); dutyRenderForm(); }
+function dfAppToggle(id){ DF.approvers=(DF.approvers||[]).slice(); var i=DF.approvers.indexOf(id); if(i>=0)DF.approvers.splice(i,1); else DF.approvers.push(id); dutyRenderForm(); }
+function dfAutoApprovers(){ DF.approvers=autoApprovers(dutyMembers(DF)); dutyRenderForm(); }
 function dfFixedSet(dw,id){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=(DF.fixedMap[String(dw)]===id?'':id); dutyRenderForm(); }
 function dfRosterToggle(id){ DF.roster=(DF.roster||[]).slice(); var i=DF.roster.indexOf(id); if(i>=0)DF.roster.splice(i,1); else DF.roster.push(id); dutyRenderForm(); }
 function dfRotateUnit(u){ DF.rotateUnit=u; dutyRenderForm(); }
@@ -1545,6 +1669,8 @@ function dutyRenderForm(){
         '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
         '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
         '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>'+
+        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.todo?' on':'')+'" onclick="dfTodo()"></span><span style="font-weight:600;font-size:13px">この当番をTODOにする（完了通知＆承認）</span></label></div>'+
+        (DF.todo?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(DF.approvers,'dfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="dfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>担当の決め方</label><div class="seg" style="display:inline-flex">'+
@@ -2203,8 +2329,43 @@ function dashEventList(evs){
     return '<div class="dl-day"><div class="dl-date">'+lbl+'</div>'+rows+'</div>';
   }).join('');
 }
+/* ===== ダッシュボード：完了通知＆未完了一覧 ===== */
+function srcIcon(e){ return e.source==='duty'?'🔁':e.source==='routine'?'♻️':(e.layer==='deadline'?'⏰':'📅'); }
+function plainTitle(e){ return (e.prefix?e.prefix+'：':'')+(e.title||''); }
+function gatherTodos(start,end){
+  var list=[];
+  getEvents(start,end).forEach(function(e){ if(e.source==='manual' && e.todo) list.push(e); });
+  dutyOccurrences(start,end).forEach(function(e){ if(e.todo) list.push(e); });
+  routineOccurrences(start,end).forEach(function(e){ if(e.todo) list.push(e); });
+  return list;
+}
+function dashApprove(json){ var e=JSON.parse(json); todoApprove(e); toast('承認しました（完了）'); renderDash(); }
+function dashApproveAttr(e){ var j=JSON.stringify(e).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); return jsAttr("dashApprove('"+j+"')"); }
+function todoCardsHTML(){
+  var winS=addDays(TODAY,-60), winE=addDays(TODAY,1);
+  var todos=gatherTodos(winS,winE);
+  var pending=todos.filter(function(e){ return todoStage(e)==='reported' && canApprove(occState(e).approvers); });
+  var overdue=todos.filter(function(e){ return todoOverdue(e); });
+  if(dashMode==='self'){ var me=myCoreMember(); overdue=overdue.filter(function(e){ return _dashEvMatchesMember(e,me) || (me&&(e.approvers||[]).indexOf(me.id)>=0); }); }
+  pending.sort(function(a,b){ return a.date<b.date?-1:1; });
+  overdue.sort(function(a,b){ return a.date<b.date?-1:1; });
+  var html='';
+  if(pending.length){
+    var rows=pending.map(function(e){ var d=occState(e).done||{};
+      return '<div class="ckl-row"><span class="ckl-tx">'+srcIcon(e)+' <b>'+esc(plainTitle(e))+'</b> <span style="color:var(--text3);font-size:11px">'+e.date.slice(5).replace('-','/')+'</span><br><span style="font-size:11px;color:var(--text2)">実行：'+esc(d.by||'')+(d.at?'・'+fmtReportTs(d.at):'')+(d.note?'／'+esc(d.note):'')+'</span></span><button class="ckl-ok" onclick="'+dashApproveAttr(e)+'">👍 OK</button></div>';
+    }).join('');
+    html+='<div class="dash-card"><div class="dash-h">🔔 完了通知（承認待ち '+pending.length+'）<span style="font-size:11px;color:var(--text3);font-weight:400">　あなたがOKすると完了</span></div>'+rows+'</div>';
+  }
+  var orows = overdue.length ? overdue.map(function(e){
+      var tm=(e.time&&e.time!=='終日'&&e.time!=='—')?(' '+esc(e.time)):' 終日';
+      return '<div class="ckl-row" style="cursor:pointer" onclick="'+openChipAttr(e)+'"><span class="ckl-tx">'+srcIcon(e)+' <b>'+esc(plainTitle(e))+'</b> <span style="color:var(--text3);font-size:11px">'+e.date.slice(5).replace('-','/')+tm+'</span> '+whoAvatars(e.who,14,e.date)+'</span><span style="color:#ef4444;font-size:11px;font-weight:700;flex-shrink:0">未完了</span></div>';
+    }).join('') : '<div class="ckl-empty">期限の来た未完了はありません。</div>';
+  html+='<div class="dash-card"><div class="dash-h">⏰ 未完了一覧（'+overdue.length+'）<span style="font-size:11px;color:var(--text3);font-weight:400">　押すと詳細→実行報告</span></div>'+orows+'</div>';
+  return html;
+}
 function renderDash(){
   var host=document.getElementById('dash-body'); if(!host)return;
+  var todoCards=todoCardsHTML();
   var evs=getEvents(TODAY,addDays(TODAY,13)).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
   evs.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:(a.time>b.time?1:-1); });
   var noteCard='<div class="dash-card"><div class="dash-h">🗒️ 付箋（'+(dashMode==='self'?'自分宛て':'全体')+'）</div>'+dashNotesHTML(dashMode)+'</div>';
@@ -2216,11 +2377,13 @@ function renderDash(){
       if(e.kind==='dept' && myDeptName && e.dept===myDeptName) return true;
       return (e.who||[]).some(function(w){ var m=memberById(w); return m && myDept && memberDeptIds(m).deptId===myDept; }); });
     host.innerHTML=
+      todoCards+
       '<div class="dash-card"><div class="dash-h">👤 自分のスケジュール'+(me?'（'+esc(memDisp(me))+'）':' <span style="font-size:11px;color:#f59e0b">（あなたのアカウントが名簿と未紐付けです）</span>')+'</div>'+dashEventList(mine)+'</div>'+
       '<div class="dash-card"><div class="dash-h">🏢 所属部署のスケジュール'+(myDeptName?'（'+esc(myDeptName)+'）':'')+'</div>'+dashEventList(deptEvs)+'</div>'+
       noteCard;
   } else {
     host.innerHTML=
+      todoCards+
       '<div class="dash-card"><div class="dash-h">📅 全体のスケジュール（今後2週間）</div>'+dashEventList(evs)+'</div>'+
       noteCard;
   }
@@ -2604,13 +2767,7 @@ function openEv(json){
   var dateTxt = (e.endDate && e.endDate>_spStart) ? (_spStart+' 〜 '+e.endDate) : e.date;
   var remArr=remindList(e.remind,e.remindCustom,_spStart);
   var remRow=(manual && remArr.length)?('<div class="fr"><span class="k">🔔通知</span><span>'+remArr.map(function(x){return '<span class="rbadge">🔔 '+x.label+'・'+remDate(x.t)+(x.morning?' 朝':'')+'</span>';}).join('')+'</span></div>'):'';
-  var todoBar='';
-  if(manual && e.todo){
-    var _rec=(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none');
-    var _di=occDoneInfo(e);
-    if(_di){ todoBar='<div class="donebar is-done"><div class="dst">✅ 実行完了（報告済み）'+(_rec?'　<span style="font-weight:400;color:var(--text3);font-size:11px">'+esc(e.date)+' の回</span>':'')+'</div><div class="repnote">'+(_di.by?esc(_di.by)+'・':'')+(_di.at?fmtReportTs(_di.at):'')+(_di.note?'<br>📝 '+esc(_di.note):'')+'</div><button class="btn-ghost" style="margin-top:8px" onclick="undoDoneFromView()">↩ 未完了に戻す</button></div>'; }
-    else { todoBar='<div class="donebar"><div class="dst">⬜ 未完了（実行完了の報告待ち）'+(_rec?'　<span style="font-weight:400;color:var(--text3);font-size:11px">'+esc(e.date)+' の回</span>':'')+'</div><textarea id="ev-repnote" placeholder="実行内容・結果をひと言（任意）"></textarea><button class="btn-done" onclick="reportDoneFromView()">✅ 実行完了を報告</button></div>'; }
-  }
+  var todoBar=(manual && e.todo)?todoBarHTML(e):'';
   document.getElementById('ev-body').innerHTML=
     '<div class="fr"><span class="k">区分</span><span class="lbl" style="background:'+eventColor(e)+'">'+kindTxt+'</span></div>'+
     '<div class="fr"><span class="k">日付</span><span>'+dateTxt+'</span></div>'+
@@ -2682,7 +2839,7 @@ var _editScopeS0=null;    // 範囲選択ダイアログ中の元シリーズ
 function openEventForm(ev, presetDate, presetTime){
   EDIT_OCC_DATE=null;
   EF = ev ? JSON.parse(JSON.stringify(ev)) : {etype:'社内予定',layer:'company',kind:'all',dept:'',title:'',date:presetDate||ymd(TODAY),time:(presetTime||''),endTime:'',endDate:'',who:[],memo:'',secret:false,source:'manual',repeat:null,remind:[],remindCustom:[]};
-  if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime='';
+  if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime=''; if(!EF.approvers)EF.approvers=[];
   if(!EF.repeat||!EF.repeat.freq) EF.repeat={freq:'none',days:[],until:'',skip:(EF.repeat&&EF.repeat.skip)||[]};
   if(!EF.repeat.days)EF.repeat.days=[];
   if(!EF.etype) EF.etype=(EF.layer==='deadline')?'締切り':'社内予定';
@@ -2743,6 +2900,7 @@ function renderEventForm(){
         '<div class="fld"><label>担当</label><div class="seg-pick" id="g-who">'+whoPick+'</div></div>'+
         '<div class="fld remind-fld"><label>🔔 リマインド</label><div class="seg-pick" id="g-remind">'+efRemindChipsHTML()+'</div><div class="rprev" id="ef-remind-prev" style="margin-top:8px;font-size:11px;color:var(--text3)">'+efRemindPrevHTML()+'</div></div>'+
         '<div class="fld"><div class="todoline"><div class="sw'+(EF.todo?' on':'')+'" id="ef-todosw" onclick="efToggleTodo()"></div><div><div style="font-weight:600;font-size:13px">この予定を TODO にする</div><div id="ef-tododesc" style="font-size:11px;color:var(--text3)">'+(EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。')+'</div></div></div></div>'+
+        '<div class="fld" id="row-approvers"'+(EF.todo?'':' style="display:none"')+'><label>✅ 完了通知の送り先（承認者）</label><div id="g-approvers">'+approverPickerInner(EF.approvers,'efAppToggle')+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。承認者がOKで完了。<button class="vh-btn" style="margin-left:6px" onclick="efAutoApprovers()">↻ 担当の上長を自動</button></div></div>'+
         '<div class="fld"><label>🔁 繰り返し</label><div class="seg-pick" id="g-repeat">'+repeatPick+'</div></div>'+
         '<div class="fld" id="row-rdays"'+((EF.repeat.freq==='weekly'||EF.repeat.freq==='biweekly')?'':' style="display:none"')+'><label>曜日（複数可・未選択なら開始日の曜日）</label><div class="seg-pick" id="g-rday">'+rdayPick+'</div></div>'+
         '<div class="fld" id="row-runtil"'+((EF.repeat.freq&&EF.repeat.freq!=='none')?'':' style="display:none"')+'><label>繰り返し終了日（任意・空ならずっと）</label><input type="date" id="ef-runtil" value="'+esc(EF.repeat.until||'')+'"></div>'+
@@ -2768,7 +2926,9 @@ function refreshRemind(){ var c=document.getElementById('g-remind'); if(c)c.inne
 function efToggleRemind(k){ var i=EF.remind.indexOf(k); if(i>=0)EF.remind.splice(i,1); else EF.remind.push(k); refreshRemind(); }
 function efAddCustom(){ var v=prompt('何日前に通知しますか？（数字）','3'); var n=parseInt(v,10); if(n>0&&EF.remindCustom.indexOf(n)<0)EF.remindCustom.push(n); refreshRemind(); }
 function efRmCustom(i){ EF.remindCustom.splice(i,1); refreshRemind(); }
-function efToggleTodo(){ EF.todo=!EF.todo; var sw=document.getElementById('ef-todosw'); if(sw)sw.classList.toggle('on',EF.todo); var d=document.getElementById('ef-tododesc'); if(d)d.textContent=EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。'; }
+function efToggleTodo(){ EF.todo=!EF.todo; var sw=document.getElementById('ef-todosw'); if(sw)sw.classList.toggle('on',EF.todo); var d=document.getElementById('ef-tododesc'); if(d)d.textContent=EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。'; if(EF.todo&&(!EF.approvers||!EF.approvers.length))EF.approvers=autoApprovers(EF.who); var r=document.getElementById('row-approvers'); if(r)r.style.display=EF.todo?'':'none'; var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); }
+function efAppToggle(id){ toggleArr(EF.approvers,id); var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); }
+function efAutoApprovers(){ EF.approvers=autoApprovers(EF.who); var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); toast('担当の上長を承認者にセットしました'); }
 function efPick(group,val,el){
   if(group==='etype'){ EF.etype=val; EF.layer=(val==='締切り')?'deadline':'company'; var nd=(val!=='締切り'); document.getElementById('row-kind').style.display=nd?'':'none'; document.getElementById('row-dept').style.display=((nd&&EF.kind==='dept')?'':'none'); document.getElementById('row-secret').style.display=((nd&&EF.kind==='personal')?'':'none'); setOnly('g-etype',el); }
   else if(group==='kind'){ EF.kind=val; document.getElementById('row-dept').style.display=(val==='dept'?'':'none'); document.getElementById('row-secret').style.display=(val==='personal'?'':'none'); setOnly('g-kind',el); }
