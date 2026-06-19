@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.41.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.41.1</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -1366,6 +1366,8 @@ function rfFreq(v){ RF.repeat=RF.repeat||{}; RF.repeat.freq=v; if(v!=='weekly'&&
 function rfDow(dw){ RF.repeat=RF.repeat||{}; RF.repeat.days=(RF.repeat.days||[]).slice(); var i=RF.repeat.days.indexOf(dw); if(i>=0)RF.repeat.days.splice(i,1); else RF.repeat.days.push(dw); RF.repeat.days.sort(function(a,b){return a-b;}); routineRenderForm(); }
 function rfKind(k){ RF.kind=k; routineRenderForm(); }
 function rfDept(v){ RF.dept=v; }
+/* 部署チップを選ぶ＝スケジュールと同じ挙動：その部署のメンバーを担当に自動セット */
+function rfDeptPick(nm){ RF.dept=nm; var dp=deptByName(nm); if(dp){ var ids=membersOfDeptId(dp.id).map(function(m){return m.id;}); if(ids.length)RF.who=ids; } routineRenderForm(); }
 function rfWho(id){ RF.who=(RF.who||[]).slice(); var i=RF.who.indexOf(id); if(i>=0)RF.who.splice(i,1); else RF.who.push(id); routineRenderForm(); }
 function rfColor(c){ RF.color=c; routineRenderForm(); }
 function routineRenderForm(){
@@ -1384,9 +1386,15 @@ function routineRenderForm(){
     '<button class="'+(RF.kind==='dept'?'active':'')+'" onclick="rfKind(\'dept\')">部署</button>'+
     '<button class="'+(RF.kind==='personal'?'active':'')+'" onclick="rfKind(\'personal\')">個人</button>'+
   '</div>';
+  var rfWhoPicker=whoPickerHTML(function(m){return (RF.who||[]).indexOf(m.id)>=0;}, function(m){return 'rfWho(\''+escA(m.id)+'\')';}, 20);
   var lvDetail='';
-  if(RF.kind==='dept'){ var opt='<option value="">（部署を選択）</option>'+DEPTS.map(function(nm){return '<option value="'+escA(nm)+'"'+(RF.dept===nm?' selected':'')+'>'+esc(nm)+'</option>';}).join(''); lvDetail='<select onchange="rfDept(this.value)" style="margin-left:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px">'+opt+'</select>'; }
-  else if(RF.kind==='personal'){ lvDetail='<div style="margin-top:8px">'+whoPickerHTML(function(m){return (RF.who||[]).indexOf(m.id)>=0;}, function(m){return 'rfWho(\''+escA(m.id)+'\')';}, 20)+'</div>'; }
+  if(RF.kind==='dept'){
+    var deptChips=DEPTS.map(function(nm){ return '<span class="mpick'+(RF.dept===nm?' on':'')+'" onclick="rfDeptPick(\''+escA(nm)+'\')" style="cursor:pointer">'+esc(nm)+'</span>'; }).join('');
+    lvDetail='<div class="mpick-chips" style="margin-top:8px">'+deptChips+'</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin:4px 0">部署を選ぶと、その課/部のメンバー（兼務含む）が担当に自動セットされます（個別に外せます）。</div>'+
+      '<div style="margin-top:6px"><div style="font-size:12px;color:var(--text3);margin-bottom:4px">担当（任意）</div>'+rfWhoPicker+'</div>';
+  }
+  else if(RF.kind==='personal'){ lvDetail='<div style="margin-top:8px">'+rfWhoPicker+'</div>'; }
   var sw=['','#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#ec4899','#64748b'].map(function(c){ var label=(c===''); return '<span onclick="rfColor(\''+c+'\')" title="'+(label?'自動':'')+'" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:'+(c||'var(--bg3)')+';cursor:pointer;margin-right:6px;font-size:10px;color:#fff;box-shadow:'+(RF.color===c?'0 0 0 3px var(--bg),0 0 0 5px '+(c||'#64748b'):'none')+'">'+(label?'自':'')+'</span>'; }).join('');
   b.innerHTML=
     '<div class="fld"><label>業務名</label><input type="text" value="'+esc(RF.name||'')+'" placeholder="例：受付：月末支払 / 全体：月例報告会" oninput="rfText(\'name\',this.value)" style="width:100%"></div>'+
@@ -1403,7 +1411,7 @@ function saveRoutineForm(){
   if(!RF.date){ toast('開始日を選んでください'); return; }
   var rep=RF.repeat||{}; if(!rep.freq){ toast('頻度を選んでください'); return; }
   if((rep.freq==='weekly'||rep.freq==='biweekly') && (!rep.days||!rep.days.length)){ toast('曜日を1つ以上選んでください'); return; }
-  if(RF.kind!=='dept') RF.dept=''; if(RF.kind!=='personal') RF.who=[];
+  if(RF.kind!=='dept') RF.dept=''; if(RF.kind==='all') RF.who=[];   // 全社は担当なし／部署・個人は担当を保持
   routineSave(RF); closeRoutineForm(); toast('ルーティンを保存しました');
 }
 function routineDeleteFromModal(){ if(!RF)return; if(!confirm('このルーティンを削除しますか？'))return; routineDelete(RF.id); closeRoutineForm(); toast('削除しました'); }
@@ -1484,6 +1492,8 @@ function dfDow(dw){ var i=DF.dows.indexOf(dw); if(i>=0)DF.dows.splice(i,1); else
 function dfMode(m){ DF.mode=m; dutyRenderForm(); }
 function dfColor(c){ DF.color=c; dutyRenderForm(); }
 function dfFixed(dw,v){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=v; }
+function dfFixedSet(dw,id){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=(DF.fixedMap[String(dw)]===id?'':id); dutyRenderForm(); }
+function dfRosterToggle(id){ DF.roster=(DF.roster||[]).slice(); var i=DF.roster.indexOf(id); if(i>=0)DF.roster.splice(i,1); else DF.roster.push(id); dutyRenderForm(); }
 function dfRotateUnit(u){ DF.rotateUnit=u; dutyRenderForm(); }
 function dfInterval(n){ DF.interval=+n||1; }
 function dfText(f,v){ if(DF)DF[f]=v; }
@@ -1494,15 +1504,21 @@ function dutyRenderForm(){
   var b=document.getElementById('duty-modal-body'); if(!b||!DF)return;
   var sw=DUTY_COLORS.map(function(c){ return '<span onclick="dfColor(\''+c+'\')" style="display:inline-block;width:26px;height:26px;border-radius:50%;background:'+c+';cursor:pointer;margin-right:6px;box-shadow:'+(DF.color===c?'0 0 0 3px var(--bg),0 0 0 5px '+c:'none')+'"></span>'; }).join('');
   var dows=[0,1,2,3,4,5,6].map(function(dw){ var on=DF.dows.indexOf(dw)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="dfDow('+dw+')" style="cursor:pointer">'+DOW[dw]+'</span>'; }).join('');
-  // 担当の組み方UI
+  // 担当の組み方UI（メンバー選定はスケジュールと同じ部署ごとピッカー＝whoPickerHTML）
   var assign='';
   if(DF.mode==='fixed'){
     if(!DF.dows.length){ assign='<div style="color:var(--text3);font-size:12px">先に曜日を選んでください。</div>'; }
-    else assign=DF.dows.map(function(dw){ return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="width:40px;font-weight:700">'+DOW[dw]+'曜</span><select onchange="dfFixed('+dw+',this.value)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px;min-width:160px">'+dutyMemberOptions((DF.fixedMap||{})[String(dw)])+'</select></div>'; }).join('');
+    else assign=DF.dows.map(function(dw){
+      var cur=(DF.fixedMap||{})[String(dw)];
+      var picker=whoPickerHTML(function(m){return cur===m.id;}, function(m){return 'dfFixedSet('+dw+',\''+escA(m.id)+'\')';}, 20);
+      return '<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)"><div style="font-weight:700;font-size:13px;margin-bottom:4px">'+DOW[dw]+'曜の担当'+(cur?'：'+esc(memberLabel(cur)):'<span style="color:var(--text3);font-weight:400">（未選択）</span>')+'</div>'+picker+'</div>';
+    }).join('');
   } else {
     var rl=(DF.roster||[]).map(function(id,i){ var m=memberById(id); return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="width:22px;color:var(--text3)">'+(i+1)+'.</span>'+(m?memberAvatar(m,20):'')+'<span style="flex:1">'+esc(m?memDisp(m):id)+'</span><button class="vh-btn" onclick="dfRosterMove('+i+',-1)">▲</button><button class="vh-btn" onclick="dfRosterMove('+i+',1)">▼</button><button class="btn-del" onclick="dfRosterRemove('+i+')">✕</button></div>'; }).join('');
-    assign='<div style="margin-bottom:8px">'+(rl||'<div style="color:var(--text3);font-size:12px;margin-bottom:6px">順番にメンバーを追加してください（この順で担当が回ります）。</div>')+'</div>'+
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="df-roster-add" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px;min-width:160px">'+dutyMemberOptions('')+'</select><button class="btn-ghost" onclick="dfRosterAdd(document.getElementById(\'df-roster-add\').value)">＋ 追加</button></div>'+
+    var rpick=whoPickerHTML(function(m){return (DF.roster||[]).indexOf(m.id)>=0;}, function(m){return 'dfRosterToggle(\''+escA(m.id)+'\')';}, 20);
+    assign='<div style="font-size:12px;color:var(--text3);margin-bottom:6px">担当を選ぶと順番に並びます（この順で交代）。▲▼で並べ替え。</div>'+
+      '<div style="margin-bottom:8px">'+rl+'</div>'+
+      rpick+
       '<div style="margin-top:10px;font-size:12px">回し方：'+
         '<label style="margin-right:12px"><input type="radio" name="df-ru" '+(DF.rotateUnit==='week'?'checked':'')+' onchange="dfRotateUnit(\'week\')"> 週ごとに交代</label>'+
         '<label><input type="radio" name="df-ru" '+(DF.rotateUnit==='occurrence'?'checked':'')+' onchange="dfRotateUnit(\'occurrence\')"> 1回ごとに交代</label>'+
