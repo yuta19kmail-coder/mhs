@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.42.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.42.1</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.42.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.42.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -1260,7 +1260,7 @@ function dutyOccurrences(start,end){
       out.push({ id:'duty_'+D.id+'_'+ds, source:'duty', layer:'duty', kind:'duty', dutyId:D.id,
         date:ds, time:D.time||'', endTime:D.endTime||'', allDay:!D.time,
         title:D.name||'当番', who: who?[who]:[], color:D.color||'#0ea5e9', place:D.place||'', memo:D.memo||'',
-        todo:!!D.todo, approvers:(D.approvers||[]).slice(), done:(D.doneDates&&D.doneDates[ds])||null, approved:(D.approvedDates&&D.approvedDates[ds])||null });
+        todo:!!D.todo, needApprove:!!D.needApprove, approvers:(D.approvers||[]).slice(), done:(D.doneDates&&D.doneDates[ds])||null, approved:(D.approvedDates&&D.approvedDates[ds])||null });
     }
   });
   return out;
@@ -1305,7 +1305,7 @@ function routineOccurrences(start,end){
       out.push({ id:'rt_'+r.id+'_'+ds, source:'routine', layer:'routine', kind:r.kind||'all', routineId:r.id,
         date:ds, time:r.time||'', endTime:r.endTime||'', allDay:!r.time, title:r.name||'ルーティン',
         who:(r.who||[]).slice(), color:r.color||'', dept:r.dept||'', place:r.place||'', memo:r.memo||'',
-        todo:!!r.todo, approvers:(r.approvers||[]).slice(), done:(r.doneDates&&r.doneDates[ds])||null, approved:(r.approvedDates&&r.approvedDates[ds])||null });
+        todo:!!r.todo, needApprove:!!r.needApprove, approvers:(r.approvers||[]).slice(), done:(r.doneDates&&r.doneDates[ds])||null, approved:(r.approvedDates&&r.approvedDates[ds])||null });
     }
   });
   return out;
@@ -1322,13 +1322,13 @@ function isApproverOf(approvers){ var me=myCoreMember(); if(!me)return false; re
 function canApprove(approvers){ return isMaster() || isApproverOf(approvers); }
 /* レンダリング済みoccから TODO状態を統一的に取り出す */
 function occState(e){
-  if(!e) return {todo:false,approvers:[],done:null,approved:null};
-  if(e.source==='duty'||e.source==='routine'){ return {todo:!!e.todo, approvers:e.approvers||[], done:e.done||null, approved:e.approved||null}; }
+  if(!e) return {todo:false,needApprove:false,approvers:[],done:null,approved:null};
+  if(e.source==='duty'||e.source==='routine'){ return {todo:!!e.todo, needApprove:!!e.needApprove, approvers:e.approvers||[], done:e.done||null, approved:e.approved||null}; }
   var approved = occIsRec(e) ? ((e.approvedDates&&e.approvedDates[e.date])||null) : (e.approvedBy?{by:e.approvedBy,at:e.approvedAt}:null);
-  return {todo:!!e.todo, approvers:e.approvers||[], done:occDoneInfo(e), approved:approved};
+  return {todo:!!e.todo, needApprove:!!e.needApprove, approvers:e.approvers||[], done:occDoneInfo(e), approved:approved};
 }
-/* 完了の段階：'none'(TODOでない) / 'open'(未完了) / 'reported'(実行済・承認待ち) / 'done'(承認済 or 承認者なしで完了) */
-function todoStage(e){ var st=occState(e); if(!st.todo)return 'none'; if(!st.done)return 'open'; if(st.approved)return 'done'; if(!st.approvers||!st.approvers.length)return 'done'; return 'reported'; }
+/* 完了の段階：'none'(TODOでない) / 'open'(未完了) / 'reported'(実行済・承認待ち) / 'done'(承認済 or 承認不要で完了) */
+function todoStage(e){ var st=occState(e); if(!st.todo)return 'none'; if(!st.done)return 'open'; if(!st.needApprove)return 'done'; if(st.approved)return 'done'; return 'reported'; }
 function _defFor(e){ if(e.source==='duty')return {def:dutyById(e.dutyId), save:dutySave}; if(e.source==='routine')return {def:routineById(e.routineId), save:routineSave}; return null; }
 /* 実行完了を報告（済）。記録＝実行者＋日時＋メモ */
 function todoMarkDone(e, note){
@@ -1382,13 +1382,12 @@ function todoActAttr(e, action){ var j=JSON.stringify(e).replace(/\\/g,'\\\\').r
 function todoBarHTML(e){
   var st=occState(e); if(!st.todo) return '';
   var stage=todoStage(e);
-  var apNames=(st.approvers||[]).map(function(id){var m=memberById(id);return m?memSurname(m):id;}).join('、')||'（未設定＝報告で完了）';
   var h='<div class="donebar'+(stage==='done'?' is-done':'')+'" style="margin-top:12px">';
-  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:4px">✅ 承認者：'+esc(apNames)+'</div>';
+  if(st.needApprove){ var apNames=(st.approvers||[]).map(function(id){var m=memberById(id);return m?memSurname(m):id;}).join('、')||'（未設定＝マスターのみ承認可）'; h+='<div style="font-size:11px;color:var(--text3);margin-bottom:4px">✅ 承認者：'+esc(apNames)+'</div>'; }
   if(stage==='open'){
     h+='<div class="dst">⬜ 未完了（実行できたら報告）</div>';
     h+='<textarea id="todo-note" placeholder="実行内容・結果をひと言（任意）"></textarea>';
-    h+='<button class="btn-done" onclick="'+todoActAttr(e,'done')+'">✅ 実行完了を報告</button>';
+    h+='<button class="btn-done" onclick="'+todoActAttr(e,'done')+'">✅ 実行完了を報告'+(st.needApprove?'':'（完了）')+'</button>';
   } else {
     var d=st.done||{};
     h+='<div class="dst">✅ 実行済み'+(stage==='reported'?'（承認待ち）':'（完了）')+'</div>';
@@ -1396,7 +1395,7 @@ function todoBarHTML(e){
     if(stage==='reported'){
       if(canApprove(st.approvers)) h+='<button class="btn-done" style="margin-top:6px" onclick="'+todoActAttr(e,'approve')+'">👍 OK（承認して完了）</button>';
       else h+='<div style="font-size:11px;color:#f59e0b;margin-top:4px">承認者のOK待ちです。</div>';
-    } else if(st.approved){
+    } else if(st.needApprove && st.approved){
       h+='<div class="repnote" style="color:#22c55e">👍 承認：'+(st.approved.by?esc(st.approved.by)+'・':'')+(st.approved.at?fmtReportTs(st.approved.at):'')+'</div>';
       if(canApprove(st.approvers)) h+='<button class="btn-ghost" style="margin-top:6px" onclick="'+todoActAttr(e,'unapprove')+'">↩ 承認を取消</button>';
     }
@@ -1469,7 +1468,7 @@ function openRoutineForm(routineId){
   var r=routineId?routineById(routineId):null;
   if(r){ RF=JSON.parse(JSON.stringify(r)); if(!RF.repeat)RF.repeat={freq:'monthlyDay'}; document.getElementById('routine-modal-title').textContent='ルーティンを編集'; document.getElementById('routine-modal-del').style.display=''; }
   else {
-    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'', todo:false, approvers:[] };
+    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'', todo:false, needApprove:false, approvers:[] };
     document.getElementById('routine-modal-title').textContent='ルーティンを追加'; document.getElementById('routine-modal-del').style.display='none';
   }
   routineRenderForm();
@@ -1481,7 +1480,8 @@ function rfFreq(v){ RF.repeat=RF.repeat||{}; RF.repeat.freq=v; if(v!=='weekly'&&
 function rfDow(dw){ RF.repeat=RF.repeat||{}; RF.repeat.days=(RF.repeat.days||[]).slice(); var i=RF.repeat.days.indexOf(dw); if(i>=0)RF.repeat.days.splice(i,1); else RF.repeat.days.push(dw); RF.repeat.days.sort(function(a,b){return a-b;}); routineRenderForm(); }
 function rfKind(k){ RF.kind=k; routineRenderForm(); }
 function rfDept(v){ RF.dept=v; }
-function rfTodo(){ RF.todo=!RF.todo; if(RF.todo&&(!RF.approvers||!RF.approvers.length))RF.approvers=autoApprovers(RF.who); routineRenderForm(); }
+function rfTodo(){ RF.todo=!RF.todo; routineRenderForm(); }
+function rfNeedApprove(){ RF.needApprove=!RF.needApprove; if(RF.needApprove&&(!RF.approvers||!RF.approvers.length))RF.approvers=autoApprovers(RF.who); routineRenderForm(); }
 function rfAppToggle(id){ RF.approvers=(RF.approvers||[]).slice(); var i=RF.approvers.indexOf(id); if(i>=0)RF.approvers.splice(i,1); else RF.approvers.push(id); routineRenderForm(); }
 function rfAutoApprovers(){ RF.approvers=autoApprovers(RF.who); routineRenderForm(); }
 /* 部署チップを選ぶ＝スケジュールと同じ挙動：その部署のメンバーを担当に自動セット */
@@ -1526,8 +1526,9 @@ function routineRenderForm(){
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
-        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.todo?' on':'')+'" onclick="rfTodo()"></span><span style="font-weight:600;font-size:13px">この業務をTODOにする（完了通知＆承認）</span></label></div>'+
-        (RF.todo?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(RF.approvers,'rfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="rfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
+        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.todo?' on':'')+'" onclick="rfTodo()"></span><span style="font-weight:600;font-size:13px">この業務をTODOにする（実行報告）</span></label></div>'+
+        (RF.todo?('<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.needApprove?' on':'')+'" onclick="rfNeedApprove()"></span><div><div style="font-weight:600;font-size:13px">完了通知（承認）を付ける</div><div style="font-size:11px;color:var(--text3)">ONで承認者のOKまで完了。OFFは報告だけで完了。</div></div></label></div>'):'')+
+        ((RF.todo&&RF.needApprove)?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(RF.approvers,'rfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="rfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
       '</div>'+
     '</div>';
 }
@@ -1608,7 +1609,7 @@ function openDutyForm(dutyId){
   var D=dutyId?dutyById(dutyId):null;
   if(D){ DF=JSON.parse(JSON.stringify(D)); document.getElementById('duty-modal-title').textContent='当番を編集'; document.getElementById('duty-modal-del').style.display=''; }
   else {
-    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'', todo:false, approvers:[] };
+    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'', todo:false, needApprove:false, approvers:[] };
     document.getElementById('duty-modal-title').textContent='当番を追加'; document.getElementById('duty-modal-del').style.display='none';
   }
   dutyRenderForm();
@@ -1619,7 +1620,8 @@ function dfDow(dw){ var i=DF.dows.indexOf(dw); if(i>=0)DF.dows.splice(i,1); else
 function dfMode(m){ DF.mode=m; dutyRenderForm(); }
 function dfColor(c){ DF.color=c; dutyRenderForm(); }
 function dfFixed(dw,v){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=v; }
-function dfTodo(){ DF.todo=!DF.todo; if(DF.todo&&(!DF.approvers||!DF.approvers.length))DF.approvers=autoApprovers(dutyMembers(DF)); dutyRenderForm(); }
+function dfTodo(){ DF.todo=!DF.todo; dutyRenderForm(); }
+function dfNeedApprove(){ DF.needApprove=!DF.needApprove; if(DF.needApprove&&(!DF.approvers||!DF.approvers.length))DF.approvers=autoApprovers(dutyMembers(DF)); dutyRenderForm(); }
 function dfAppToggle(id){ DF.approvers=(DF.approvers||[]).slice(); var i=DF.approvers.indexOf(id); if(i>=0)DF.approvers.splice(i,1); else DF.approvers.push(id); dutyRenderForm(); }
 function dfAutoApprovers(){ DF.approvers=autoApprovers(dutyMembers(DF)); dutyRenderForm(); }
 function dfFixedSet(dw,id){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=(DF.fixedMap[String(dw)]===id?'':id); dutyRenderForm(); }
@@ -1669,8 +1671,9 @@ function dutyRenderForm(){
         '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
         '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
         '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>'+
-        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.todo?' on':'')+'" onclick="dfTodo()"></span><span style="font-weight:600;font-size:13px">この当番をTODOにする（完了通知＆承認）</span></label></div>'+
-        (DF.todo?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(DF.approvers,'dfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="dfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
+        '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.todo?' on':'')+'" onclick="dfTodo()"></span><span style="font-weight:600;font-size:13px">この当番をTODOにする（実行報告）</span></label></div>'+
+        (DF.todo?('<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.needApprove?' on':'')+'" onclick="dfNeedApprove()"></span><div><div style="font-weight:600;font-size:13px">完了通知（承認）を付ける</div><div style="font-size:11px;color:var(--text3)">ONで承認者のOKまで完了。OFFは報告だけで完了。</div></div></label></div>'):'')+
+        ((DF.todo&&DF.needApprove)?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(DF.approvers,'dfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="dfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>担当の決め方</label><div class="seg" style="display:inline-flex">'+
@@ -2839,7 +2842,7 @@ var _editScopeS0=null;    // 範囲選択ダイアログ中の元シリーズ
 function openEventForm(ev, presetDate, presetTime){
   EDIT_OCC_DATE=null;
   EF = ev ? JSON.parse(JSON.stringify(ev)) : {etype:'社内予定',layer:'company',kind:'all',dept:'',title:'',date:presetDate||ymd(TODAY),time:(presetTime||''),endTime:'',endDate:'',who:[],memo:'',secret:false,source:'manual',repeat:null,remind:[],remindCustom:[]};
-  if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime=''; if(!EF.approvers)EF.approvers=[];
+  if(!EF.who)EF.who=[]; if(!EF.endDate)EF.endDate=''; if(!EF.endTime)EF.endTime=''; if(!EF.approvers)EF.approvers=[]; if(typeof EF.needApprove!=='boolean')EF.needApprove=false;
   if(!EF.repeat||!EF.repeat.freq) EF.repeat={freq:'none',days:[],until:'',skip:(EF.repeat&&EF.repeat.skip)||[]};
   if(!EF.repeat.days)EF.repeat.days=[];
   if(!EF.etype) EF.etype=(EF.layer==='deadline')?'締切り':'社内予定';
@@ -2900,7 +2903,8 @@ function renderEventForm(){
         '<div class="fld"><label>担当</label><div class="seg-pick" id="g-who">'+whoPick+'</div></div>'+
         '<div class="fld remind-fld"><label>🔔 リマインド</label><div class="seg-pick" id="g-remind">'+efRemindChipsHTML()+'</div><div class="rprev" id="ef-remind-prev" style="margin-top:8px;font-size:11px;color:var(--text3)">'+efRemindPrevHTML()+'</div></div>'+
         '<div class="fld"><div class="todoline"><div class="sw'+(EF.todo?' on':'')+'" id="ef-todosw" onclick="efToggleTodo()"></div><div><div style="font-weight:600;font-size:13px">この予定を TODO にする</div><div id="ef-tododesc" style="font-size:11px;color:var(--text3)">'+(EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。')+'</div></div></div></div>'+
-        '<div class="fld" id="row-approvers"'+(EF.todo?'':' style="display:none"')+'><label>✅ 完了通知の送り先（承認者）</label><div id="g-approvers">'+approverPickerInner(EF.approvers,'efAppToggle')+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。承認者がOKで完了。<button class="vh-btn" style="margin-left:6px" onclick="efAutoApprovers()">↻ 担当の上長を自動</button></div></div>'+
+        '<div class="fld" id="row-needapprove"'+(EF.todo?'':' style="display:none"')+'><div class="todoline"><div class="sw'+(EF.needApprove?' on':'')+'" id="ef-appsw" onclick="efToggleNeedApprove()"></div><div><div style="font-weight:600;font-size:13px">完了通知（承認）を付ける</div><div style="font-size:11px;color:var(--text3)">ONで承認者のOKまで完了。OFFは実行報告だけで完了。</div></div></div></div>'+
+        '<div class="fld" id="row-approvers"'+((EF.todo&&EF.needApprove)?'':' style="display:none"')+'><label>✅ 完了通知の送り先（承認者）</label><div id="g-approvers">'+approverPickerInner(EF.approvers,'efAppToggle')+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。承認者がOKで完了。<button class="vh-btn" style="margin-left:6px" onclick="efAutoApprovers()">↻ 担当の上長を自動</button></div></div>'+
         '<div class="fld"><label>🔁 繰り返し</label><div class="seg-pick" id="g-repeat">'+repeatPick+'</div></div>'+
         '<div class="fld" id="row-rdays"'+((EF.repeat.freq==='weekly'||EF.repeat.freq==='biweekly')?'':' style="display:none"')+'><label>曜日（複数可・未選択なら開始日の曜日）</label><div class="seg-pick" id="g-rday">'+rdayPick+'</div></div>'+
         '<div class="fld" id="row-runtil"'+((EF.repeat.freq&&EF.repeat.freq!=='none')?'':' style="display:none"')+'><label>繰り返し終了日（任意・空ならずっと）</label><input type="date" id="ef-runtil" value="'+esc(EF.repeat.until||'')+'"></div>'+
@@ -2926,7 +2930,8 @@ function refreshRemind(){ var c=document.getElementById('g-remind'); if(c)c.inne
 function efToggleRemind(k){ var i=EF.remind.indexOf(k); if(i>=0)EF.remind.splice(i,1); else EF.remind.push(k); refreshRemind(); }
 function efAddCustom(){ var v=prompt('何日前に通知しますか？（数字）','3'); var n=parseInt(v,10); if(n>0&&EF.remindCustom.indexOf(n)<0)EF.remindCustom.push(n); refreshRemind(); }
 function efRmCustom(i){ EF.remindCustom.splice(i,1); refreshRemind(); }
-function efToggleTodo(){ EF.todo=!EF.todo; var sw=document.getElementById('ef-todosw'); if(sw)sw.classList.toggle('on',EF.todo); var d=document.getElementById('ef-tododesc'); if(d)d.textContent=EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。'; if(EF.todo&&(!EF.approvers||!EF.approvers.length))EF.approvers=autoApprovers(EF.who); var r=document.getElementById('row-approvers'); if(r)r.style.display=EF.todo?'':'none'; var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); }
+function efToggleTodo(){ EF.todo=!EF.todo; var sw=document.getElementById('ef-todosw'); if(sw)sw.classList.toggle('on',EF.todo); var d=document.getElementById('ef-tododesc'); if(d)d.textContent=EF.todo?'完了は「実行完了の報告」で締めます（報告するまで未完了）。':'お知らせ扱い。完了の概念なし（報告不要）。'; var rn=document.getElementById('row-needapprove'); if(rn)rn.style.display=EF.todo?'':'none'; var r=document.getElementById('row-approvers'); if(r)r.style.display=(EF.todo&&EF.needApprove)?'':'none'; }
+function efToggleNeedApprove(){ EF.needApprove=!EF.needApprove; if(EF.needApprove&&(!EF.approvers||!EF.approvers.length))EF.approvers=autoApprovers(EF.who); var sw=document.getElementById('ef-appsw'); if(sw)sw.classList.toggle('on',EF.needApprove); var r=document.getElementById('row-approvers'); if(r)r.style.display=(EF.todo&&EF.needApprove)?'':'none'; var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); }
 function efAppToggle(id){ toggleArr(EF.approvers,id); var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); }
 function efAutoApprovers(){ EF.approvers=autoApprovers(EF.who); var g=document.getElementById('g-approvers'); if(g)g.innerHTML=approverPickerInner(EF.approvers,'efAppToggle'); toast('担当の上長を承認者にセットしました'); }
 function efPick(group,val,el){
