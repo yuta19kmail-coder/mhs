@@ -281,6 +281,39 @@
   .dl-tm{font-size:11px;color:var(--text3);min-width:42px}
   .dl-ti{flex:1;font-size:13px}
   .dl-who{display:inline-flex;flex:0 0 auto}
+  /* Todayボード（店頭ボードの電子版） */
+  .board{display:flex;flex-direction:column;gap:12px}
+  .bhdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+  .bhdr .bdate{font-size:22px;font-weight:800}
+  .bchip{font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px 10px}
+  .bsec{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+  .bsec-h{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;margin-bottom:8px;gap:8px}
+  .bsrc{font-size:10px;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap}
+  .bgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  .bgrid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:start}
+  .brd{border-left:3px solid var(--text3);background:var(--bg3);border-radius:0 8px 8px 0;padding:6px 9px;margin-bottom:6px;cursor:pointer}
+  .brd .b1{font-weight:600;font-size:13px}
+  .brd .b2{font-size:11px;color:var(--text3)}
+  .brd.done{opacity:.5}
+  .brd.done .b1{text-decoration:line-through}
+  .bcol-h{font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--text2)}
+  #portrait-exit{display:none;position:fixed;top:10px;right:12px;z-index:500;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
+  /* 縦表示（壁掛けモニター・縦特化） */
+  body.board-portrait #topbar{display:none}
+  body.board-portrait #sidebar{display:none}
+  body.board-portrait #app{grid-template-columns:1fr;grid-template-rows:1fr}
+  body.board-portrait #main{grid-column:1;grid-row:1;padding:10px 14px}
+  body.board-portrait .view:not(#view-brief){display:none!important}
+  body.board-portrait #view-brief .vhead{display:none}
+  body.board-portrait #portrait-exit{display:block}
+  body.board-portrait .bgrid4{grid-template-columns:1fr 1fr}
+  body.board-portrait .board{gap:16px}
+  body.board-portrait .bsec-h{font-size:18px}
+  body.board-portrait .bhdr .bdate{font-size:30px}
+  body.board-portrait .bchip{font-size:15px;padding:5px 13px}
+  body.board-portrait .brd .b1{font-size:16px}
+  body.board-portrait .brd .b2{font-size:13px}
+  body.board-portrait .bcol-h{font-size:15px}
   /* 付箋（CarFlow風 色付き付箋） */
   .nt-compose{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px}
   .nt-compose textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;min-height:46px;resize:vertical}
@@ -534,7 +567,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.43.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.44.0</div>
   </div>
 </div>
 
@@ -552,7 +585,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.43.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.44.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -602,15 +635,15 @@
       <div id="dash-body"></div>
     </section>
 
-    <!-- 朝礼カード -->
+    <!-- Todayボード（店頭ボードの電子版） -->
     <section id="view-brief" class="view">
-      <div class="vhead"><div class="vtitle">🌅 Todayボード <span id="brief-date" style="font-size:13px;color:var(--text2);font-weight:500"></span></div></div>
-      <div id="brief-warns"></div>
-      <div class="brief">
-        <div class="bcard"><h3>今日 <span class="pill" id="brief-today-n"></span></h3><div id="brief-today"></div></div>
-        <div class="bcard"><h3>明日 <span class="pill" id="brief-tom-n"></span></h3><div id="brief-tom"></div></div>
+      <div class="vhead">
+        <div class="vtitle">🌅 Todayボード <span id="brief-date" style="font-size:13px;color:var(--text2);font-weight:500"></span></div>
+        <label class="board-portrait-toggle" style="margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer"><span style="font-size:12px;color:var(--text2)">📺 縦表示</span><span class="sw" id="portrait-sw" onclick="togglePortrait()"></span></label>
       </div>
+      <div id="board-host"></div>
     </section>
+    <button id="portrait-exit" onclick="togglePortrait()" title="通常表示に戻す">↩ 通常表示</button>
 
     <!-- マスターカレンダー（全データ重ね・閲覧主体） -->
     <section id="view-master" class="view">
@@ -1218,7 +1251,7 @@ function subscribeDuties(){
   _dutyUnsub=dutyCol().onSnapshot(function(snap){
     DUTIES=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; DUTIES.push(x); });
     DUTIES.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
-    if(curView==='duty'||curView==='master'||curView==='dash') showView(curView);
+    if(curView==='duty'||curView==='master'||curView==='dash'||curView==='brief') showView(curView);
     refreshDayModal();
   }, function(err){ console.error('[MHS] dutyDefs購読エラー',err); });
 }
@@ -2577,26 +2610,69 @@ function noteEdit(id,app){ openNoteModal(id,app); }
 function noteToggleDone(id,app){ var n=findNote(id,app); if(!n)return; var done=n.status==='done'; noteColRef(app).doc(id).set({status:done?'open':'done',doneAt:done?null:window.fb.serverTimestamp(),updatedAt:window.fb.serverTimestamp()},{merge:true}).catch(function(e){ console.error(e); toast('⚠ 更新に失敗'); }); }
 function noteDelete(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('削除権限がありません'); return; } if(!confirm('この付箋を削除しますか？'))return; noteColRef(app).doc(id).delete().catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
 
+/* ===== Todayボード（店頭ボードの電子版） ===== */
+function togglePortrait(){ document.body.classList.toggle('board-portrait'); var on=document.body.classList.contains('board-portrait'); var sw=document.getElementById('portrait-sw'); if(sw)sw.classList.toggle('on',on); if(on)showView('brief'); }
+/* 入庫・返車は仮（PitFlow本実装で実データに差し替え） */
+var BOARD_MOCK_INTAKE=[
+  {name:'ナカムラ様', car:'モコ/ラパン', time:'17:00', meta:'専務・車検・代MRワゴン'},
+  {name:'ハスミ様', car:'ソリオ', time:'18:00', meta:'椎名・車検・預'},
+  {name:'コンドウ様', car:'F56', time:'18:30', meta:'菅谷・一般・預'},
+  {name:'東洋コーポレーション', car:'荷ハイゼット', time:'14:00', meta:'社長・車検・預'}
+];
+var BOARD_MOCK_RETURN=[
+  {name:'イシイ様', car:'ジムニーノマド', time:'17:00', meta:'社長・当日'},
+  {name:'マキイ様', car:'W176', time:'', meta:'菅谷・明日23時・代F56・洗車'},
+  {name:'イシイ様', car:'セレナ', time:'完成次第', meta:'菅谷・洗車・車検'}
+];
+var BOARD_DONE={};   // 仮：ローカルのみ（PitFlow接続で置換）
+function boardMockToggle(id){ BOARD_DONE[id]=!BOARD_DONE[id]; renderBrief(); toast('（仮）PitFlow本実装で実データに反映します'); }
+function boardMockRow(prefix,i,o){ var id=prefix+i, done=!!BOARD_DONE[id];
+  return '<div class="brd'+(done?' done':'')+'" onclick="boardMockToggle(\''+id+'\')"><div class="b1">'+esc(o.name)+'　'+esc(o.car)+(o.time?'　'+esc(o.time):'')+'</div><div class="b2">'+esc(o.meta)+(done?'　✓済':'')+'</div></div>'; }
+function boardWho(e){ var ws=(e.who||[]).filter(function(w){return memberVisibility(w,e.date)!=='hide';}); return ws.length?ws.map(function(w){return memberLabel(w);}).join('、'):''; }
+function boardSchedRow(e){
+  var done=(e.todo&&occDone(e));
+  var t=(e.time&&e.time!=='終日'&&e.time!=='—')?esc(e.time)+'　':'';
+  var w=boardWho(e);
+  return '<div class="brd'+(done?' done':'')+'" style="border-left-color:'+eventColor(e)+'" onclick="'+openChipAttr(e)+'"><div class="b1">'+t+esc(e.title)+'</div>'+((w||e.place||e.todo)?'<div class="b2">'+esc(w)+(e.place?'・'+esc(e.place):'')+(e.todo?(done?'　✓済':'　□未'):'')+'</div>':'')+'</div>'; }
+function boardSec(title,src,list){ var body=list.length?list.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'<div style="font-size:12px;color:var(--text3)">なし</div>'; return '<div class="bsec"><div class="bsec-h"><span>'+title+'</span><span class="bsrc" style="background:var(--bg4);color:var(--text2)">'+esc(src)+'</span></div>'+body+'</div>'; }
+function boardCol(name,list){ var body=list.length?list.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'<div style="font-size:11.5px;color:var(--text3)">—</div>'; return '<div><div class="bcol-h">'+esc(name)+'</div>'+body+'</div>'; }
+function boardDeptCol(e){
+  var nm='';
+  if(e.kind==='dept') nm=e.dept||'';
+  else if(e.kind==='personal' && e.who&&e.who.length){ var m=memberById(e.who[0]); nm=m?memberDeptName(m):''; }
+  if(/整備|工場|1課|2課|ピット|PIT/i.test(nm)) return '整備';
+  if(/車販|販売|デザイン/.test(nm)) return '車販';
+  if(/受付|事務/.test(nm)) return '受付';
+  return 'その他';
+}
 function renderBrief(){
-  document.getElementById('brief-date').textContent='（'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+' '+DOW[TODAY.getDay()]+'）';
-  const td=ymd(TODAY), tm=ymd(addDays(TODAY,1));
-  const two=getEvents(TODAY,addDays(TODAY,1));
-  const fill=(elId,nId,dateKey)=>{
-    const list=two.filter(e=>e.date===dateKey).sort((a,b)=>(a.time>b.time?1:-1));
-    document.getElementById(nId).textContent=list.length+'件';
-    const el=document.getElementById(elId);
-    if(!list.length){el.innerHTML='<div class="empty">予定なし</div>';return;}
-    el.innerHTML=list.map(e=>('<div class="brow"><div class="tm">'+e.time+'</div><div class="bd"><div class="bt"><span class="tag" style="background:'+eventColor(e)+'"></span>'+whoAvatars(e.who,15,e.date)+dispTitle(e)+'</div><div class="bm">'+nameOf(e.layer)+(function(){var ws=(e.who||[]).filter(function(w){return memberVisibility(w,e.date)!=='hide';}); return ws.length?'・'+ws.map(function(w){return memberLabel(w)+(memberVisibility(w,e.date)==='gray'?'（退職）':'');}).join('、'):'';})()+(e.place?'・'+e.place:'')+'</div></div></div>')).join('');
-  };
-  fill('brief-today','brief-today-n',td);
-  fill('brief-tom','brief-tom-n',tm);
-  const w=[];
-  const todayDeliveries=two.filter(e=>e.date===td&&e.layer==='carflow'&&/納車/.test(e.title));
-  if(todayDeliveries.length>=2) w.push('🚗 今日は納車が'+todayDeliveries.length+'件。配車と洗車の段取りを確認。');
-  const dlSoon=two.filter(e=>e.layer==='deadline'&&(e.date===td||e.date===tm));
-  dlSoon.forEach(e=>w.push('⏰ 締切が近い：'+e.title+'（'+(e.date===td?'今日':'明日')+'）'));
-  const wc=document.getElementById('brief-warns');
-  wc.innerHTML=w.length?('<div class="warns"><h3>⚠️ 今日の注意</h3>'+w.map(x=>'<div>'+x+'</div>').join('')+'</div>'):'';
+  var bd=document.getElementById('brief-date'); if(bd)bd.textContent='（'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+' '+DOW[TODAY.getDay()]+'）';
+  var host=document.getElementById('board-host'); if(!host)return;
+  var todayEvs=getEvents(TODAY,TODAY).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+  var dutyChips=dutyOccurrences(TODAY,TODAY).map(function(o){ var who=(o.who&&o.who[0])?memberLabel(o.who[0]):'—'; return '<span class="bchip">'+esc(o.title)+'：'+esc(who)+'</span>'; }).join('') || '<span class="bchip" style="color:var(--text3)">今日の当番なし</span>';
+  var visit=todayEvs.filter(function(e){return e.etype==='車販来店';});
+  var deliv=todayEvs.filter(function(e){return e.etype==='納車予定';});
+  var moves=todayEvs.filter(function(e){return e.etype==='移動';});
+  var rest=todayEvs.filter(function(e){return ['車販来店','納車予定','移動'].indexOf(e.etype)<0;});
+  var cols={'整備':[],'車販':[],'受付':[],'その他':[]};
+  rest.forEach(function(e){ cols[boardDeptCol(e)].push(e); });
+  var mockBadge='<span class="bsrc" style="background:var(--bg4);color:var(--text2)">PitFlow（仮）</span>';
+  host.innerHTML=
+    '<div class="board">'+
+      '<div class="bhdr"><span class="bdate">'+(TODAY.getMonth()+1)+'/'+TODAY.getDate()+'（'+DOW[TODAY.getDay()]+'）</span>'+dutyChips+'</div>'+
+      '<div class="bgrid2">'+
+        '<div class="bsec"><div class="bsec-h"><span>🚗 入庫</span>'+mockBadge+'</div>'+BOARD_MOCK_INTAKE.map(function(o,i){return boardMockRow('in',i,o);}).join('')+'<div style="font-size:10.5px;color:var(--text3);margin-top:4px">クリック→入庫済み（PitFlow本実装で接続・日時移動も対応予定）</div></div>'+
+        '<div class="bsec"><div class="bsec-h"><span>↩ 返車</span>'+mockBadge+'</div>'+BOARD_MOCK_RETURN.map(function(o,i){return boardMockRow('rt',i,o);}).join('')+'</div>'+
+      '</div>'+
+      '<div class="bgrid2">'+
+        boardSec('🙋 来店予定','MHS：車販来店',visit)+
+        boardSec('🚙 納車予定','CarFlow参照（仮）',deliv)+
+      '</div>'+
+      '<div class="bsec"><div class="bsec-h"><span>🔧 車検予定</span><span class="bsrc" style="background:var(--bg4);color:var(--text2)">PitFlow車検（準備中）</span></div><div style="font-size:12px;color:var(--text3)">PitFlowの車検スケジュール搭載後にここへ表示します。</div>'+(moves.length?('<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px"><div class="bcol-h">📍 移動類</div>'+moves.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join('')+'</div>'):'')+'</div>'+
+      '<div class="bsec"><div class="bsec-h"><span>📋 各部署の予定</span><span style="font-size:11px;color:var(--text3);font-weight:400">終わったらクリック→済</span></div>'+
+        '<div class="bgrid4">'+boardCol('整備',cols['整備'])+boardCol('車販',cols['車販'])+boardCol('受付',cols['受付'])+boardCol('その他（全社）',cols['その他'])+'</div>'+
+      '</div>'+
+    '</div>';
 }
 
 /* 会社カレンダー設定 UI（マスター） */
@@ -2907,7 +2983,7 @@ function efPipDragEnd(){ _pipDrag=null; document.removeEventListener('mousemove'
 function pickHTML(group,val,label,on){return '<span class="pick'+(on?' on':'')+'" onclick="efPick(\''+group+'\',\''+escA(val)+'\',this)">'+label+'</span>';}
 function renderEventForm(){
   const b=document.getElementById('ef-body');
-  const etypePick=[['社内予定','社内予定'],['MTG','MTG'],['来社','来社'],['締切り','締切り']].map(function(a){return pickHTML('etype',a[0],a[1],(EF.etype||'社内予定')===a[0]);}).join('');
+  const etypePick=[['社内予定','社内予定'],['MTG','MTG'],['来社','来社'],['車販来店','車販来店'],['納車予定','納車予定'],['移動','移動'],['締切り','締切り']].map(function(a){return pickHTML('etype',a[0],a[1],(EF.etype||'社内予定')===a[0]);}).join('');
   const kindPick=[['all','全社'],['dept','部署'],['personal','個人']].map(function(a){return pickHTML('kind',a[0],a[1],EF.kind===a[0]);}).join('');
   const deptPick=DEPTS.map(function(dp){return pickHTML('dept',dp,dp,EF.dept===dp);}).join('');
   const tmodePick=[['allday','終日'],['am','AM'],['pm','PM'],['time','時刻']].map(function(a){return pickHTML('tmode',a[0],a[1],(EF.timeMode||'allday')===a[0]);}).join('');
