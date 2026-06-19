@@ -678,7 +678,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.50.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.50.2</div>
   </div>
 </div>
 
@@ -696,7 +696,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.50.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.50.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2352,8 +2352,10 @@ var APPROVED=(function(){ try{ return JSON.parse(localStorage.getItem('mhs_appro
 var _checklist=[];
 function checklistKey(it){ return it.type+'|'+it.id+'|'+it.extra; }
 function collectIssues(){
-  var issues=[], start=new Date(TODAY), end=addDays(TODAY,60);
-  var evs=getEvents(start,end), seen={};
+  var cur=new Date(calCursor.getFullYear(),calCursor.getMonth(),1);
+  var issues=[], start=cur, end=new Date(cur.getFullYear(),cur.getMonth()+1,0);   // 表示中の「その月」だけ
+  // 重複・休み判定は当番/ルーティン（時間あり）とも整合（時刻ありだけが時間衝突の対象）
+  var evs=getEvents(start,end).concat(dutyOccurrences(start,end)).concat(routineOccurrences(start,end)), seen={};
   evs.forEach(function(e){
     if(e.source==='reminder')return;
     if(e._shifted){ issues.push({type:'shift',id:(e.id||e.title),extra:e.date,label:'🔁 「'+esc(e.title)+'」は定休日のため '+(e._origDate||'').slice(5)+' → '+e.date.slice(5)+' に自動振替'}); }
