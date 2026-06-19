@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.42.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.43.0</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.42.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.43.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2344,52 +2344,83 @@ function gatherTodos(start,end){
 }
 function dashApprove(json){ var e=JSON.parse(json); todoApprove(e); toast('承認しました（完了）'); renderDash(); }
 function dashApproveAttr(e){ var j=JSON.stringify(e).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); return jsAttr("dashApprove('"+j+"')"); }
-function todoCardsHTML(){
+/* 今日の自分（or 全体）に出す予定の絞り込み */
+function dashDayEvents(d, me, myDeptName){
+  var evs=getEvents(d,d).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+  if(dashMode==='self') evs=evs.filter(function(e){ return _dashEvMatchesMember(e,me)||e.kind==='all'||(e.kind==='dept'&&myDeptName&&e.dept===myDeptName); });
+  return evs;
+}
+/* 未完了カード（1件1カード） */
+function dashOverdueCards(items){
+  var head='<div class="dash-h">⏰ 未完了 <span style="color:var(--acc2)">'+items.length+'</span></div>';
+  if(!items.length) return '<div class="dash-card">'+head+'<div style="font-size:12px;color:var(--text3);padding:4px 2px">期限の来た未完了はありません。</div></div>';
+  var cards=items.map(function(e){ var tm=(e.time&&e.time!=='終日'&&e.time!=='—')?(' '+esc(e.time)):' 終日';
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--acc2);border-radius:0 10px 10px 0;padding:9px 11px;margin-bottom:8px">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:4px">'+srcIcon(e)+' '+esc(plainTitle(e))+'</div>'+
+      '<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text3)">🗓 '+e.date.slice(5).replace('-','/')+tm+' '+whoAvatars(e.who,15,e.date)+'</div>'+
+      '<button class="btn-ghost" style="margin-top:7px;width:100%;font-size:12px;padding:5px 0" onclick="'+openChipAttr(e)+'">詳細・実行報告</button>'+
+    '</div>'; }).join('');
+  return '<div class="dash-card">'+head+cards+'</div>';
+}
+/* チェック（承認待ち）カード（1件1カード） */
+function dashApprovalCards(items){
+  if(!items.length) return '';
+  var head='<div class="dash-h">🔔 チェック（承認待ち） <span style="color:var(--acc2)">'+items.length+'</span></div>';
+  var cards=items.map(function(e){ var d=occState(e).done||{};
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid '+eventColor(e)+';border-radius:0 10px 10px 0;padding:9px 11px;margin-bottom:8px">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+srcIcon(e)+' '+esc(plainTitle(e))+' <span style="font-size:11px;color:var(--text3);font-weight:400">'+e.date.slice(5).replace('-','/')+'</span></div>'+
+      '<div style="font-size:11.5px;color:var(--text3)">実行：'+esc(d.by||'')+(d.at?'・'+fmtReportTs(d.at):'')+(d.note?'／'+esc(d.note):'')+'</div>'+
+      '<button class="btn-done" style="margin-top:7px;width:100%;font-size:12px;padding:5px 0" onclick="'+dashApproveAttr(e)+'">👍 OK（承認して完了）</button>'+
+    '</div>'; }).join('');
+  return '<div class="dash-card">'+head+cards+'</div>';
+}
+/* 明日・明後日（左右2カラム） */
+function dashTwoDayHTML(me, myDeptName){
+  function dayCard(d, lbl){
+    var evs=dashDayEvents(d, me, myDeptName).sort(function(a,b){return (a.time>b.time?1:-1);});
+    var rows = evs.length ? evs.map(function(e){ return '<div style="display:flex;gap:10px;font-size:12.5px;padding:4px 0;cursor:pointer" onclick="'+openChipAttr(e)+'"><span style="color:var(--text3);min-width:46px">'+((e.time==='終日'||e.time==='—'||!e.time)?'終日':esc(e.time))+'</span><span>'+srcIcon(e)+' '+dispTitle(e)+'</span></div>'; }).join('') : '<div style="font-size:12px;color:var(--text3);padding:4px 0">予定なし</div>';
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)">'+lbl+'　'+(d.getMonth()+1)+'/'+d.getDate()+'（'+DOW[d.getDay()]+'）</div>'+rows+'</div>';
+  }
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">'+dayCard(addDays(TODAY,1),'明日')+dayCard(addDays(TODAY,2),'明後日')+'</div>';
+}
+function renderDash(){
+  var host=document.getElementById('dash-body'); if(!host)return;
+  var me=myCoreMember(), myDeptName=me?memberDeptName(me):'';
+  var myDeptId=me?memberDeptIds(me).deptId:null;
+  // 完了通知＆未完了
   var winS=addDays(TODAY,-60), winE=addDays(TODAY,1);
   var todos=gatherTodos(winS,winE);
   var pending=todos.filter(function(e){ return todoStage(e)==='reported' && canApprove(occState(e).approvers); });
   var overdue=todos.filter(function(e){ return todoOverdue(e); });
-  if(dashMode==='self'){ var me=myCoreMember(); overdue=overdue.filter(function(e){ return _dashEvMatchesMember(e,me) || (me&&(e.approvers||[]).indexOf(me.id)>=0); }); }
+  if(dashMode==='self'){ overdue=overdue.filter(function(e){ return _dashEvMatchesMember(e,me) || (me&&(e.approvers||[]).indexOf(me.id)>=0); }); }
   pending.sort(function(a,b){ return a.date<b.date?-1:1; });
   overdue.sort(function(a,b){ return a.date<b.date?-1:1; });
-  var html='';
-  if(pending.length){
-    var rows=pending.map(function(e){ var d=occState(e).done||{};
-      return '<div class="ckl-row"><span class="ckl-tx">'+srcIcon(e)+' <b>'+esc(plainTitle(e))+'</b> <span style="color:var(--text3);font-size:11px">'+e.date.slice(5).replace('-','/')+'</span><br><span style="font-size:11px;color:var(--text2)">実行：'+esc(d.by||'')+(d.at?'・'+fmtReportTs(d.at):'')+(d.note?'／'+esc(d.note):'')+'</span></span><button class="ckl-ok" onclick="'+dashApproveAttr(e)+'">👍 OK</button></div>';
-    }).join('');
-    html+='<div class="dash-card"><div class="dash-h">🔔 完了通知（承認待ち '+pending.length+'）<span style="font-size:11px;color:var(--text3);font-weight:400">　あなたがOKすると完了</span></div>'+rows+'</div>';
-  }
-  var orows = overdue.length ? overdue.map(function(e){
-      var tm=(e.time&&e.time!=='終日'&&e.time!=='—')?(' '+esc(e.time)):' 終日';
-      return '<div class="ckl-row" style="cursor:pointer" onclick="'+openChipAttr(e)+'"><span class="ckl-tx">'+srcIcon(e)+' <b>'+esc(plainTitle(e))+'</b> <span style="color:var(--text3);font-size:11px">'+e.date.slice(5).replace('-','/')+tm+'</span> '+whoAvatars(e.who,14,e.date)+'</span><span style="color:#ef4444;font-size:11px;font-weight:700;flex-shrink:0">未完了</span></div>';
-    }).join('') : '<div class="ckl-empty">期限の来た未完了はありません。</div>';
-  html+='<div class="dash-card"><div class="dash-h">⏰ 未完了一覧（'+overdue.length+'）<span style="font-size:11px;color:var(--text3);font-weight:400">　押すと詳細→実行報告</span></div>'+orows+'</div>';
-  return html;
-}
-function renderDash(){
-  var host=document.getElementById('dash-body'); if(!host)return;
-  var todoCards=todoCardsHTML();
-  var evs=getEvents(TODAY,addDays(TODAY,13)).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
-  evs.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:(a.time>b.time?1:-1); });
+  // 今日の1日ビュー（営業時間ベース＋時間外があれば自動延長）
+  var byToday={}; dashDayEvents(TODAY, me, myDeptName).forEach(function(e){ (byToday[e.date]=byToday[e.date]||[]).push(e); });
+  var dayView=timeGridHTML([TODAY],byToday,1);
+  var dayHead=(dashMode==='self'?('今日の自分'+(me?'（'+esc(memDisp(me))+'）':' <span style="font-size:11px;color:#f59e0b">（名簿と未紐付け）</span>')):'今日の全体');
+  // 付箋
   var noteCard='<div class="dash-card"><div class="dash-h">🗒️ 付箋（'+(dashMode==='self'?'自分宛て':'全体')+'）</div>'+dashNotesHTML(dashMode)+'</div>';
+  // 所属部署（自分モードのみ）
+  var deptCard='';
   if(dashMode==='self'){
-    var me=myCoreMember();
-    var mine=evs.filter(function(e){ return _dashEvMatchesMember(e,me); });
-    var myDept=me?memberDeptIds(me).deptId:null, myDeptName=me?memberDeptName(me):'';
-    var deptEvs=evs.filter(function(e){ if(mine.indexOf(e)>=0)return false;
+    var next=getEvents(TODAY,addDays(TODAY,13)).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+    var deptEvs=next.filter(function(e){ if(_dashEvMatchesMember(e,me))return false;
       if(e.kind==='dept' && myDeptName && e.dept===myDeptName) return true;
-      return (e.who||[]).some(function(w){ var m=memberById(w); return m && myDept && memberDeptIds(m).deptId===myDept; }); });
-    host.innerHTML=
-      todoCards+
-      '<div class="dash-card"><div class="dash-h">👤 自分のスケジュール'+(me?'（'+esc(memDisp(me))+'）':' <span style="font-size:11px;color:#f59e0b">（あなたのアカウントが名簿と未紐付けです）</span>')+'</div>'+dashEventList(mine)+'</div>'+
-      '<div class="dash-card"><div class="dash-h">🏢 所属部署のスケジュール'+(myDeptName?'（'+esc(myDeptName)+'）':'')+'</div>'+dashEventList(deptEvs)+'</div>'+
-      noteCard;
+      return (e.who||[]).some(function(w){ var m=memberById(w); return m && myDeptId && memberDeptIds(m).deptId===myDeptId; }); });
+    deptCard='<div class="dash-card"><div class="dash-h">🏢 所属部署のスケジュール'+(myDeptName?'（'+esc(myDeptName)+'）':'')+'</div>'+dashEventList(deptEvs)+'</div>';
   } else {
-    host.innerHTML=
-      todoCards+
-      '<div class="dash-card"><div class="dash-h">📅 全体のスケジュール（今後2週間）</div>'+dashEventList(evs)+'</div>'+
-      noteCard;
+    var allNext=getEvents(TODAY,addDays(TODAY,13)).filter(function(e){ return e.source!=='reminder'&&e.source!=='birthday'; });
+    deptCard='<div class="dash-card"><div class="dash-h">📅 全体のスケジュール（今後2週間）</div>'+dashEventList(allNext)+'</div>';
   }
+  host.innerHTML=
+    '<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:start">'+
+      '<div class="dash-card"><div class="dash-h">👤 '+dayHead+'</div>'+dayView+'</div>'+
+      '<div>'+dashOverdueCards(overdue)+dashApprovalCards(pending)+'</div>'+
+    '</div>'+
+    '<div class="dash-card"><div class="dash-h">📅 明日・明後日</div>'+dashTwoDayHTML(me,myDeptName)+'</div>'+
+    deptCard+
+    noteCard;
 }
 /* ===== 付箋（MHS発=mhsNotes ＋ CarFlow=boardNotes を集約・返信/編集/済） ===== */
 var MHS_NOTES=[], CAR_NOTES=[], PIT_NOTES=[], _mhsNotesUnsub=null, _carNotesUnsub=null, _pitNotesUnsub=null, _notesErr='';
