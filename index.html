@@ -372,6 +372,38 @@
   .cc-memo{background:var(--bg3);color:var(--text2)}
   .ta-like{text-align:left;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 12px;font-size:13.5px;cursor:pointer}
   .ta-like:hover{border-color:var(--acc2)}
+  /* お知らせ（受信箱・新着ポップアップ） */
+  .anc-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden}
+  .anc-item.is-unread{border-color:#f59e0b}
+  .anc-head{display:flex;align-items:center;gap:8px;padding:11px 13px;cursor:pointer}
+  .anc-dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;flex:0 0 auto;visibility:hidden}
+  .anc-item.is-unread .anc-dot{visibility:visible}
+  .anc-ver{font-size:10px;font-weight:800;background:var(--bg3);color:var(--text2);border-radius:5px;padding:1px 6px}
+  .anc-title{font-weight:700;font-size:13.5px;flex:1}
+  .anc-date{font-size:11px;color:var(--text3)}
+  .anc-caret{color:var(--text3);font-size:11px}
+  .anc-body{padding:0 14px 14px;font-size:13px;line-height:1.8;color:var(--text2)}
+  .anc-body h4{color:var(--text);font-size:13.5px;margin:12px 0 4px}
+  .anc-body ul{margin:4px 0;padding-left:20px}
+  .anc-body b{color:var(--text)}
+  .anc-footer{margin-top:12px}
+  .anc-confirm-btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 16px;font-weight:700;cursor:pointer}
+  .anc-confirmed{color:#22c55e;font-size:12px;font-weight:700}
+  .anc-empty{color:var(--text3);padding:20px;text-align:center}
+  #announce-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:600}
+  #announce-popup-overlay.open{display:flex}
+  .anc-popup{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(94vw,560px);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+  .anc-popup-head{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
+  .anc-popup-icon{font-size:18px}.anc-popup-title{font-weight:800;font-size:15px;flex:1}.anc-popup-progress{font-size:11px;color:var(--text3)}
+  .anc-popup-body{padding:14px 16px;overflow:auto}
+  .anc-popup-item-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .anc-popup-item-title{font-weight:800;font-size:14px;flex:1}.anc-popup-item-date{font-size:11px;color:var(--text3)}
+  .anc-popup-item-body{font-size:13px;line-height:1.8;color:var(--text2)}
+  .anc-popup-item-body h4{color:var(--text);font-size:13.5px;margin:12px 0 4px}
+  .anc-popup-item-body ul{padding-left:20px;margin:4px 0}.anc-popup-item-body b{color:var(--text)}
+  .anc-popup-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)}
+  .anc-popup-later{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 16px;cursor:pointer}
+  .anc-popup-ok{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer}
   body.board-portrait .tr-customer{font-size:19px}
   body.board-portrait .tr-carname{font-size:17px}
   body.board-portrait .tr-time{font-size:17px}
@@ -646,7 +678,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.49.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.50.0</div>
   </div>
 </div>
 
@@ -664,11 +696,11 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.49.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.50.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
-    <button class="tb-btn" id="tb-quick" onclick="openQuickForm()" style="line-height:1.05;text-align:center;background:rgba(245,158,11,.16);border-color:#f59e0b;color:#f0b558">＋ クイック入力<br><span style="font-size:9px;font-weight:400;opacity:.85">（できない子用）</span></button>
+    <button class="tb-btn" id="tb-quick" onclick="openQuickForm()" title="できない子用">＋ クイック入力<span style="font-size:10px;opacity:.7;margin-left:4px;font-weight:400">（できない子用）</span></button>
     <div class="topbar-user">
       <span class="av" id="u-av"></span>
       <span class="uname" id="me-name"></span>
@@ -696,7 +728,7 @@
     <div class="si-item" data-v="evimport" onclick="showView('evimport')"><span class="ic">📥</span><span>予定取込・初期化</span></div>
     <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
     <div class="si-title">情報</div>
-    <div class="si-item" data-v="news" onclick="showView('news')"><span class="ic">📣</span><span>お知らせ・使い方</span></div>
+    <div class="si-item" data-v="news" onclick="showView('news')"><span class="ic">📣</span><span>お知らせ・使い方</span><span class="si-badge" id="news-badge" style="display:none;background:#f59e0b"></span></div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このモックについて</span></div>
 
     <!-- CoreFlow アプリランチャー（共通） -->
@@ -830,7 +862,13 @@
         <button class="vh-btn" onclick="closedCalToday()">今月</button>
         <button class="tb-btn primary" style="margin-left:auto" onclick="openClosedAdd()">＋ 休み・設定を追加</button>
       </div>
-      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">長期休み・臨時休業・特別営業・午前/午後休み・早締め（MTG等）を管理（過去も遡れます）。<b>＋ボタン</b>から単発・期間・くりかえし（毎週/第n曜/祝日）で追加。日をクリックするとその日付で追加できます。毎週の定休・祝日は「設定（会社カレンダー）」でも可。</p>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">長期休み・臨時休業・特別営業・午前/午後休み・早締め（MTG等）を管理（過去も遡れます）。<b>＋ボタン</b>から単発・期間・くりかえし（毎週/第n曜/祝日）で追加。日をクリックするとその日付で追加できます。</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+        <span style="font-size:13px;font-weight:700">📅 長期休み（期間）をサッと追加</span>
+        <input type="date" id="ccal-rfrom" class="cal-date"><span style="color:var(--text3)">〜</span><input type="date" id="ccal-rto" class="cal-date">
+        <input type="text" id="ccal-rnote" placeholder="例：お盆休み" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 8px;font-size:13px">
+        <button class="vh-btn" onclick="closedCalAddRange()">＋ 追加</button>
+      </div>
       <div id="ccal-host"></div>
       <div id="ccal-ranges" style="margin-top:12px"></div>
     </section>
@@ -875,63 +913,11 @@
       <div id="evimport-body"></div>
     </section>
 
-    <!-- お知らせ・使い方 -->
+    <!-- お知らせ・使い方（受信箱） -->
     <section id="view-news" class="view">
-      <div class="vhead"><div class="vtitle">📣 お知らせ・使い方</div></div>
-      <div class="note-card">
-        <h4>🆕 最近のアップデート（v0.40〜v0.48）</h4>
-        <p style="line-height:1.9">カレンダーを役割で分け、当番・ルーティン・TODO承認・Todayボードなどを追加しました。下に使い方をまとめています。</p>
-      </div>
-
-      <div class="note-card">
-        <h4>🗓️ カレンダーの使い分け</h4>
-        <p style="line-height:1.9">
-        ・<b>スケジュール</b>＝単発のアポ・予定（来店/商談/出張など）を入れる場所。<br>
-        ・<b>ルーティン業務</b>＝毎週/毎月◯日/毎年など<b>定例の繰り返し業務</b>（集計・チェック・締切・報告会・支払い）。<br>
-        ・<b>当番</b>＝人が回るもの（ゴミ出し当番など）。火＝Aさん/木＝Bさんの<b>曜日固定</b>や、<b>週替わり/1回ごとのローテ</b>。<br>
-        ・<b>シフト</b>＝休み（PDF取込）。表とカレンダーをボタンで切替。<br>
-        ・<b>マスターカレンダー</b>＝上記を全部レイヤーで重ねて<b>俯瞰で見る</b>（編集は各カレンダー。スケジュールだけここでも時間/担当の変更可）。
-        </p>
-      </div>
-
-      <div class="note-card">
-        <h4>✅ TODOと完了通知（承認）の流れ</h4>
-        <p style="line-height:1.9">
-        新規作成時に<b>「TODOにする」</b>をONにすると実行報告ができます。さらに<b>「完了通知（承認）を付ける」</b>をONにすると、承認者（既定＝担当者の上長・自由に変更可）に通知が飛びます。<br>
-        ① 実行者が予定を開いて<b>「実行完了を報告」</b>（＝済）→ ② 承認者がダッシュボードの<b>「チェック（承認待ち）」</b>で<b>OK</b>→ 完了。承認なしのTODOは報告だけで完了。<br>
-        詳細には実行日時・実行者、承認日時・承認者がログとして残ります。
-        </p>
-      </div>
-
-      <div class="note-card">
-        <h4>🏠 ダッシュボードの見方</h4>
-        <p style="line-height:1.9">
-        左＝<b>今日の自分</b>（1日ビュー）＋明日・明後日。右＝<b>未完了</b>／<b>チェック（承認待ち）</b>／<b>クイック予定（要仕上げ）</b>をカードで。要確認の件数はサイドバーの🏠に<b>赤バッジ</b>で出ます。
-        </p>
-      </div>
-
-      <div class="note-card">
-        <h4>📝 クイック予定（かんたん入力）</h4>
-        <p style="line-height:1.9">
-        上の<b>「＋ クイック入力」</b>から<b>タイトルと日時だけ</b>で保存。ダッシュボードの<b>「クイック予定（要仕上げ）」</b>に溜まり、作った人のアバターも表示。分かる人が開いて部署・担当・TODO・リマインドを足して保存すると、正式な予定になります（メモ付箋→正式入力のイメージ）。
-        </p>
-      </div>
-
-      <div class="note-card">
-        <h4>📺 Todayボード（店頭ボードの電子版）</h4>
-        <p style="line-height:1.9">
-        入庫・返車（PitFlow連携・現在は仮）、来店予定（種類「車販来店」）、納車予定（CarFlow連携）、各部署の予定を1画面に。右上の<b>「縦表示」</b>で壁掛け縦モニター用の表示に切替（サイドバー非表示・休憩バーを左右で揃えるフルビュー）。前日/翌日も送れます。
-        </p>
-      </div>
-
-      <div class="note-card">
-        <h4>🚫 定休日・営業日の設定</h4>
-        <p style="line-height:1.9">
-        <b>設定（会社カレンダー）</b>＝毎週の定休曜日・祝日・営業時間。<br>
-        <b>定休日カレンダー</b>＝長期休み・臨時休業・特別営業・午前/午後休み・早締め（MTG等）を日付ごとに。<br>
-        当番・ルーティンは「定休日に当たったら営業日にずらす（全体設定の逆チェック）」を各フォームで設定できます。
-        </p>
-      </div>
+      <div class="vhead"><div class="vtitle">📣 お知らせ・使い方</div><button class="vh-btn" style="margin-left:auto" onclick="markAllAnnounceRead()">全部既読に</button></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">新機能の使い方を配信しています。タイトルをクリックで開閉、「✓ 確認する」で既読になります。</p>
+      <div id="announce-list"></div>
     </section>
 
     <!-- About -->
@@ -1131,6 +1117,7 @@ async function enterApp(member,user){
   subscribeLabels();
   renderLayers('layers-month'); renderLayers('layers-axis');
   setSyncState(navigator.onLine!==false);
+  loadAnnounceRead(function(){ maybeShowAnnouncePopup(); });
   showView('dash');
 }
 function wireAuth(){
@@ -2118,6 +2105,7 @@ function showView(v){
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
   if(v==='closedcal') renderClosedCal();
+  if(v==='news') renderAnnounce();
   if(v==='shiftpdf') renderShiftPdf();
   if(v==='shift') renderShiftView();
   if(v==='evimport') renderEvImport();
@@ -2657,6 +2645,62 @@ function updateDashBadge(){
     el.textContent=n?String(n):''; el.style.display=n?'inline-flex':'none';
   }catch(e){ el.style.display='none'; }
 }
+/* ===== お知らせ（受信箱＋未読バッジ＋新着ポップアップ・CarFlow方式） ===== */
+const ANNOUNCEMENTS=[
+  { id:'a-mhs-0490', version:'0.49.0', date:'2026-06-19', title:'📝 クイック入力・確認バッジ・お知らせ・定休日カレンダー強化',
+    body:'<p>かんたん入力や確認バッジなど、毎日使いやすくする機能を追加しました。</p>'+
+    '<h4>📝 クイック入力（できない子用）</h4><ul><li>上の<b>「＋ クイック入力」</b>から<b>タイトルと日時だけ</b>で保存。</li><li>ダッシュボード右の<b>「クイック予定（要仕上げ）」</b>に溜まり、<b>作った人のアバター</b>も出ます。</li><li>分かる人が開いて部署・担当・TODO・リマインドを足して保存すると、<b>正式な予定</b>になります（メモ付箋→正式入力のイメージ）。</li></ul>'+
+    '<h4>🔔 確認バッジ</h4><ul><li>サイドバーの🏠ダッシュボードに、<b>承認待ち＋クイック予定＋自分の未完了</b>の件数が赤バッジで出ます。</li></ul>'+
+    '<h4>🚫 定休日カレンダー</h4><ul><li>「管理▸定休日カレンダー」の<b>＋ボタン</b>から、単発・期間・くりかえし（毎週/第n曜/祝日）・午前/午後休み・早締めを登録。</li></ul>' },
+  { id:'a-mhs-0460', seed:true, version:'0.46.0', date:'2026-06-19', title:'📺 Todayボード（店頭ボードの電子版）＋縦表示',
+    body:'<p>店頭の朝礼ボードを電子化しました。入庫・返車（PitFlow当日ビューを移植・現在は仮データ）、来店予定（種類「車販来店」）、納車予定、各部署の予定を1画面に。</p><ul><li>右上の<b>「縦表示」</b>で壁掛け縦モニター用に切替（サイドバー非表示・休憩バーを左右で揃えるフルビュー）。</li><li>前日/翌日も送れます。</li></ul>' },
+  { id:'a-mhs-0450', seed:true, version:'0.45.0', date:'2026-06-19', title:'🚙 納車予定（CarFlow連携）',
+    body:'<p>CarFlowの納車準備中の車を、Todayボードの納車予定欄に<b>写真・メーカー車種・納車時間・KM番号</b>のカードで自動表示します（クリックでCarFlowの該当車両へ）。</p>' },
+  { id:'a-mhs-0430', seed:true, version:'0.43.0', date:'2026-06-19', title:'🏠 ダッシュボード刷新',
+    body:'<p>左＝<b>今日の自分</b>（1日ビュー）＋明日・明後日。右＝<b>未完了／チェック（承認待ち）／クイック予定</b>をカードで。</p>' },
+  { id:'a-mhs-0420', seed:true, version:'0.42.0', date:'2026-06-19', title:'✅ TODO完了通知＆承認',
+    body:'<p>新規作成で<b>「TODOにする」</b>＝実行報告ができ、<b>「完了通知（承認）を付ける」</b>＝承認者（既定＝担当者の上長）にOKをもらって完了、の2段階。</p><ul><li>実行者が<b>「実行完了を報告」</b>→ 承認者がダッシュボードの<b>「チェック」</b>でOK→ 完了。</li><li>実行日時・実行者、承認日時・承認者がログに残ります。</li></ul>' },
+  { id:'a-mhs-0410', seed:true, version:'0.41.0', date:'2026-06-19', title:'🔁 当番・♻️ルーティン業務・🗓️マスターカレンダー',
+    body:'<p>カレンダーを役割で分けました。</p><ul><li><b>当番</b>＝人が回る（火＝A/木＝Bの曜日固定、週替わり/1回ごとのローテ）。</li><li><b>ルーティン業務</b>＝毎週/毎月◯日/毎年の定例業務（集計・締切・支払い等）。</li><li><b>マスターカレンダー</b>＝全部を重ねて俯瞰（編集は各カレンダー）。</li></ul>' },
+  { id:'a-mhs-0400', seed:true, version:'0.40.0', date:'2026-06-19', title:'🗓️ カレンダー再編（スケジュール/当番/シフト）',
+    body:'<p>「カレンダー」を<b>スケジュール</b>に改名し、シフトを<b>シフトカレンダー</b>に。役割ごとに入れる場所を分けました。</p>' },
+];
+var ANC_READ=[];
+function ancPrefsDoc(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc((window.fb.currentUser&&window.fb.currentUser.uid)||'_'); }
+function loadAnnounceRead(cb){ ancPrefsDoc().get().then(function(d){ ANC_READ=(d.exists&&Array.isArray((d.data()||{}).readAnnouncements))?d.data().readAnnouncements.slice():[]; refreshNewsBadge(); if(cb)cb(); }).catch(function(){ ANC_READ=[]; if(cb)cb(); }); }
+function _setReadAnnounce(arr){ ANC_READ=(arr||[]).slice(); ancPrefsDoc().set({readAnnouncements:ANC_READ},{merge:true}).catch(function(e){ console.warn('[MHS] お知らせ既読保存失敗',e); }); }
+function _isAncRead(id){ if(ANC_READ.indexOf(id)>=0)return true; var a=ANNOUNCEMENTS.find(function(x){return x.id===id;}); return !!(a&&a.seed); }
+function announceUnreadCount(){ return ANNOUNCEMENTS.filter(function(a){return !_isAncRead(a.id);}).length; }
+function _markAnnounceRead(id){ if(ANC_READ.indexOf(id)<0){ ANC_READ.push(id); _setReadAnnounce(ANC_READ); } refreshNewsBadge(); }
+function markAllAnnounceRead(){ _setReadAnnounce(ANNOUNCEMENTS.map(function(a){return a.id;})); refreshNewsBadge(); renderAnnounce(); }
+function refreshNewsBadge(){ var el=document.getElementById('news-badge'); if(!el)return; var n=announceUnreadCount(); if(n>0){ el.textContent=String(n); el.style.display='inline-flex'; } else { el.textContent=''; el.style.display='none'; } }
+function _ancVerNum(v){ var p=String(v==null?'0':v).split('.').map(function(n){return parseInt(n,10)||0;}); return (p[0]||0)*10000+(p[1]||0)*100+(p[2]||0); }
+function renderAnnounce(){
+  var host=document.getElementById('announce-list'); if(!host)return;
+  var items=ANNOUNCEMENTS.slice().sort(function(a,b){ return (_ancVerNum(b.version)-_ancVerNum(a.version)) || String(b.date||'').localeCompare(String(a.date||'')); });
+  if(!items.length){ host.innerHTML='<div class="anc-empty">お知らせはありません</div>'; refreshNewsBadge(); return; }
+  host.innerHTML=items.map(function(a){
+    var isRead=_isAncRead(a.id), isOpen=window._ancOpen===a.id;
+    var verTag=a.version?'<span class="anc-ver">v'+esc(a.version)+'</span>':'';
+    var footer=isRead?'<div class="anc-footer"><span class="anc-confirmed">✓ 確認済み</span></div>':'<div class="anc-footer"><button type="button" class="anc-confirm-btn" onclick="confirmAnnounce(\''+a.id+'\')">✓ 確認する（OK）</button></div>';
+    return '<div class="anc-item '+(isRead?'is-read':'is-unread')+(isOpen?' is-open':'')+'">'+
+      '<div class="anc-head" onclick="toggleAnnounce(\''+a.id+'\')"><span class="anc-dot"></span>'+verTag+'<span class="anc-title">'+esc(a.title)+'</span><span class="anc-date">'+esc(a.date||'')+'</span><span class="anc-caret">'+(isOpen?'▲':'▼')+'</span></div>'+
+      '<div class="anc-body" style="'+(isOpen?'':'display:none')+'">'+(a.body||'')+footer+'</div></div>';
+  }).join('');
+  refreshNewsBadge();
+}
+function toggleAnnounce(id){ window._ancOpen=(window._ancOpen===id)?null:id; renderAnnounce(); }
+function confirmAnnounce(id){ _markAnnounceRead(id); renderAnnounce(); }
+function _ancPopupEl(){ var el=document.getElementById('announce-popup-overlay'); if(!el){ el=document.createElement('div'); el.id='announce-popup-overlay'; document.body.appendChild(el); } return el; }
+function _unreadAncSorted(){ return ANNOUNCEMENTS.filter(function(a){return !_isAncRead(a.id);}).sort(function(a,b){ return (_ancVerNum(a.version)-_ancVerNum(b.version)) || String(a.date||'').localeCompare(String(b.date||'')); }); }
+function maybeShowAnnouncePopup(){ if(window._ancPopupShown)return; if(window.innerWidth<=768)return; var unread=_unreadAncSorted(); if(!unread.length)return; window._ancPopupShown=true; window._ancQueue=unread; window._ancQueueIdx=0; _showAncQueueItem(); }
+function showAnnouncePopup(){ var unread=_unreadAncSorted(); if(!unread.length){ toast('新着のお知らせはありません'); return; } window._ancQueue=unread; window._ancQueueIdx=0; _showAncQueueItem(); }
+function _showAncQueueItem(){ var q=window._ancQueue||[], i=window._ancQueueIdx||0; if(i>=q.length){ closeAnnouncePopup(); return; } var a=q[i];
+  var verTag=a.version?'<span class="anc-ver">v'+esc(a.version)+'</span>':''; var progress=(q.length>1)?'<span class="anc-popup-progress">'+(i+1)+' / '+q.length+'</span>':''; var okLabel=(i+1<q.length)?'確認して次へ ▶':'確認';
+  var el=_ancPopupEl(); el.innerHTML='<div class="anc-popup"><div class="anc-popup-head"><span class="anc-popup-icon">📢</span><span class="anc-popup-title">新着のお知らせ</span>'+progress+'</div><div class="anc-popup-body"><div class="anc-popup-item-head">'+verTag+'<span class="anc-popup-item-title">'+esc(a.title)+'</span><span class="anc-popup-item-date">'+esc(a.date||'')+'</span></div><div class="anc-popup-item-body">'+(a.body||'')+'</div></div><div class="anc-popup-foot"><button type="button" class="anc-popup-later" onclick="closeAnnouncePopup()">後で</button><button type="button" class="anc-popup-ok" onclick="confirmAnnouncePopup()">'+okLabel+'</button></div></div>'; el.classList.add('open'); }
+function closeAnnouncePopup(){ var el=document.getElementById('announce-popup-overlay'); if(el)el.classList.remove('open'); }
+function confirmAnnouncePopup(){ var q=window._ancQueue||[], i=window._ancQueueIdx||0; if(q[i])_markAnnounceRead(q[i].id); window._ancQueueIdx=i+1; if(window._ancQueueIdx<q.length){ _showAncQueueItem(); } else { closeAnnouncePopup(); renderAnnounce(); } }
+
 /* 明日・明後日（左右2カラム） */
 function dashTwoDayHTML(me, myDeptName){
   function dayCard(d, lbl){
