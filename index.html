@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.40.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.41.0</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.40.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -569,12 +569,14 @@
   <div id="sidebar">
     <div class="si-title">ビュー</div>
     <div class="si-item active" data-v="dash" onclick="showView('dash')"><span class="ic">🏠</span><span>ダッシュボード</span></div>
-    <div class="si-item" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
+    <div class="si-item" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>Todayボード</span></div>
     <div class="si-item" data-v="master" onclick="showView('master')"><span class="ic">🗓️</span><span>マスターカレンダー</span></div>
-    <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">📅</span><span>スケジュールカレンダー</span></div>
-    <div class="si-item" data-v="duty" onclick="showView('duty')"><span class="ic">🔁</span><span>当番カレンダー</span></div>
-    <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">🛌</span><span>シフトカレンダー</span></div>
-    <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">👤</span><span>メンバー（週）</span></div>
+    <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">👤</span><span>メンバーボード</span></div>
+    <div class="si-title">カレンダー</div>
+    <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">📅</span><span>スケジュール</span></div>
+    <div class="si-item" data-v="routine" onclick="showView('routine')"><span class="ic">♻️</span><span>ルーティン業務</span></div>
+    <div class="si-item" data-v="duty" onclick="showView('duty')"><span class="ic">🔁</span><span>当番</span></div>
+    <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">🛌</span><span>シフト</span></div>
     <div class="si-title">管理</div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
     <div class="si-item" data-v="evimport" onclick="showView('evimport')"><span class="ic">📥</span><span>予定取込・初期化</span></div>
@@ -602,7 +604,7 @@
 
     <!-- 朝礼カード -->
     <section id="view-brief" class="view">
-      <div class="vhead"><div class="vtitle">🌅 朝礼カード <span id="brief-date" style="font-size:13px;color:var(--text2);font-weight:500"></span></div></div>
+      <div class="vhead"><div class="vtitle">🌅 Todayボード <span id="brief-date" style="font-size:13px;color:var(--text2);font-weight:500"></span></div></div>
       <div id="brief-warns"></div>
       <div class="brief">
         <div class="bcard"><h3>今日 <span class="pill" id="brief-today-n"></span></h3><div id="brief-today"></div></div>
@@ -669,10 +671,30 @@
       <div id="duty-panel" style="margin-top:16px"></div>
     </section>
 
+    <!-- ルーティン業務カレンダー（定例の繰り返し業務） -->
+    <section id="view-routine" class="view">
+      <div class="vhead">
+        <div class="vtitle">♻️ ルーティン業務</div>
+        <div class="seg cal-mode-seg" id="rcal-mode-seg">
+          <button data-m="month" class="active" onclick="setCalMode('month')">月</button>
+          <button data-m="week" onclick="setCalMode('week')">週</button>
+          <button data-m="day" onclick="setCalMode('day')">日</button>
+        </div>
+        <button class="vh-btn" onclick="calMove(-1)">◀</button>
+        <span id="rcal-label" style="font-weight:700;min-width:150px;text-align:center"></span>
+        <button class="vh-btn" onclick="calMove(1)">▶</button>
+        <button class="vh-btn" onclick="calToday()">今日</button>
+        <button class="tb-btn primary" style="margin-left:auto" onclick="openRoutineForm()">＋ ルーティンを追加</button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">毎週・毎月◯日・毎年などの<b>定例の繰り返し業務</b>（集計・チェック・締切・報告会・支払い等）をここに集約。スケジュール（単発のアポ）とは分けて、お互いをスッキリ見せます。下の一覧から追加・編集できます。</p>
+      <div id="rcal-host" class="cal-host-pad"></div>
+      <div id="routine-panel" style="margin-top:16px"></div>
+    </section>
+
     <!-- メンバー（週）ビュー -->
     <section id="view-axis" class="view">
       <div class="vhead">
-        <div class="vtitle">👤 メンバー（週）</div>
+        <div class="vtitle">👤 メンバーボード</div>
         <button class="vh-btn" onclick="moveWeek(-1)">◀ 前週</button>
         <span id="week-label" style="font-weight:700;min-width:150px;text-align:center"></span>
         <button class="vh-btn" onclick="moveWeek(1)">翌週 ▶</button>
@@ -800,6 +822,20 @@
   </div>
 </div>
 
+<!-- ルーティン業務 追加/編集モーダル -->
+<div class="mbg" id="routine-modal" onclick="if(event.target.id==='routine-modal')closeRoutineForm()">
+  <div class="mbox wide">
+    <div class="mhead"><span class="mt" id="routine-modal-title">ルーティンを追加</span><button class="x" onclick="closeRoutineForm()">✕</button></div>
+    <div class="mbody scroll" id="routine-modal-body"></div>
+    <div class="mfoot">
+      <button class="btn-del" id="routine-modal-del" style="display:none" onclick="routineDeleteFromModal()">🗑️ 削除</button>
+      <div class="grow"></div>
+      <button class="btn-ghost" onclick="closeRoutineForm()">キャンセル</button>
+      <button class="btn-save" onclick="saveRoutineForm()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -869,6 +905,7 @@ async function enterApp(member,user){
   subscribeSchedule();
   subscribeShifts();
   subscribeDuties();
+  subscribeRoutines();
   loadShiftAliases();
   subscribeNotes();
   subscribeLabels();
@@ -902,9 +939,10 @@ const LAYERS=[
   {key:'deadline', name:'締切',     color:'var(--deadline)', hex:'#dc2626'},
 ];
 const layerOn={}; LAYERS.forEach(l=>layerOn[l.key]=true);
-layerOn.duty=true; layerOn.shift=true;   // マスターカレンダー用の追加レイヤー（当番・シフト）
-/* マスター用レイヤー一覧（標準＋当番＋シフト） */
+layerOn.routine=true; layerOn.duty=true; layerOn.shift=true;   // マスターカレンダー用の追加レイヤー（ルーティン・当番・シフト）
+/* マスター用レイヤー一覧（標準＋ルーティン＋当番＋シフト） */
 const MASTER_LAYERS=LAYERS.concat([
+  {key:'routine',name:'ルーティン業務', color:'#16a34a', hex:'#16a34a'},
   {key:'duty', name:'当番', color:'#0ea5e9', hex:'#0ea5e9'},
   {key:'shift',name:'シフト（休み）', color:'#f3a4b5', hex:'#f3a4b5'},
 ]);
@@ -915,6 +953,7 @@ const nameOf=k=>(LAYERS.find(l=>l.key===k)||{}).name||k;
 let DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'#378ADD','受付':'#ec4899','デザイン':'#a855f7','service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};
 let DEPTS=['整備','1課','2課','車販','受付','デザイン'];
 function eventColor(e){
+  if(e.source==='routine') return e.color||(e.kind==='dept'?(DEPT_COLORS[e.dept]||'#16a34a'):'#16a34a');  // ♻️ルーティン
   if(e.source==='duty') return e.color||'#0ea5e9';                   // 🔁当番＝当番ごとの色
   if(e.source==='reminder'||e.kind==='reminder') return '#f59e0b';   // 🔔リマインド＝アンバー
   if(e.source==='birthday'||e.kind==='birthday') return '#e0218a';   // 🎂誕生日＝マゼンタ（専用色）
@@ -1130,6 +1169,7 @@ function whoLineAvatars(who, dateStr){ return (who||[]).map(function(id){ var vi
 function whoAvatars(who,sz,dateStr,full){ who=(who||[]).filter(function(id){return memberVisibility(id,dateStr)!=='hide';}); if(!who.length)return ''; sz=sz||14; var lim=full?who.length:4; var av=who.slice(0,lim).map(function(id){var m=memberById(id); if(!m)return ''; var gray=(memberVisibility(id,dateStr)==='gray'); return '<span style="display:inline-flex'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+memberAvatar(m,sz)+'</span>';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle'+(full?';flex-wrap:wrap':'')+'">'+av+((!full&&who.length>4)?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz,full){
+  if(e.source==='routine'){ var rl=(e.kind==='dept')?esc(e.dept||'部署'):(e.kind==='personal'?'':'全社'); return '<span class="grp">♻️'+rl+'</span>'+(e.kind==='personal'?whoAvatars(e.who,sz,e.date,full):''); }
   if(e.source==='duty') return '<span class="grp">🔁</span>'+(whoAvatars(e.who,sz,e.date,full)||'<span class="grp">未定</span>');
   if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date,full);
   if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
@@ -1143,7 +1183,7 @@ function occIsRec(e){ return !!(e&&e.repeat&&e.repeat.freq&&e.repeat.freq!=='non
 function occDone(e){ if(occIsRec(e)) return !!(e.doneDates&&e.doneDates[e.date]); return !!e.done; }
 function occDoneInfo(e){ if(occIsRec(e)){ var d=(e.doneDates&&e.doneDates[e.date])||null; return d?{by:d.by,at:d.at,note:d.note}:null; } return e.done?{by:e.reportedBy,at:e.reportedAt,note:e.reportNote}:null; }
 function evTitleW(e){ var done=(e.todo&&occDone(e))?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz,full){ return (e.source==='duty'||e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
+function evTrail(e,sz,full){ return (e.source==='routine'||e.source==='duty'||e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -1224,6 +1264,149 @@ function dutyOccurrences(start,end){
   });
   return out;
 }
+
+/* ===== ルーティン業務（routineDefs）＝定例の繰り返し業務を保存し、各日へ展開 =====
+   保存先＝companies/{cid}/routineDefs/{id}。繰り返しは社内予定と同じエンジン(matchRepeat)を再利用。 */
+let ROUTINES=[];
+function routineCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('routineDefs'); }
+function _newRoutineId(){ return 'rt'+Date.now()+Math.floor(Math.random()*1000); }
+function routineById(id){ for(var i=0;i<ROUTINES.length;i++){ if(ROUTINES[i].id===id)return ROUTINES[i]; } return null; }
+let _routineUnsub=null;
+function subscribeRoutines(){
+  if(_routineUnsub) return;
+  _routineUnsub=routineCol().onSnapshot(function(snap){
+    ROUTINES=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; ROUTINES.push(x); });
+    ROUTINES.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+    if(curView==='routine'||curView==='master') showView(curView);
+    refreshDayModal();
+  }, function(err){ console.error('[MHS] routineDefs購読エラー',err); });
+}
+function routineSave(r){
+  var data=Object.assign({},r); delete data.id;
+  data.updatedAt=window.fb.serverTimestamp(); data.updatedBy=(window.fb.currentUser&&window.fb.currentUser.uid)||null;
+  return routineCol().doc(r.id).set(data,{merge:true}).catch(function(e){ console.error('[MHS] ルーティン保存失敗',e); toast('⚠ ルーティンの保存に失敗（通信/権限）。ルールに routineDefs が必要です'); });
+}
+function routineDelete(id){ return routineCol().doc(id).delete().catch(function(e){ console.error('[MHS] ルーティン削除失敗',e); toast('⚠ ルーティンの削除に失敗'); }); }
+/* ルーティンを指定範囲の各日に展開（社内予定の繰り返しエンジンを流用） */
+function routineOccurrences(start,end){
+  var out=[];
+  (ROUTINES||[]).forEach(function(r){
+    if(!r.date || !r.repeat || !r.repeat.freq) return;
+    var anchor=new Date(r.date+'T00:00:00'); if(isNaN(anchor)) return;
+    var skip=r.skip||[];
+    var from=new Date(Math.max(start.getTime(),anchor.getTime())); from.setHours(0,0,0,0);
+    for(var d=new Date(from); d<=end; d=addDays(d,1)){
+      var ds=ymd(d);
+      if(ds<r.date) continue;
+      if(r.until && ds>r.until) break;
+      if(skip.indexOf(ds)>=0) continue;
+      if(!matchRepeat(r.repeat,anchor,d)) continue;
+      out.push({ id:'rt_'+r.id+'_'+ds, source:'routine', layer:'routine', kind:r.kind||'all', routineId:r.id,
+        date:ds, time:r.time||'', endTime:r.endTime||'', allDay:!r.time, title:r.name||'ルーティン',
+        who:(r.who||[]).slice(), color:r.color||'', dept:r.dept||'', place:r.place||'', memo:r.memo||'' });
+    }
+  });
+  return out;
+}
+
+/* ===== ルーティン業務：ビュー＆編集UI ===== */
+function routineSummary(r){
+  var rep=repeatLabel({repeat:r.repeat,date:r.date})||'繰り返し未設定';
+  var lv=(r.kind==='dept')?('部署'+(r.dept?'：'+r.dept:'')):(r.kind==='personal'?'個人':'全社');
+  var who=(r.kind==='personal'&&r.who&&r.who.length)?('・'+r.who.map(function(id){var m=memberById(id);return m?memSurname(m):id;}).join('、')):'';
+  var tm=r.time?('・'+r.time+(r.endTime?'〜'+r.endTime:'')):'・終日';
+  return rep+'　['+lv+who+']'+tm;
+}
+function renderRoutine(){ renderCal(); renderRoutinePanel(); }
+function renderRoutinePanel(){
+  var box=document.getElementById('routine-panel'); if(!box)return;
+  if(!ROUTINES.length){ box.innerHTML='<div class="ckl"><div class="ckl-h">♻️ ルーティン業務の一覧</div><div class="ckl-empty">まだルーティンがありません。右上の「＋ ルーティンを追加」から作成してください（例：受付：月末支払＝毎月26日／全体：月例報告会＝毎月11日）。</div></div>'; return; }
+  var rows=ROUTINES.map(function(r){
+    return '<div class="ckl-row" style="align-items:flex-start">'+
+      '<span class="ckl-tx"><b style="color:'+(r.color||'#16a34a')+'">●</b> <b>'+esc(r.name||'（無名）')+'</b><br><span style="font-size:11.5px;color:var(--text2)">'+esc(routineSummary(r))+'</span></span>'+
+      '<span style="display:flex;gap:6px;flex-shrink:0"><button class="ckl-ok" onclick="openRoutineForm(\''+escA(r.id)+'\')">編集</button><button class="btn-del" onclick="routineDeleteConfirm(\''+escA(r.id)+'\')">削除</button></span>'+
+    '</div>';
+  }).join('');
+  box.innerHTML='<div class="ckl"><div class="ckl-h">♻️ ルーティン業務の一覧（'+ROUTINES.length+'）<span class="ckl-sub">編集・削除はここから</span></div>'+rows+'</div>';
+}
+function routineDeleteConfirm(id){ var r=routineById(id); if(!r)return; if(!confirm('ルーティン「'+(r.name||'')+'」を削除しますか？'))return; routineDelete(id); toast('削除しました'); }
+/* カレンダー上のルーティンをクリック＝詳細＋その回だけ休み */
+function openRoutine(routineId,dateStr){
+  var r=routineById(routineId); if(!r){ toast('ルーティンが見つかりません'); return; }
+  var d=new Date(dateStr+'T00:00:00');
+  document.getElementById('ev-title').textContent='♻️ '+(r.name||'ルーティン');
+  document.getElementById('ev-body').innerHTML=
+    '<div class="fr"><span class="k">日付</span><span>'+dateStr+'（'+DOW[d.getDay()]+'）'+(r.time?'　'+esc(r.time)+(r.endTime?'〜'+esc(r.endTime):''):'　終日')+'</span></div>'+
+    '<div class="fr"><span class="k">内容</span><span style="font-size:12px">'+esc(routineSummary(r))+'</span></div>'+
+    ((r.who&&r.who.length)?'<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap">'+whoLineAvatars(r.who,dateStr)+'</span></div>':'')+
+    (r.memo?'<div class="fr"><span class="k">メモ</span><span>'+esc(r.memo)+'</span></div>':'')+
+    '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn-del" onclick="routineSkipOcc(\''+escA(routineId)+'\',\''+escA(dateStr)+'\')">🚫 この回だけ消す</button>'+
+      '<button class="btn-ghost" onclick="closeEv();openRoutineForm(\''+escA(routineId)+'\')">⚙️ ルーティンの設定を編集</button>'+
+    '</div>';
+  document.getElementById('ev-modal').classList.add('show');
+}
+function routineSkipOcc(routineId,ds){ var r=routineById(routineId); if(!r)return; if(!confirm(ds+' の回だけ消しますか？（他の回は残ります）'))return; r.skip=(r.skip||[]).slice(); if(r.skip.indexOf(ds)<0)r.skip.push(ds); routineSave(r); closeEv(); toast('この回を消しました'); }
+
+/* ===== ルーティンフォーム（追加/編集） ===== */
+let RF=null;
+function openRoutineForm(routineId){
+  var r=routineId?routineById(routineId):null;
+  if(r){ RF=JSON.parse(JSON.stringify(r)); if(!RF.repeat)RF.repeat={freq:'monthlyDay'}; document.getElementById('routine-modal-title').textContent='ルーティンを編集'; document.getElementById('routine-modal-del').style.display=''; }
+  else {
+    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'' };
+    document.getElementById('routine-modal-title').textContent='ルーティンを追加'; document.getElementById('routine-modal-del').style.display='none';
+  }
+  routineRenderForm();
+  document.getElementById('routine-modal').classList.add('show');
+}
+function closeRoutineForm(){ document.getElementById('routine-modal').classList.remove('show'); RF=null; }
+function rfText(f,v){ if(RF)RF[f]=v; }
+function rfFreq(v){ RF.repeat=RF.repeat||{}; RF.repeat.freq=v; if(v!=='weekly'&&v!=='biweekly')RF.repeat.days=[]; routineRenderForm(); }
+function rfDow(dw){ RF.repeat=RF.repeat||{}; RF.repeat.days=(RF.repeat.days||[]).slice(); var i=RF.repeat.days.indexOf(dw); if(i>=0)RF.repeat.days.splice(i,1); else RF.repeat.days.push(dw); RF.repeat.days.sort(function(a,b){return a-b;}); routineRenderForm(); }
+function rfKind(k){ RF.kind=k; routineRenderForm(); }
+function rfDept(v){ RF.dept=v; }
+function rfWho(id){ RF.who=(RF.who||[]).slice(); var i=RF.who.indexOf(id); if(i>=0)RF.who.splice(i,1); else RF.who.push(id); routineRenderForm(); }
+function rfColor(c){ RF.color=c; routineRenderForm(); }
+function routineRenderForm(){
+  var b=document.getElementById('routine-modal-body'); if(!b||!RF)return;
+  var rep=RF.repeat||{freq:'monthlyDay'};
+  var freqOpts=[['daily','毎日'],['weekday','平日（月〜金）'],['weekly','毎週（曜日指定）'],['biweekly','隔週（曜日指定）'],['monthlyDay','毎月◯日'],['monthlyEnd','毎月末'],['monthlyNth','毎月 第n◯曜'],['yearly','毎年（◯月◯日）']];
+  var freqSel='<select onchange="rfFreq(this.value)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px">'+freqOpts.map(function(o){return '<option value="'+o[0]+'"'+(rep.freq===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';
+  var dowPick=(rep.freq==='weekly'||rep.freq==='biweekly')?('<div class="mpick-chips" style="margin-top:8px">'+[0,1,2,3,4,5,6].map(function(dw){var on=(rep.days||[]).indexOf(dw)>=0;return '<span class="mpick'+(on?' on':'')+'" onclick="rfDow('+dw+')" style="cursor:pointer">'+DOW[dw]+'</span>';}).join('')+'</div>'):'';
+  var anchorNote='';
+  if(rep.freq==='monthlyDay') anchorNote='＝開始日の「日にち」に毎月（例：開始日が15日なら毎月15日）';
+  else if(rep.freq==='monthlyNth') anchorNote='＝開始日の「第n・曜日」に毎月（例：第2火曜）';
+  else if(rep.freq==='yearly') anchorNote='＝開始日の「月日」に毎年';
+  // 階層・担当
+  var lvSeg='<div class="seg" style="display:inline-flex">'+
+    '<button class="'+(RF.kind==='all'?'active':'')+'" onclick="rfKind(\'all\')">全社</button>'+
+    '<button class="'+(RF.kind==='dept'?'active':'')+'" onclick="rfKind(\'dept\')">部署</button>'+
+    '<button class="'+(RF.kind==='personal'?'active':'')+'" onclick="rfKind(\'personal\')">個人</button>'+
+  '</div>';
+  var lvDetail='';
+  if(RF.kind==='dept'){ var opt='<option value="">（部署を選択）</option>'+DEPTS.map(function(nm){return '<option value="'+escA(nm)+'"'+(RF.dept===nm?' selected':'')+'>'+esc(nm)+'</option>';}).join(''); lvDetail='<select onchange="rfDept(this.value)" style="margin-left:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px">'+opt+'</select>'; }
+  else if(RF.kind==='personal'){ lvDetail='<div style="margin-top:8px">'+whoPickerHTML(function(m){return (RF.who||[]).indexOf(m.id)>=0;}, function(m){return 'rfWho(\''+escA(m.id)+'\')';}, 20)+'</div>'; }
+  var sw=['','#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#ec4899','#64748b'].map(function(c){ var label=(c===''); return '<span onclick="rfColor(\''+c+'\')" title="'+(label?'自動':'')+'" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:'+(c||'var(--bg3)')+';cursor:pointer;margin-right:6px;font-size:10px;color:#fff;box-shadow:'+(RF.color===c?'0 0 0 3px var(--bg),0 0 0 5px '+(c||'#64748b'):'none')+'">'+(label?'自':'')+'</span>'; }).join('');
+  b.innerHTML=
+    '<div class="fld"><label>業務名</label><input type="text" value="'+esc(RF.name||'')+'" placeholder="例：受付：月末支払 / 全体：月例報告会" oninput="rfText(\'name\',this.value)" style="width:100%"></div>'+
+    '<div class="fld"><label>頻度</label>'+freqSel+'<span style="font-size:11px;color:var(--text3);margin-left:8px">'+esc(anchorNote)+'</span>'+dowPick+'</div>'+
+    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">開始日 <input type="date" value="'+esc(RF.date||'')+'" onchange="rfText(\'date\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(RF.until||'')+'" onchange="rfText(\'until\',this.value)" style="margin-left:4px"></label></div>'+
+    '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
+    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(RF.time||'')+'" onchange="rfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(RF.endTime||'')+'" onchange="rfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
+    '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
+    '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(RF.memo||'')+'" placeholder="補足があれば" oninput="rfText(\'memo\',this.value)" style="width:100%"></div>';
+}
+function saveRoutineForm(){
+  if(!RF)return;
+  if(!RF.name||!RF.name.trim()){ toast('業務名を入力してください'); return; }
+  if(!RF.date){ toast('開始日を選んでください'); return; }
+  var rep=RF.repeat||{}; if(!rep.freq){ toast('頻度を選んでください'); return; }
+  if((rep.freq==='weekly'||rep.freq==='biweekly') && (!rep.days||!rep.days.length)){ toast('曜日を1つ以上選んでください'); return; }
+  if(RF.kind!=='dept') RF.dept=''; if(RF.kind!=='personal') RF.who=[];
+  routineSave(RF); closeRoutineForm(); toast('ルーティンを保存しました');
+}
+function routineDeleteFromModal(){ if(!RF)return; if(!confirm('このルーティンを削除しますか？'))return; routineDelete(RF.id); closeRoutineForm(); toast('削除しました'); }
 
 /* ===== 当番カレンダー：ビュー＆編集UI ===== */
 const DUTY_COLORS=['#0ea5e9','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#64748b'];
@@ -1375,6 +1558,7 @@ function repeatLabel(ev){
     case 'monthlyDay': return '毎月'+(anchor?anchor.getDate():'')+'日';
     case 'monthlyNth': return '毎月 第'+(anchor?nthOfMonth(anchor):'')+' '+(anchor?dn[anchor.getDay()]:'')+'曜';
     case 'monthlyEnd': return '毎月末';
+    case 'yearly': return '毎年'+(anchor?(anchor.getMonth()+1)+'/'+anchor.getDate():'');
     default: return '';
   }
 }
@@ -1388,6 +1572,7 @@ function matchRepeat(r,anchor,d){
     case 'monthlyDay': return d.getDate()===anchor.getDate();
     case 'monthlyNth': return dow===anchor.getDay() && nthOfMonth(d)===nthOfMonth(anchor);
     case 'monthlyEnd': return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()===d.getDate();
+    case 'yearly': return d.getMonth()===anchor.getMonth() && d.getDate()===anchor.getDate();
     default: return false;
   }
 }
@@ -1476,26 +1661,35 @@ let curView='brief';
    月/週/日グリッドの描画先(host/label/layers)と、表示するデータをこれで切り替える。 */
 let CAL_SCOPE='schedule';
 function calIds(){
-  if(CAL_SCOPE==='master') return {host:'mcal-host', label:'mcal-label', layers:'layers-master'};
-  if(CAL_SCOPE==='duty')   return {host:'dcal-host', label:'dcal-label', layers:null};
+  if(CAL_SCOPE==='master')  return {host:'mcal-host', label:'mcal-label', layers:'layers-master'};
+  if(CAL_SCOPE==='duty')    return {host:'dcal-host', label:'dcal-label', layers:null};
+  if(CAL_SCOPE==='routine') return {host:'rcal-host', label:'rcal-label', layers:null};
   return {host:'cal-host', label:'cal-label', layers:'layers-month'};
 }
 /* スコープに応じて、その範囲に出すイベント群を返す */
 function scopeEvents(start,end){
-  if(CAL_SCOPE==='duty') return dutyOccurrences(start,end);
+  if(CAL_SCOPE==='duty')    return dutyOccurrences(start,end);
+  if(CAL_SCOPE==='routine') return routineOccurrences(start,end);
   var list=getEvents(start,end);
-  if(CAL_SCOPE==='master' && layerOn['duty']!==false) list=list.concat(dutyOccurrences(start,end));
+  if(CAL_SCOPE==='master'){
+    if(layerOn['routine']!==false) list=list.concat(routineOccurrences(start,end));
+    if(layerOn['duty']!==false)    list=list.concat(dutyOccurrences(start,end));
+  }
   return list;
 }
-/* チップのクリック先：当番は読み取り専用詳細(openDuty)、それ以外は通常の予定詳細(openEv) */
-function openChipAttr(e){ if(e.source==='duty') return jsAttr("event.stopPropagation();openDuty('"+escA(e.dutyId)+"','"+escA(e.date)+"')"); return openEvAttr(e); }
+/* チップのクリック先：当番→openDuty／ルーティン→openRoutine／それ以外→openEv */
+function openChipAttr(e){
+  if(e.source==='duty')    return jsAttr("event.stopPropagation();openDuty('"+escA(e.dutyId)+"','"+escA(e.date)+"')");
+  if(e.source==='routine') return jsAttr("event.stopPropagation();openRoutine('"+escA(e.routineId)+"','"+escA(e.date)+"')");
+  return openEvAttr(e);
+}
 function dutyChip(e,cls){ return '<div class="'+(cls||'ev')+'" style="background:'+(e.color||'#0ea5e9')+'" onclick="'+openChipAttr(e)+'">'+evLead(e,15)+'：'+esc(e.title)+'</div>'; }
 /* 月セル用の小さな休みアバター列（マスターのシフト重ね） */
 function offAvatarsSmall(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; var av=off.slice(0,6).map(function(v){ var info=shiftEntryInfo(v); return memberAvatar(info.member,14); }).join(''); return '<div class="cell-off" title="休み">🛌'+av+(off.length>6?'<span style="font-size:9px">+'+(off.length-6)+'</span>':'')+'</div>'; }
 
 function showView(v){
   curView=v;
-  CAL_SCOPE = (v==='master')?'master':(v==='duty')?'duty':'schedule';
+  CAL_SCOPE = (v==='master')?'master':(v==='duty')?'duty':(v==='routine')?'routine':'schedule';
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.si-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
@@ -1504,6 +1698,7 @@ function showView(v){
   if(v==='brief')  renderBrief();
   if(v==='master') renderCal();
   if(v==='duty')   renderDuty();
+  if(v==='routine') renderRoutine();
   if(v==='month')  renderCal();
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
@@ -1731,7 +1926,7 @@ function evChip(e,cls){
   const rep=!!(e.repeat&&e.repeat.freq&&e.repeat.freq!=='none');
   const span=!!(e.endDate&&e.endDate>(e._spanStart||e.date));
   const manual=e.source==='manual' && !rep && !span && !e._occ;   // 繰り返し・複数日はドラッグ不可（単発のみ）
-  return '<div class="'+cls+'" style="background:'+eventColor(e)+'"'+(manual?' draggable="true" ondragstart="evDragStart(event,\''+escA(e.id)+'\')" ondragend="evDragEnd(event)"':'')+' onclick="'+openEvAttr(e)+'">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+evTrail(e,15)+'</div>';
+  return '<div class="'+cls+'" style="background:'+eventColor(e)+'"'+(manual?' draggable="true" ondragstart="evDragStart(event,\''+escA(e.id)+'\')" ondragend="evDragEnd(event)"':'')+' onclick="'+openChipAttr(e)+'">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+evTrail(e,15)+'</div>';
 }
 function setCalMode(m){ calMode=m; document.querySelectorAll('#cal-mode-seg button, .cal-mode-seg button').forEach(function(b){b.classList.toggle('active',b.dataset.m===m);}); renderCal(); }
 function calMove(n){
