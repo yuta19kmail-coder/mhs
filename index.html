@@ -297,6 +297,19 @@
   .brd.done{opacity:.5}
   .brd.done .b1{text-decoration:line-through}
   .bcol-h{font-weight:700;font-size:12.5px;margin-bottom:6px;color:var(--text2)}
+  .dcards{display:flex;gap:8px;flex-wrap:wrap}
+  .dcard{width:128px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;overflow:hidden;cursor:pointer}
+  .dcard:hover{border-color:var(--acc2)}
+  .dcard-ph{height:70px;background-size:cover;background-position:center;background-color:var(--bg4)}
+  .dcard-bd{padding:6px 8px}
+  .dcard-t{font-size:12px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dcard-m{font-size:11.5px;color:var(--acc2);font-weight:700;margin-top:2px}
+  .dcard-n{font-size:10.5px;color:var(--text3);margin-top:1px}
+  body.board-portrait .dcard{width:164px}
+  body.board-portrait .dcard-ph{height:92px}
+  body.board-portrait .dcard-t{font-size:14px}
+  body.board-portrait .dcard-m{font-size:13px}
+  body.board-portrait .dcard-n{font-size:12px}
   #portrait-exit{display:none;position:fixed;top:10px;right:12px;z-index:500;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
   /* 縦表示（壁掛けモニター・縦特化） */
   body.board-portrait #topbar{display:none}
@@ -567,7 +580,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.45.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.45.1</div>
   </div>
 </div>
 
@@ -585,7 +598,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.45.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.45.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2662,11 +2675,14 @@ function boardDeptCol(e){
   if(/受付|事務/.test(nm)) return '受付';
   return '全社';
 }
-/* CarFlow納車予定の1行（指定日） */
+/* CarFlow納車予定の小カード（写真／メーカー車種／納車時間／KM番号） */
 function carDelivRow(c){
-  var t=(c.deliveryTime&&c.deliveryTimeConfirmed)?(esc(c.deliveryTime)+'　'):'';
-  var nm=c.customerName?esc(c.customerName)+'様　':'';
-  return '<div class="brd" style="border-left-color:#378ADD" onclick="openLink(\''+CARFLOW_BASE+'/?car='+encodeURIComponent(c.num||'')+'\')"><div class="b1">'+t+nm+esc(c.maker||'')+' '+esc(c.model||'')+'</div><div class="b2">管理 '+esc(c.num||'—')+'・CarFlow</div></div>';
+  var t=(c.deliveryTime&&c.deliveryTimeConfirmed)?esc(c.deliveryTime):'時間未定';
+  var ph=c.photo?('background-image:url(\''+escA(c.photo)+'\')'):'';
+  return '<div class="dcard" title="'+escA((c.customerName?c.customerName+'様 ':'')+(c.maker||'')+' '+(c.model||''))+'" onclick="openLink(\''+CARFLOW_BASE+'/?car='+encodeURIComponent(c.num||'')+'\')">'+
+    '<div class="dcard-ph" style="'+ph+'"></div>'+
+    '<div class="dcard-bd"><div class="dcard-t">'+esc(c.maker||'')+' '+esc(c.model||'')+'</div><div class="dcard-m">🕒 '+t+'</div><div class="dcard-n">'+esc(c.num||'—')+'</div></div>'+
+  '</div>';
 }
 function openLink(u){ try{ window.open(u,'_blank','noopener'); }catch(e){} }
 function renderBrief(){
@@ -2685,7 +2701,8 @@ function renderBrief(){
   rest.forEach(function(e){ cols[boardDeptCol(e)].push(e); });
   var mockBadge='<span class="bsrc" style="background:var(--bg4);color:var(--text2)">PitFlow（仮）</span>';
   var nav='<button class="vh-btn" onclick="boardMove(-1)">◀ 前日</button><span class="bdate">'+(bDate.getMonth()+1)+'/'+bDate.getDate()+'（'+DOW[bDate.getDay()]+'）'+(isToday?'<span style="font-size:12px;color:var(--acc2);margin-left:6px">本日</span>':'')+'</span><button class="vh-btn" onclick="boardMove(1)">翌日 ▶</button>'+(isToday?'':'<button class="vh-btn" onclick="boardToday()">今日へ</button>');
-  var delivBody=(carDeliv.map(carDelivRow).join('')+ (delivMhs.length?delivMhs.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'')) || '<div style="font-size:12px;color:var(--text3)">なし</div>';
+  var delivBody=(carDeliv.length?('<div class="dcards">'+carDeliv.map(carDelivRow).join('')+'</div>'):'')+(delivMhs.length?delivMhs.sort(function(a,b){return (a.time>b.time?1:-1);}).map(boardSchedRow).join(''):'');
+  if(!delivBody) delivBody='<div style="font-size:12px;color:var(--text3)">なし</div>';
   host.innerHTML=
     '<div class="board">'+
       '<div class="bhdr">'+nav+'<span style="flex:1"></span>'+dutyChips+'</div>'+
