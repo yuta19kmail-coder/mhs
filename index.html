@@ -363,6 +363,13 @@
   .tod-break-pad{height:56px;box-sizing:border-box;border-bottom:1px dashed rgba(110,140,180,.28);background:transparent}
   .tod-break-pad:last-child{border-bottom:none}
   .tod-seg-pad{height:56px;box-sizing:border-box;border-bottom:1px solid var(--border);background:repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(128,128,128,.04) 12px, rgba(128,128,128,.04) 24px)}
+  .cc-badge{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;display:inline-block;margin-top:2px}
+  .cc-close{background:rgba(220,38,38,.16);color:#f3a4b5}
+  .cc-open{background:rgba(22,163,74,.18);color:#7fe0a8}
+  .cc-half{background:rgba(245,158,11,.18);color:#f0b558}
+  .cc-memo{background:var(--bg3);color:var(--text2)}
+  .ta-like{text-align:left;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 12px;font-size:13.5px;cursor:pointer}
+  .ta-like:hover{border-color:var(--acc2)}
   body.board-portrait .tr-customer{font-size:19px}
   body.board-portrait .tr-carname{font-size:17px}
   body.board-portrait .tr-time{font-size:17px}
@@ -637,7 +644,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.46.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.47.0</div>
   </div>
 </div>
 
@@ -655,7 +662,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.46.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.47.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -681,6 +688,7 @@
     <div class="si-item" data-v="duty" onclick="showView('duty')"><span class="ic">🔁</span><span>当番</span></div>
     <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">🛌</span><span>シフト</span></div>
     <div class="si-title">管理</div>
+    <div class="si-item" data-v="closedcal" onclick="showView('closedcal')"><span class="ic">🚫</span><span>定休日カレンダー</span></div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
     <div class="si-item" data-v="evimport" onclick="showView('evimport')"><span class="ic">📥</span><span>予定取込・初期化</span></div>
     <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
@@ -808,11 +816,31 @@
       <div class="axis-wrap"><div class="axis" id="axis-grid"></div></div>
     </section>
 
+    <!-- 定休日カレンダー（長期休み・午前/午後休み・早締めを日付で管理） -->
+    <section id="view-closedcal" class="view">
+      <div class="vhead">
+        <div class="vtitle">🚫 定休日カレンダー <span class="dev-badge">マスター</span></div>
+        <button class="vh-btn" onclick="closedCalMove(-1)">◀</button>
+        <span id="ccal-label" style="font-weight:700;min-width:130px;text-align:center"></span>
+        <button class="vh-btn" onclick="closedCalMove(1)">▶</button>
+        <button class="vh-btn" onclick="closedCalToday()">今月</button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">長期休み・臨時休業・特別営業・午前/午後休み・早締め（MTG等）を<b>日付ごとに</b>管理します（過去も遡れます）。日をクリックして設定。毎週の定休・祝日は「設定（会社カレンダー）」で。</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+        <span style="font-size:13px;font-weight:700">📅 長期休み（期間）</span>
+        <input type="date" id="ccal-rfrom" class="cal-date"><span style="color:var(--text3)">〜</span><input type="date" id="ccal-rto" class="cal-date">
+        <input type="text" id="ccal-rnote" placeholder="例：お盆休み" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 8px;font-size:13px">
+        <button class="vh-btn" onclick="closedCalAddRange()">＋ 追加</button>
+      </div>
+      <div id="ccal-host"></div>
+      <div id="ccal-ranges" style="margin-top:12px"></div>
+    </section>
+
     <!-- 会社カレンダー設定（マスター） -->
     <section id="view-calset" class="view">
       <div class="vhead"><div class="vtitle">⚙️ 会社カレンダー設定 <span class="dev-badge">マスター</span></div></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 14px;line-height:1.7">
-        ここは<b>会社全体の営業日マスター</b>です。定休日・臨時休業・特別営業・「祝日を休むか」を1か所で決め、将来は CarFlow / PitFlow / StockFlow がこの設定を読みます（人の名簿を CoreFlow に集約しているのと同じ考え方＝時間は MasterHub Schedule に集約）。<br>※現状はモックのため、この端末のブラウザ内に保存します。共有Firebase接続後に全アプリ共通の保存先へ切替予定。
+        ここは<b>会社全体の営業日マスター</b>です。<b>毎週の定休曜日・祝日の扱い・営業時間</b>を決めます（将来は CarFlow / PitFlow / StockFlow が参照）。<br>長期休み・臨時休業・特別営業・午前/午後休み・早締めは <b>管理▸定休日カレンダー</b> で日付ごとに設定します。
       </p>
       <div id="calset-body"></div>
     </section>
@@ -922,6 +950,14 @@
       <button class="btn-ghost" onclick="closeDutyForm()">キャンセル</button>
       <button class="btn-save" onclick="saveDutyForm()">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- 定休日カレンダー 1日設定モーダル -->
+<div class="mbg" id="dayset-modal" onclick="if(event.target.id==='dayset-modal')closeDaySet()">
+  <div class="mbox">
+    <div class="mhead"><span class="mt" id="dayset-title">日設定</span><button class="x" onclick="closeDaySet()">✕</button></div>
+    <div class="mbody" id="dayset-body"></div>
   </div>
 </div>
 
@@ -1089,7 +1125,7 @@ const SF_HOL={map:{}};
 const holName=s=>SF_HOL.map[s]||null;
 
 /* 会社カレンダー設定（マスター・将来は共有Firestoreへ） */
-const CAL_DEFAULT={closedDow:[],holidaysClosed:false,closedDates:[],openDates:[],bizStart:'09:00',bizEnd:'18:00',avoidClosed:false,rules:null,recurring:[
+const CAL_DEFAULT={closedDow:[],holidaysClosed:false,closedDates:[],openDates:[],bizStart:'09:00',bizEnd:'18:00',avoidClosed:false,rules:null,dayMarks:{},recurring:[
   {id:'r-seed1',title:'ノー残DAY',freq:'weekly',dow:5,time:'',layer:'company',prefix:'全社'},
   {id:'r-seed2',title:'月例報告会',freq:'monthlyNth',nth:2,dow:2,time:'15:00',layer:'company',prefix:''}
 ]};
@@ -1125,7 +1161,7 @@ function subscribeCal(){
   }, function(e){ console.warn('[MHS] 会社カレンダー購読エラー',e); setSyncState(false); });
 }
 function saveCal(){
-  var data={ rules:CAL.rules||[], recurring:CAL.recurring||[], closedDow:CAL.closedDow||[], holidaysClosed:!!CAL.holidaysClosed, closedDates:CAL.closedDates||[], openDates:CAL.openDates||[], bizStart:CAL.bizStart||'09:00', bizEnd:CAL.bizEnd||'18:00', avoidClosed:!!CAL.avoidClosed, updatedAt:window.fb.serverTimestamp() };
+  var data={ rules:CAL.rules||[], recurring:CAL.recurring||[], closedDow:CAL.closedDow||[], holidaysClosed:!!CAL.holidaysClosed, closedDates:CAL.closedDates||[], openDates:CAL.openDates||[], bizStart:CAL.bizStart||'09:00', bizEnd:CAL.bizEnd||'18:00', avoidClosed:!!CAL.avoidClosed, dayMarks:CAL.dayMarks||{}, updatedAt:window.fb.serverTimestamp() };
   calDoc().set(data,{merge:true}).catch(function(e){ console.error('[MHS] 会社カレンダー保存失敗',e); toast('⚠ 設定の保存に失敗（権限/通信）'); });
 }
 /* 休業ルールの判定（上から積み上げ・営業が最優先） */
@@ -1361,10 +1397,12 @@ function dutyOccurrences(start,end){
         var idx=(D.rotateUnit==='week') ? Math.floor(weekIdx/interval) : thisIdx;
         who=roster[((idx%roster.length)+roster.length)%roster.length];
       }
-      out.push({ id:'duty_'+D.id+'_'+ds, source:'duty', layer:'duty', kind:'duty', dutyId:D.id,
+      var dOcc={ id:'duty_'+D.id+'_'+ds, source:'duty', layer:'duty', kind:'duty', dutyId:D.id,
         date:ds, time:D.time||'', endTime:D.endTime||'', allDay:!D.time,
         title:D.name||'当番', who: who?[who]:[], color:D.color||'#0ea5e9', place:D.place||'', memo:D.memo||'',
-        todo:!!D.todo, needApprove:!!D.needApprove, approvers:(D.approvers||[]).slice(), done:(D.doneDates&&D.doneDates[ds])||null, approved:(D.approvedDates&&D.approvedDates[ds])||null });
+        todo:!!D.todo, needApprove:!!D.needApprove, approvers:(D.approvers||[]).slice(), done:(D.doneDates&&D.doneDates[ds])||null, approved:(D.approvedDates&&D.approvedDates[ds])||null };
+      if(D.slideClosed && isClosedDay(ds,d)){ var ndD=prevOpenDay(ds); if(ndD&&ndD!==ds){ dOcc._origDate=ds; dOcc.date=ndD; dOcc._shifted=true; } }
+      out.push(dOcc);
     }
   });
   return out;
@@ -1406,10 +1444,12 @@ function routineOccurrences(start,end){
       if(r.until && ds>r.until) break;
       if(skip.indexOf(ds)>=0) continue;
       if(!matchRepeat(r.repeat,anchor,d)) continue;
-      out.push({ id:'rt_'+r.id+'_'+ds, source:'routine', layer:'routine', kind:r.kind||'all', routineId:r.id,
+      var rOcc={ id:'rt_'+r.id+'_'+ds, source:'routine', layer:'routine', kind:r.kind||'all', routineId:r.id,
         date:ds, time:r.time||'', endTime:r.endTime||'', allDay:!r.time, title:r.name||'ルーティン',
         who:(r.who||[]).slice(), color:r.color||'', dept:r.dept||'', place:r.place||'', memo:r.memo||'',
-        todo:!!r.todo, needApprove:!!r.needApprove, approvers:(r.approvers||[]).slice(), done:(r.doneDates&&r.doneDates[ds])||null, approved:(r.approvedDates&&r.approvedDates[ds])||null });
+        todo:!!r.todo, needApprove:!!r.needApprove, approvers:(r.approvers||[]).slice(), done:(r.doneDates&&r.doneDates[ds])||null, approved:(r.approvedDates&&r.approvedDates[ds])||null };
+      if(r.slideClosed && isClosedDay(ds,d)){ var ndR=prevOpenDay(ds); if(ndR&&ndR!==ds){ rOcc._origDate=ds; rOcc.date=ndR; rOcc._shifted=true; } }
+      out.push(rOcc);
     }
   });
   return out;
@@ -1470,8 +1510,7 @@ function todoOverdue(e){
   if(e.date<today) return true;            // 過去日で未完了
   if(e.date>today) return false;           // 未来は対象外
   // 当日：時刻で判定
-  var endHM = e.endTime||e.time;
-  var bh=bizHours();
+  var bh=bizHoursForDate(e.date);
   if(!e.time || e.time==='終日' || e.time==='—'){ return (now.getHours()+now.getMinutes()/60) >= (bh.e-1); }  // 終日＝終業1h前
   if(e.time==='AM'){ return now.getHours()>=12; }
   if(e.time==='PM'){ return (now.getHours()+now.getMinutes()/60) >= bh.e; }
@@ -1572,7 +1611,7 @@ function openRoutineForm(routineId){
   var r=routineId?routineById(routineId):null;
   if(r){ RF=JSON.parse(JSON.stringify(r)); if(!RF.repeat)RF.repeat={freq:'monthlyDay'}; document.getElementById('routine-modal-title').textContent='ルーティンを編集'; document.getElementById('routine-modal-del').style.display=''; }
   else {
-    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'', todo:false, needApprove:false, approvers:[] };
+    RF={ id:_newRoutineId(), name:'', color:'', kind:'all', dept:'', who:[], time:'', endTime:'', date:ymd(TODAY), until:'', repeat:{freq:'monthlyDay', days:[]}, skip:[], memo:'', slideClosed:false, todo:false, needApprove:false, approvers:[] };
     document.getElementById('routine-modal-title').textContent='ルーティンを追加'; document.getElementById('routine-modal-del').style.display='none';
   }
   routineRenderForm();
@@ -1630,6 +1669,7 @@ function routineRenderForm(){
       '</div>'+
       '<div class="ef-c">'+
         '<div class="fld"><label>階層</label>'+lvSeg+lvDetail+'</div>'+
+        '<div class="fld"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" '+(RF.slideClosed?'checked':'')+' onchange="rfText(\'slideClosed\',this.checked)" style="width:16px;height:16px;accent-color:var(--acc)"> 定休日に当たったら営業日にずらす</label></div>'+
         '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.todo?' on':'')+'" onclick="rfTodo()"></span><span style="font-weight:600;font-size:13px">この業務をTODOにする（実行報告）</span></label></div>'+
         (RF.todo?('<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(RF.needApprove?' on':'')+'" onclick="rfNeedApprove()"></span><div><div style="font-weight:600;font-size:13px">完了通知（承認）を付ける</div><div style="font-size:11px;color:var(--text3)">ONで承認者のOKまで完了。OFFは報告だけで完了。</div></div></label></div>'):'')+
         ((RF.todo&&RF.needApprove)?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(RF.approvers,'rfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="rfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
@@ -1713,7 +1753,7 @@ function openDutyForm(dutyId){
   var D=dutyId?dutyById(dutyId):null;
   if(D){ DF=JSON.parse(JSON.stringify(D)); document.getElementById('duty-modal-title').textContent='当番を編集'; document.getElementById('duty-modal-del').style.display=''; }
   else {
-    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'', todo:false, needApprove:false, approvers:[] };
+    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'', slideClosed:false, todo:false, needApprove:false, approvers:[] };
     document.getElementById('duty-modal-title').textContent='当番を追加'; document.getElementById('duty-modal-del').style.display='none';
   }
   dutyRenderForm();
@@ -1775,6 +1815,7 @@ function dutyRenderForm(){
         '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
         '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
         '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>'+
+        '<div class="fld"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" '+(DF.slideClosed?'checked':'')+' onchange="dfText(\'slideClosed\',this.checked)" style="width:16px;height:16px;accent-color:var(--acc)"> 定休日に当たったら営業日にずらす</label></div>'+
         '<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.todo?' on':'')+'" onclick="dfTodo()"></span><span style="font-weight:600;font-size:13px">この当番をTODOにする（実行報告）</span></label></div>'+
         (DF.todo?('<div class="fld"><label class="todoline" style="display:flex;align-items:center;gap:8px;cursor:pointer"><span class="sw'+(DF.needApprove?' on':'')+'" onclick="dfNeedApprove()"></span><div><div style="font-weight:600;font-size:13px">完了通知（承認）を付ける</div><div style="font-size:11px;color:var(--text3)">ONで承認者のOKまで完了。OFFは報告だけで完了。</div></div></label></div>'):'')+
         ((DF.todo&&DF.needApprove)?('<div class="fld"><label>✅ 完了通知の送り先（承認者）</label>'+approverPickerInner(DF.approvers,'dfAppToggle')+'<div style="font-size:11px;color:var(--text3);margin-top:4px">実行完了するとこの人へ通知。<button class="vh-btn" style="margin-left:6px" onclick="dfAutoApprovers()">↻ 担当の上長を自動</button></div></div>'):'')+
@@ -1968,6 +2009,7 @@ function showView(v){
   var _ab=document.getElementById('tb-add'); if(_ab){ _ab.textContent=(v==='routine')?'＋ ルーティンを追加':(v==='duty')?'＋ 当番を追加':'＋ 新規予定'; }
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
+  if(v==='closedcal') renderClosedCal();
   if(v==='shiftpdf') renderShiftPdf();
   if(v==='shift') renderShiftView();
   if(v==='evimport') renderEvImport();
@@ -2877,6 +2919,81 @@ function renderBrief(){
 }
 
 /* 会社カレンダー設定 UI（マスター） */
+/* ===== 定休日カレンダー（長期休み・午前/午後休み・早締めを日付管理） ===== */
+let ccalCursor=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+function closedCalMove(n){ ccalCursor=new Date(ccalCursor.getFullYear(),ccalCursor.getMonth()+n,1); renderClosedCal(); }
+function closedCalToday(){ ccalCursor=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); renderClosedCal(); }
+function dayMark(ds){ return (CAL.dayMarks||{})[ds]||null; }
+function ccalHolClose(){ return (CAL.rules||[]).some(function(r){return r.on!==false&&r.cond==='holiday'&&r.effect==='close';}); }
+/* その日の状態（営業/休業/長期休み/特別営業/午前休/午後休/早締め/メモ） */
+function ccalDayInfo(ds){
+  var d=new Date(ds+'T00:00:00'); var ev=evalDay(ds,d); var mk=dayMark(ds); var hol=holName(ds);
+  var label='', cls='', sub='';
+  if(ev.closed){
+    var rng=(CAL.rules||[]).some(function(r){return r.on!==false&&r.cond==='range'&&r.effect==='close'&&r.from&&r.to&&ds>=r.from&&ds<=r.to;});
+    label=rng?'長期休み':((hol&&ccalHolClose())?'祝休':'休業'); cls='cc-close';
+  } else if(ev.openWin && ev.closeHit){ label='特別営業'; cls='cc-open'; }
+  else if(mk){ if(mk.half==='am'){label='午前休み';cls='cc-half';} else if(mk.half==='pm'){label='午後休み';cls='cc-half';} else if(mk.half==='end'){label='〜'+(mk.end||'')+'締';cls='cc-half';} else if(mk.half==='memo'){label='メモ';cls='cc-memo';} sub=mk.note||''; }
+  if(hol && !ev.closed) sub=(sub?sub+'／':'')+hol;
+  return {ev:ev, mk:mk, hol:hol, label:label, cls:cls, sub:sub};
+}
+function renderClosedCal(){
+  var host=document.getElementById('ccal-host'); if(!host)return;
+  var cur=ccalCursor, lab=document.getElementById('ccal-label'); if(lab)lab.textContent=cur.getFullYear()+'年 '+(cur.getMonth()+1)+'月';
+  var start=startOfWeek(new Date(cur.getFullYear(),cur.getMonth(),1));
+  var h='<div class="cal"><div class="cal-dow"><div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div></div><div class="cal-grid">';
+  for(var i=0;i<42;i++){
+    var d=addDays(start,i), key=ymd(d), inMonth=d.getMonth()===cur.getMonth(), isToday=key===ymd(TODAY);
+    var info=ccalDayInfo(key);
+    h+='<div class="cell'+(inMonth?'':' other')+(d.getDay()===0?' sun':(d.getDay()===6?' sat':''))+(isToday?' today':'')+(info.ev.closed?' closed':'')+'" style="cursor:pointer;min-height:84px" onclick="openDaySet(\''+key+'\')">';
+    h+='<div class="dnum">'+d.getDate()+'</div>';
+    if(info.label) h+='<div class="cc-badge '+info.cls+'">'+esc(info.label)+'</div>';
+    if(info.sub) h+='<div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.2">'+esc(info.sub)+'</div>';
+    h+='</div>';
+  }
+  host.innerHTML=h+'</div></div>';
+  renderCcalRanges();
+}
+function renderCcalRanges(){
+  var box=document.getElementById('ccal-ranges'); if(!box)return;
+  var ranges=(CAL.rules||[]).map(function(r,i){return {r:r,i:i};}).filter(function(x){return x.r.cond==='range'&&x.r.effect==='close';});
+  box.innerHTML=ranges.length?('<div class="ckl"><div class="ckl-h">📅 登録済みの長期休み</div>'+ranges.map(function(x){ return '<div class="ckl-row"><span class="ckl-tx">'+esc(x.r.from||'')+' 〜 '+esc(x.r.to||'')+(x.r.note?'　'+esc(x.r.note):'')+'</span><button class="btn-del" onclick="ccalRuleDel('+x.i+')">削除</button></div>'; }).join('')+'</div>'):'';
+}
+function ccalRuleDel(i){ (CAL.rules||[]).splice(i,1); saveCal(); renderClosedCal(); toast('削除しました'); }
+function closedCalAddRange(){
+  var f=(document.getElementById('ccal-rfrom')||{}).value||'', t=(document.getElementById('ccal-rto')||{}).value||'', n=(document.getElementById('ccal-rnote')||{}).value||'';
+  if(!f||!t){ toast('開始日と終了日を入れてください'); return; }
+  if(t<f){ var tmp=f;f=t;t=tmp; }
+  CAL.rules=CAL.rules||[]; CAL.rules.push({id:'r'+Date.now(),on:true,cond:'range',from:f,to:t,effect:'close',note:n||'長期休み'});
+  saveCal(); var nn=document.getElementById('ccal-rnote'); if(nn)nn.value=''; renderClosedCal(); toast('長期休みを追加しました');
+}
+var _daysetDs=null;
+function openDaySet(ds){ _daysetDs=ds; renderDaySet(); document.getElementById('dayset-modal').classList.add('show'); }
+function closeDaySet(){ document.getElementById('dayset-modal').classList.remove('show'); _daysetDs=null; }
+function ccalClearDate(ds){ CAL.rules=(CAL.rules||[]).filter(function(r){ return !(r.cond==='date'&&r.date===ds); }); }
+function daySetClose(){ var ds=_daysetDs; ccalClearDate(ds); CAL.rules.push({id:'r'+Date.now(),on:true,cond:'date',date:ds,effect:'close',note:'休業'}); if(CAL.dayMarks)delete CAL.dayMarks[ds]; saveCal(); renderClosedCal(); renderDaySet(); }
+function daySetOpen(){ var ds=_daysetDs; ccalClearDate(ds); CAL.rules.push({id:'r'+Date.now(),on:true,cond:'date',date:ds,effect:'open',note:'特別営業'}); if(CAL.dayMarks)delete CAL.dayMarks[ds]; saveCal(); renderClosedCal(); renderDaySet(); }
+function daySetHalf(half){ var ds=_daysetDs; var endVal=''; if(half==='end'){ endVal=prompt('締め時間（例 18:30 / 6:30）','18:30')||''; if(!/^\d{1,2}:\d{2}$/.test(endVal)){ toast('時刻はHH:MM形式で'); return; } } ccalClearDate(ds); CAL.dayMarks=CAL.dayMarks||{}; var prevNote=(CAL.dayMarks[ds]&&CAL.dayMarks[ds].note)||''; CAL.dayMarks[ds]={half:half, end:endVal, note:prevNote}; saveCal(); renderClosedCal(); renderDaySet(); }
+function daySetMemo(){ var ds=_daysetDs; var cur=(dayMark(ds)&&dayMark(ds).note)||''; var n=prompt('メモ', cur); if(n===null)return; CAL.dayMarks=CAL.dayMarks||{}; if(n){ var ex=CAL.dayMarks[ds]; CAL.dayMarks[ds]={half:(ex&&ex.half&&ex.half!=='memo')?ex.half:'memo', end:(ex&&ex.end)||'', note:n}; } else if(CAL.dayMarks[ds]){ if(CAL.dayMarks[ds].half==='memo')delete CAL.dayMarks[ds]; else CAL.dayMarks[ds].note=''; } saveCal(); renderClosedCal(); renderDaySet(); }
+function daySetClear(){ var ds=_daysetDs; ccalClearDate(ds); if(CAL.dayMarks)delete CAL.dayMarks[ds]; saveCal(); renderClosedCal(); renderDaySet(); }
+function renderDaySet(){
+  var ds=_daysetDs; if(!ds)return; var d=new Date(ds+'T00:00:00'); var info=ccalDayInfo(ds);
+  document.getElementById('dayset-title').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）';
+  document.getElementById('dayset-body').innerHTML=
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:10px">現在：<b>'+esc(info.label||'通常営業')+'</b>'+(info.sub?'（'+esc(info.sub)+'）':'')+'</div>'+
+    '<div style="display:flex;flex-direction:column;gap:7px">'+
+      '<button class="ta-like" onclick="daySetClear()">↩ 通常営業（解除）</button>'+
+      '<button class="ta-like" onclick="daySetClose()">🛑 休業にする</button>'+
+      '<button class="ta-like" onclick="daySetOpen()">✅ 特別営業（定休でも開ける）</button>'+
+      '<button class="ta-like" onclick="daySetHalf(\'am\')">🌅 午前休み（午後から営業）</button>'+
+      '<button class="ta-like" onclick="daySetHalf(\'pm\')">🌇 午後休み（午前で終了）</button>'+
+      '<button class="ta-like" onclick="daySetHalf(\'end\')">🕕 早締め（締め時間を指定）</button>'+
+      '<button class="ta-like" onclick="daySetMemo()">📝 メモ</button>'+
+    '</div>';
+}
+/* その日の営業時間（午前/午後休み・早締めを反映） */
+function bizHoursForDate(ds){ var b=bizHours(); var mk=dayMark(ds); if(mk){ if(mk.half==='pm')return {s:b.s,e:12}; if(mk.half==='am')return {s:13,e:b.e}; if(mk.half==='end'){ var p=String(mk.end||'').split(':'); var e=parseInt(p[0],10); if(!isNaN(e))return {s:b.s,e:e+(((+p[1])||0)>0?1:0)}; } } return b; }
+
 function renderCalSet(){
   const b=document.getElementById('calset-body'); if(!b)return;
   b.innerHTML=
@@ -2895,20 +3012,19 @@ function ruleCardHTML(){
     +'<button class="vh-btn" onclick="ruleAddPreset(\'weeklyClose\')">＋ 毎週の定休</button>'
     +'<button class="vh-btn" onclick="ruleAddPreset(\'nthClose\')">＋ 第n曜の休み</button>'
     +'<button class="vh-btn" onclick="ruleAddPreset(\'holClose\')">＋ 祝日を休む</button>'
-    +'<button class="vh-btn" onclick="ruleAddPreset(\'rangeClose\')">＋ 期間休業</button>'
-    +'<button class="vh-btn" onclick="ruleAddPreset(\'dateClose\')">＋ 特定日 休業</button>'
-    +'<button class="vh-btn" onclick="ruleAddPreset(\'dateOpen\')">＋ 特別営業日</button>'
     +'</div>';
-  if(!rs.length) inner+='<div class="empty" style="padding:4px 0 10px">まだルールがありません。上のボタンで休業ルールを積んでください。<br>例：「毎週 水曜 → 休む」「毎月 第2 土曜 → 休む」「8/13〜8/16 → 休む」「1/5（祝）→ 営業（最優先）」</div>';
-  rs.forEach(function(r,i){ inner+=ruleRowHTML(r,i); });
+  var regular=rs.map(function(r,i){return {r:r,i:i};}).filter(function(x){return ['weekly','monthlyNth','holiday'].indexOf(x.r.cond)>=0;});
+  if(!regular.length) inner+='<div class="empty" style="padding:4px 0 10px">まだ定休ルールがありません。上のボタンで積んでください。<br>例：「毎週 水曜 → 休む」「毎月 第2 土曜 → 休む」「祝日 → 休む」</div>';
+  regular.forEach(function(x){ inner+=ruleRowHTML(x.r,x.i); });
+  inner+='<div style="font-size:11.5px;color:var(--text3);margin-top:8px;border-top:1px solid var(--border);padding-top:8px">📌 長期休み・臨時休業・特別営業・午前/午後休み・早締め（MTG等）は <b>管理▸定休日カレンダー</b> で日付ごとに設定します。</div>';
   inner+=rulePreviewHTML();
-  return calCard('🛑 休業日ルール（積み上げ式）','上から積み上げて会社の営業日を決めます。<b style="color:#16a34a">営業</b>ルールが<b style="color:#16a34a">最優先</b>（休みより勝つ）。将来は各Flow（CarFlow/PitFlow/StockFlow）がこのマスターを参照します。',inner);
+  return calCard('🛑 定休日ルール（毎週・祝日）','毎週の定休曜日・祝日の扱いをここで決めます。<b style="color:#16a34a">営業</b>が<b style="color:#16a34a">最優先</b>。日付ごとの休み（長期休み等）は定休日カレンダーへ。',inner);
 }
 function ruleSel(field,i,opts,val){ return '<select onchange="ruleEdit('+i+',\''+field+'\',this.value)">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===val?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>'; }
 function ruleDowSel(i,val){ return '<select onchange="ruleEdit('+i+',\'dow\',this.value)">'+DOW.map(function(d,x){return '<option value="'+x+'"'+(x===(+val)?' selected':'')+'>'+d+'曜</option>';}).join('')+'</select>'; }
 function ruleNthSel(i,val){ let h='<select onchange="ruleEdit('+i+',\'nth\',this.value)">'; for(let n=1;n<=5;n++)h+='<option value="'+n+'"'+(n===(+val)?' selected':'')+'>第'+n+'</option>'; return h+'</select>'; }
 function ruleRowHTML(r,i){
-  const condSel=ruleSel('cond',i,[['weekly','毎週'],['monthlyNth','毎月第n'],['holiday','祝日'],['range','期間'],['date','特定日']],r.cond);
+  const condSel=ruleSel('cond',i,[['weekly','毎週'],['monthlyNth','毎月第n'],['holiday','祝日']],r.cond);
   let params='';
   if(r.cond==='weekly') params=ruleDowSel(i,r.dow);
   else if(r.cond==='monthlyNth') params=ruleNthSel(i,r.nth)+ruleDowSel(i,r.dow);
