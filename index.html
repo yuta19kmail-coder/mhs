@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.39.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.40.0</div>
   </div>
 </div>
 
@@ -552,7 +552,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.39.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.40.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
@@ -570,10 +570,12 @@
     <div class="si-title">ビュー</div>
     <div class="si-item active" data-v="dash" onclick="showView('dash')"><span class="ic">🏠</span><span>ダッシュボード</span></div>
     <div class="si-item" data-v="brief" onclick="showView('brief')"><span class="ic">🌅</span><span>朝礼カード</span></div>
-    <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">🗓️</span><span>カレンダー</span></div>
+    <div class="si-item" data-v="master" onclick="showView('master')"><span class="ic">🗓️</span><span>マスターカレンダー</span></div>
+    <div class="si-item" data-v="month" onclick="showView('month')"><span class="ic">📅</span><span>スケジュールカレンダー</span></div>
+    <div class="si-item" data-v="duty" onclick="showView('duty')"><span class="ic">🔁</span><span>当番カレンダー</span></div>
+    <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">🛌</span><span>シフトカレンダー</span></div>
     <div class="si-item" data-v="axis" onclick="showView('axis')"><span class="ic">👤</span><span>メンバー（週）</span></div>
     <div class="si-title">管理</div>
-    <div class="si-item" data-v="shift" onclick="showView('shift')"><span class="ic">👥</span><span>シフト表</span></div>
     <div class="si-item" data-v="shiftpdf" onclick="showView('shiftpdf')"><span class="ic">📄</span><span>シフトPDF入力</span></div>
     <div class="si-item" data-v="evimport" onclick="showView('evimport')"><span class="ic">📥</span><span>予定取込・初期化</span></div>
     <div class="si-item" data-v="calset" onclick="showView('calset')"><span class="ic">⚙️</span><span>設定（会社カレンダー）</span></div>
@@ -608,11 +610,30 @@
       </div>
     </section>
 
-    <!-- カレンダー（月/週/日） -->
+    <!-- マスターカレンダー（全データ重ね・閲覧主体） -->
+    <section id="view-master" class="view">
+      <div class="vhead">
+        <div class="vtitle">🗓️ マスターカレンダー</div>
+        <div class="seg cal-mode-seg" id="mcal-mode-seg">
+          <button data-m="month" class="active" onclick="setCalMode('month')">月</button>
+          <button data-m="week" onclick="setCalMode('week')">週</button>
+          <button data-m="day" onclick="setCalMode('day')">日</button>
+        </div>
+        <button class="vh-btn" onclick="calMove(-1)">◀</button>
+        <span id="mcal-label" style="font-weight:700;min-width:150px;text-align:center"></span>
+        <button class="vh-btn" onclick="calMove(1)">▶</button>
+        <button class="vh-btn" onclick="calToday()">今日</button>
+      </div>
+      <div class="layers" id="layers-master" style="margin-bottom:12px"></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">全部を<b>重ねて見る</b>画面です（スケジュール／当番／シフト／締切など。上のチップでON/OFF）。<b>スケジュール予定はここでも日付ドラッグ・クリック→編集で時間/担当を変更</b>できます。当番・シフトは閲覧のみ（編集は各カレンダーで）。</p>
+      <div id="mcal-host" class="cal-host-pad"></div>
+    </section>
+
+    <!-- スケジュールカレンダー（月/週/日） -->
     <section id="view-month" class="view">
       <div class="vhead">
-        <div class="vtitle">🗓️ カレンダー</div>
-        <div class="seg" id="cal-mode-seg">
+        <div class="vtitle">📅 スケジュールカレンダー</div>
+        <div class="seg cal-mode-seg" id="cal-mode-seg">
           <button data-m="month" class="active">月</button>
           <button data-m="week">週</button>
           <button data-m="day">日</button>
@@ -626,6 +647,26 @@
       <p style="font-size:12px;color:var(--text3);margin:0 0 10px">予定は<b>ドラッグで別の日へ移動</b>（社内予定のみ）。月ビューはセルに<b>マウスを乗せるとその日の全件</b>を表示。各日の「＋」から追加。</p>
       <div id="cal-host" class="cal-host-pad"></div>
       <div id="cal-checklist"></div>
+    </section>
+
+    <!-- 当番カレンダー（月/週/日＋当番管理） -->
+    <section id="view-duty" class="view">
+      <div class="vhead">
+        <div class="vtitle">🔁 当番カレンダー</div>
+        <div class="seg cal-mode-seg" id="dcal-mode-seg">
+          <button data-m="month" class="active" onclick="setCalMode('month')">月</button>
+          <button data-m="week" onclick="setCalMode('week')">週</button>
+          <button data-m="day" onclick="setCalMode('day')">日</button>
+        </div>
+        <button class="vh-btn" onclick="calMove(-1)">◀</button>
+        <span id="dcal-label" style="font-weight:700;min-width:150px;text-align:center"></span>
+        <button class="vh-btn" onclick="calMove(1)">▶</button>
+        <button class="vh-btn" onclick="calToday()">今日</button>
+        <button class="tb-btn primary" style="margin-left:auto" onclick="openDutyForm()">＋ 当番を追加</button>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">「火＝Aさん／木＝Bさん」のように<b>曜日ごとに担当を分けたり</b>、<b>週替わり・1回ごとに担当を回したり</b>できます。下の一覧から当番を追加・編集してください。カレンダー上の当番をクリックすると、その回だけ担当変更・休みにできます。</p>
+      <div id="dcal-host" class="cal-host-pad"></div>
+      <div id="duty-panel" style="margin-top:16px"></div>
     </section>
 
     <!-- メンバー（週）ビュー -->
@@ -651,15 +692,19 @@
       <div id="calset-body"></div>
     </section>
 
-    <!-- シフト表（管理） -->
+    <!-- シフトカレンダー -->
     <section id="view-shift" class="view">
-      <div class="vhead"><div class="vtitle">👥 シフト表 <span class="dev-badge">管理</span></div></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn-ghost" onclick="shiftMonthMove(-1)">◀</button>
-        <span id="shift-label" style="font-weight:700;font-size:14px"></span>
-        <button class="btn-ghost" onclick="shiftMonthMove(1)">▶</button>
-        <span style="font-size:11px;color:var(--text3)">取り込んだシフト（<b style="color:#f3a4b5">休＝赤</b>／空欄＝出勤）。部署ごとに表示。</span>
+      <div class="vhead">
+        <div class="vtitle">🛌 シフトカレンダー</div>
+        <div class="seg" id="shift-mode-seg">
+          <button data-sm="grid" class="active" onclick="setShiftMode('grid')">表</button>
+          <button data-sm="cal" onclick="setShiftMode('cal')">カレンダー</button>
+        </div>
+        <button class="vh-btn" onclick="shiftMonthMove(-1)">◀</button>
+        <span id="shift-label" style="font-weight:700;min-width:120px;text-align:center"></span>
+        <button class="vh-btn" onclick="shiftMonthMove(1)">▶</button>
       </div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">取り込んだシフト（<b style="color:#f3a4b5">休＝赤</b>／空欄＝出勤）。「表」は人×日のマス目、「カレンダー」は各日の休みの人を表示。取込は<b>管理▸シフトPDF入力</b>から。</p>
       <div id="shift-body"></div>
     </section>
 
@@ -741,6 +786,20 @@
   </div>
 </div>
 
+<!-- 当番 追加/編集モーダル -->
+<div class="mbg" id="duty-modal" onclick="if(event.target.id==='duty-modal')closeDutyForm()">
+  <div class="mbox wide">
+    <div class="mhead"><span class="mt" id="duty-modal-title">当番を追加</span><button class="x" onclick="closeDutyForm()">✕</button></div>
+    <div class="mbody scroll" id="duty-modal-body"></div>
+    <div class="mfoot">
+      <button class="btn-del" id="duty-modal-del" style="display:none" onclick="dutyDeleteFromModal()">🗑️ 削除</button>
+      <div class="grow"></div>
+      <button class="btn-ghost" onclick="closeDutyForm()">キャンセル</button>
+      <button class="btn-save" onclick="saveDutyForm()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -809,6 +868,7 @@ async function enterApp(member,user){
   subscribePortalPhotos();
   subscribeSchedule();
   subscribeShifts();
+  subscribeDuties();
   loadShiftAliases();
   subscribeNotes();
   subscribeLabels();
@@ -842,6 +902,12 @@ const LAYERS=[
   {key:'deadline', name:'締切',     color:'var(--deadline)', hex:'#dc2626'},
 ];
 const layerOn={}; LAYERS.forEach(l=>layerOn[l.key]=true);
+layerOn.duty=true; layerOn.shift=true;   // マスターカレンダー用の追加レイヤー（当番・シフト）
+/* マスター用レイヤー一覧（標準＋当番＋シフト） */
+const MASTER_LAYERS=LAYERS.concat([
+  {key:'duty', name:'当番', color:'#0ea5e9', hex:'#0ea5e9'},
+  {key:'shift',name:'シフト（休み）', color:'#f3a4b5', hex:'#f3a4b5'},
+]);
 const hexOf=k=>(LAYERS.find(l=>l.key===k)||{}).hex||'#888';
 const nameOf=k=>(LAYERS.find(l=>l.key===k)||{}).name||k;
 /* 部署 → バー色／部署リスト。CoreMembers の coreDepts から動的に上書き（subscribeDepts）。
@@ -849,6 +915,7 @@ const nameOf=k=>(LAYERS.find(l=>l.key===k)||{}).name||k;
 let DEPT_COLORS={'整備':'#1db97a','1課':'#1db97a','2課':'#1db97a','車販':'#378ADD','受付':'#ec4899','デザイン':'#a855f7','service':'#1db97a','sales':'#378ADD','reception':'#ec4899'};
 let DEPTS=['整備','1課','2課','車販','受付','デザイン'];
 function eventColor(e){
+  if(e.source==='duty') return e.color||'#0ea5e9';                   // 🔁当番＝当番ごとの色
   if(e.source==='reminder'||e.kind==='reminder') return '#f59e0b';   // 🔔リマインド＝アンバー
   if(e.source==='birthday'||e.kind==='birthday') return '#e0218a';   // 🎂誕生日＝マゼンタ（専用色）
   if(e.layer==='company'){
@@ -1063,6 +1130,7 @@ function whoLineAvatars(who, dateStr){ return (who||[]).map(function(id){ var vi
 function whoAvatars(who,sz,dateStr,full){ who=(who||[]).filter(function(id){return memberVisibility(id,dateStr)!=='hide';}); if(!who.length)return ''; sz=sz||14; var lim=full?who.length:4; var av=who.slice(0,lim).map(function(id){var m=memberById(id); if(!m)return ''; var gray=(memberVisibility(id,dateStr)==='gray'); return '<span style="display:inline-flex'+(gray?';opacity:.5;filter:grayscale(1)':'')+'">'+memberAvatar(m,sz)+'</span>';}).join(''); if(!av)return ''; return '<span class="who-av" style="display:inline-flex;gap:1px;vertical-align:middle'+(full?';flex-wrap:wrap':'')+'">'+av+((!full&&who.length>4)?'<span style="font-size:9px;color:#fff;align-self:center">+'+(who.length-4)+'</span>':'')+'</span>'; }
 /* ラベルの先頭グループ（部署名／全社／締切は文字、個人は担当アイコン） */
 function evLead(e,sz,full){
+  if(e.source==='duty') return '<span class="grp">🔁</span>'+(whoAvatars(e.who,sz,e.date,full)||'<span class="grp">未定</span>');
   if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date,full);
   if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
@@ -1075,7 +1143,7 @@ function occIsRec(e){ return !!(e&&e.repeat&&e.repeat.freq&&e.repeat.freq!=='non
 function occDone(e){ if(occIsRec(e)) return !!(e.doneDates&&e.doneDates[e.date]); return !!e.done; }
 function occDoneInfo(e){ if(occIsRec(e)){ var d=(e.doneDates&&e.doneDates[e.date])||null; return d?{by:d.by,at:d.at,note:d.note}:null; } return e.done?{by:e.reportedBy,at:e.reportedAt,note:e.reportNote}:null; }
 function evTitleW(e){ var done=(e.todo&&occDone(e))?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz,full){ return (e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
+function evTrail(e,sz,full){ return (e.source==='duty'||e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -1096,6 +1164,195 @@ function schedSave(ev){
   return scheduleCol().doc(ev.id).set(data,{merge:true}).catch(function(e){ console.error('[MHS] 保存失敗',e); toast('⚠ 保存に失敗（通信/権限）'); });
 }
 function schedDelete(id){ return scheduleCol().doc(id).delete().catch(function(e){ console.error('[MHS] 削除失敗',e); toast('⚠ 削除に失敗'); }); }
+
+/* ===== 当番（dutyDefs）＝当番の定義を保存し、各日に展開する =====
+   1ドキュメント＝1つの当番（例「ゴミ出し当番」）。曜日固定 or ローテで担当を決める。
+   保存先＝companies/{cid}/dutyDefs/{id}（scheduleEventsと同型ルール・メンバー全員CRUD）。 */
+let DUTIES=[];
+function dutyCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('dutyDefs'); }
+function _newDutyId(){ return 'd'+Date.now()+Math.floor(Math.random()*1000); }
+function dutyById(id){ for(var i=0;i<DUTIES.length;i++){ if(DUTIES[i].id===id)return DUTIES[i]; } return null; }
+let _dutyUnsub=null;
+function subscribeDuties(){
+  if(_dutyUnsub) return;
+  _dutyUnsub=dutyCol().onSnapshot(function(snap){
+    DUTIES=[]; snap.forEach(function(d){ var x=d.data()||{}; x.id=d.id; DUTIES.push(x); });
+    DUTIES.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+    if(curView==='duty'||curView==='master') showView(curView);
+    refreshDayModal();
+  }, function(err){ console.error('[MHS] dutyDefs購読エラー',err); });
+}
+function dutySave(d){
+  var data=Object.assign({},d); delete data.id;
+  data.updatedAt=window.fb.serverTimestamp(); data.updatedBy=(window.fb.currentUser&&window.fb.currentUser.uid)||null;
+  return dutyCol().doc(d.id).set(data,{merge:true}).catch(function(e){ console.error('[MHS] 当番保存失敗',e); toast('⚠ 当番の保存に失敗（通信/権限）。ルールに dutyDefs が必要です'); });
+}
+function dutyDelete(id){ return dutyCol().doc(id).delete().catch(function(e){ console.error('[MHS] 当番削除失敗',e); toast('⚠ 当番の削除に失敗'); }); }
+/* 当番を指定範囲の各日に展開（担当を計算）。
+   mode='fixed'：fixedMap[曜日]＝担当固定。
+   mode='rotate'：roster[]を rotateUnit('week'=週ごと / 'occurrence'=1回ごと) で回す。
+   interval：N週ごと（1=毎週,2=隔週…）。overrides[日付]＝その回だけ担当変更。skip[]＝その回は休み。 */
+function dutyOccurrences(start,end){
+  var out=[];
+  (DUTIES||[]).forEach(function(D){
+    if(!D || !D.dows || !D.dows.length || !D.start) return;
+    var anchor=new Date(D.start+'T00:00:00'); if(isNaN(anchor)) return;
+    var sow0=startOfWeek(anchor), interval=Math.max(1, D.interval||1);
+    var roster=(D.roster||[]).filter(function(x){return x;});
+    var fixedMap=D.fixedMap||{}, overrides=D.overrides||{}, skip=D.skip||[];
+    var occ=0;   // アンカーからの「有効な回」の通し番号（1回ごとローテ用）
+    for(var d=new Date(anchor); d<=end; d=addDays(d,1)){
+      var ds=ymd(d), dow=d.getDay();
+      if(D.until && ds>D.until) break;
+      if(D.dows.indexOf(dow)<0) continue;
+      var weekIdx=Math.round((startOfWeek(d).getTime()-sow0.getTime())/(7*86400000));
+      if(((weekIdx%interval)+interval)%interval!==0) continue;   // 隔週などで非該当の週はスキップ
+      var thisIdx=occ; occ++;                                    // この回の通し番号（skip/overrideでもズレない）
+      if(d<start) continue;                                       // 表示範囲より前＝番号だけ数えて出さない
+      if(skip.indexOf(ds)>=0) continue;                          // この回は休み
+      var who=null;
+      if(Object.prototype.hasOwnProperty.call(overrides,ds)){ who=overrides[ds]||null; }
+      else if(D.mode==='fixed'){ who=fixedMap[String(dow)]||null; }
+      else if(roster.length){
+        var idx=(D.rotateUnit==='week') ? Math.floor(weekIdx/interval) : thisIdx;
+        who=roster[((idx%roster.length)+roster.length)%roster.length];
+      }
+      out.push({ id:'duty_'+D.id+'_'+ds, source:'duty', layer:'duty', kind:'duty', dutyId:D.id,
+        date:ds, time:D.time||'', endTime:D.endTime||'', allDay:!D.time,
+        title:D.name||'当番', who: who?[who]:[], color:D.color||'#0ea5e9', place:D.place||'', memo:D.memo||'' });
+    }
+  });
+  return out;
+}
+
+/* ===== 当番カレンダー：ビュー＆編集UI ===== */
+const DUTY_COLORS=['#0ea5e9','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#64748b'];
+function dutyMemberOptions(sel){ var o='<option value="">（担当なし）</option>'; for(var i=0;i<MEMBERS.length;i++){ var m=MEMBERS[i]; o+='<option value="'+escA(m.id)+'"'+(sel===m.id?' selected':'')+'>'+esc(memDisp(m))+'</option>'; } return o; }
+/* 当番の組み方を文章で（一覧・詳細用） */
+function dutySummary(D){
+  var dws=(D.dows||[]).slice().sort(function(a,b){return a-b;}).map(function(x){return DOW[x];}).join('・');
+  var iv=(D.interval>1)?('・'+(D.interval===2?'隔週':(D.interval+'週ごと'))):'';
+  var head=(dws?dws+'曜':'曜日未設定')+iv;
+  if(D.mode==='fixed'){
+    var parts=(D.dows||[]).slice().sort(function(a,b){return a-b;}).map(function(dw){ var mid=(D.fixedMap||{})[String(dw)]; var m=mid?memberById(mid):null; return DOW[dw]+'→'+(m?memSurname(m):'未定'); });
+    return head+'　[曜日固定]　'+parts.join('・');
+  }
+  var roster=(D.roster||[]).map(function(id){ var m=memberById(id); return m?memSurname(m):id; });
+  var unit=(D.rotateUnit==='week')?'週ごと交代':'1回ごと交代';
+  return head+'　[ローテ・'+unit+']　'+(roster.length?roster.join('→'):'メンバー未設定');
+}
+/* カレンダー上の当番をクリック＝読み取り専用の詳細＋その回だけの調整 */
+function openDuty(dutyId,dateStr){
+  var D=dutyById(dutyId); if(!D){ toast('当番が見つかりません'); return; }
+  var d=new Date(dateStr+'T00:00:00');
+  var occs=dutyOccurrences(d,d), occ=null; for(var i=0;i<occs.length;i++){ if(occs[i].dutyId===dutyId){ occ=occs[i]; break; } }
+  var who=(occ&&occ.who&&occ.who[0])||null;
+  var overridden=D.overrides&&Object.prototype.hasOwnProperty.call(D.overrides,dateStr);
+  document.getElementById('ev-title').textContent='🔁 '+(D.name||'当番');
+  document.getElementById('ev-body').innerHTML=
+    '<div class="fr"><span class="k">日付</span><span>'+dateStr+'（'+DOW[d.getDay()]+'）'+(D.time?'　'+esc(D.time)+(D.endTime?'〜'+esc(D.endTime):''):'')+'</span></div>'+
+    '<div class="fr"><span class="k">担当</span><span style="display:flex;flex-wrap:wrap;align-items:center">'+(who?whoLineAvatars([who],dateStr):'<span style="color:var(--text3)">未定</span>')+(overridden?'　<span class="rbadge">この回だけ変更</span>':'')+'</span></div>'+
+    '<div class="fr"><span class="k">組み方</span><span style="font-size:12px">'+esc(dutySummary(D))+'</span></div>'+
+    (D.memo?'<div class="fr"><span class="k">メモ</span><span>'+esc(D.memo)+'</span></div>':'')+
+    '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">'+
+      '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">この回（'+dateStr.slice(5).replace('-','/')+'）だけ調整：</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+        '<label style="font-size:12px">担当を変更 <select onchange="dutySetOverride(\''+escA(dutyId)+'\',\''+escA(dateStr)+'\',this.value)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 6px;font-size:12px">'+dutyMemberOptions(who)+'</select></label>'+
+        '<button class="btn-del" onclick="dutySkipOcc(\''+escA(dutyId)+'\',\''+escA(dateStr)+'\')">🛌 この回を休みに</button>'+
+        (overridden?'<button class="btn-ghost" onclick="dutyClearOverride(\''+escA(dutyId)+'\',\''+escA(dateStr)+'\')">↩ 変更を取り消す</button>':'')+
+      '</div>'+
+    '</div>'+
+    '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn-ghost" onclick="closeEv();openDutyForm(\''+escA(dutyId)+'\')">⚙️ 当番の設定を編集</button></div>';
+  document.getElementById('ev-modal').classList.add('show');
+}
+function dutySetOverride(dutyId,ds,val){ var D=dutyById(dutyId); if(!D)return; D.overrides=Object.assign({},D.overrides); D.overrides[ds]=val||''; dutySave(D); closeEv(); toast(ds.slice(5).replace('-','/')+' の担当を変更しました'); }
+function dutyClearOverride(dutyId,ds){ var D=dutyById(dutyId); if(!D)return; D.overrides=Object.assign({},D.overrides); delete D.overrides[ds]; dutySave(D); closeEv(); toast('この回の変更を取り消しました'); }
+function dutySkipOcc(dutyId,ds){ var D=dutyById(dutyId); if(!D)return; if(!confirm(ds+' の当番を休みにしますか？'))return; D.skip=(D.skip||[]).slice(); if(D.skip.indexOf(ds)<0)D.skip.push(ds); dutySave(D); closeEv(); toast('この回を休みにしました'); }
+
+/* 当番カレンダー画面（カレンダー＋当番一覧） */
+function renderDuty(){ renderCal(); renderDutyPanel(); }
+function renderDutyPanel(){
+  var box=document.getElementById('duty-panel'); if(!box)return;
+  if(!DUTIES.length){ box.innerHTML='<div class="ckl"><div class="ckl-h">🔁 当番の一覧</div><div class="ckl-empty">まだ当番がありません。右上の「＋ 当番を追加」から作成してください（例：ゴミ出し当番＝火＝Aさん／木＝Bさん）。</div></div>'; return; }
+  var rows=DUTIES.map(function(D){
+    return '<div class="ckl-row" style="align-items:flex-start">'+
+      '<span class="ckl-tx"><b style="color:'+(D.color||'#0ea5e9')+'">●</b> <b>'+esc(D.name||'（無名の当番）')+'</b>'+(D.time?'　<span style="color:var(--text3);font-size:11px">'+esc(D.time)+(D.endTime?'〜'+esc(D.endTime):'')+'</span>':'')+'<br><span style="font-size:11.5px;color:var(--text2)">'+esc(dutySummary(D))+'</span></span>'+
+      '<span style="display:flex;gap:6px;flex-shrink:0"><button class="ckl-ok" onclick="openDutyForm(\''+escA(D.id)+'\')">編集</button><button class="btn-del" onclick="dutyDeleteConfirm(\''+escA(D.id)+'\')">削除</button></span>'+
+    '</div>';
+  }).join('');
+  box.innerHTML='<div class="ckl"><div class="ckl-h">🔁 当番の一覧（'+DUTIES.length+'）<span class="ckl-sub">編集・削除はここから</span></div>'+rows+'</div>';
+}
+function dutyDeleteConfirm(id){ var D=dutyById(id); if(!D)return; if(!confirm('当番「'+(D.name||'')+'」を削除しますか？（カレンダー上の表示も消えます）'))return; dutyDelete(id); toast('削除しました'); }
+
+/* ===== 当番フォーム（追加/編集） ===== */
+let DF=null;
+function openDutyForm(dutyId){
+  var D=dutyId?dutyById(dutyId):null;
+  if(D){ DF=JSON.parse(JSON.stringify(D)); document.getElementById('duty-modal-title').textContent='当番を編集'; document.getElementById('duty-modal-del').style.display=''; }
+  else {
+    DF={ id:_newDutyId(), name:'', color:DUTY_COLORS[0], time:'', endTime:'', dows:[2,4], start:ymd(TODAY), until:'', interval:1, mode:'fixed', fixedMap:{}, roster:[], rotateUnit:'week', overrides:{}, skip:[], memo:'' };
+    document.getElementById('duty-modal-title').textContent='当番を追加'; document.getElementById('duty-modal-del').style.display='none';
+  }
+  dutyRenderForm();
+  document.getElementById('duty-modal').classList.add('show');
+}
+function closeDutyForm(){ document.getElementById('duty-modal').classList.remove('show'); DF=null; }
+function dfDow(dw){ var i=DF.dows.indexOf(dw); if(i>=0)DF.dows.splice(i,1); else DF.dows.push(dw); DF.dows.sort(function(a,b){return a-b;}); dutyRenderForm(); }
+function dfMode(m){ DF.mode=m; dutyRenderForm(); }
+function dfColor(c){ DF.color=c; dutyRenderForm(); }
+function dfFixed(dw,v){ DF.fixedMap=Object.assign({},DF.fixedMap); DF.fixedMap[String(dw)]=v; }
+function dfRotateUnit(u){ DF.rotateUnit=u; dutyRenderForm(); }
+function dfInterval(n){ DF.interval=+n||1; }
+function dfText(f,v){ if(DF)DF[f]=v; }
+function dfRosterAdd(v){ if(!v)return; DF.roster=(DF.roster||[]).slice(); DF.roster.push(v); dutyRenderForm(); }
+function dfRosterRemove(i){ DF.roster.splice(i,1); dutyRenderForm(); }
+function dfRosterMove(i,dir){ var j=i+dir; if(j<0||j>=DF.roster.length)return; var t=DF.roster[i]; DF.roster[i]=DF.roster[j]; DF.roster[j]=t; dutyRenderForm(); }
+function dutyRenderForm(){
+  var b=document.getElementById('duty-modal-body'); if(!b||!DF)return;
+  var sw=DUTY_COLORS.map(function(c){ return '<span onclick="dfColor(\''+c+'\')" style="display:inline-block;width:26px;height:26px;border-radius:50%;background:'+c+';cursor:pointer;margin-right:6px;box-shadow:'+(DF.color===c?'0 0 0 3px var(--bg),0 0 0 5px '+c:'none')+'"></span>'; }).join('');
+  var dows=[0,1,2,3,4,5,6].map(function(dw){ var on=DF.dows.indexOf(dw)>=0; return '<span class="mpick'+(on?' on':'')+'" onclick="dfDow('+dw+')" style="cursor:pointer">'+DOW[dw]+'</span>'; }).join('');
+  // 担当の組み方UI
+  var assign='';
+  if(DF.mode==='fixed'){
+    if(!DF.dows.length){ assign='<div style="color:var(--text3);font-size:12px">先に曜日を選んでください。</div>'; }
+    else assign=DF.dows.map(function(dw){ return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="width:40px;font-weight:700">'+DOW[dw]+'曜</span><select onchange="dfFixed('+dw+',this.value)" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px;min-width:160px">'+dutyMemberOptions((DF.fixedMap||{})[String(dw)])+'</select></div>'; }).join('');
+  } else {
+    var rl=(DF.roster||[]).map(function(id,i){ var m=memberById(id); return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="width:22px;color:var(--text3)">'+(i+1)+'.</span>'+(m?memberAvatar(m,20):'')+'<span style="flex:1">'+esc(m?memDisp(m):id)+'</span><button class="vh-btn" onclick="dfRosterMove('+i+',-1)">▲</button><button class="vh-btn" onclick="dfRosterMove('+i+',1)">▼</button><button class="btn-del" onclick="dfRosterRemove('+i+')">✕</button></div>'; }).join('');
+    assign='<div style="margin-bottom:8px">'+(rl||'<div style="color:var(--text3);font-size:12px;margin-bottom:6px">順番にメンバーを追加してください（この順で担当が回ります）。</div>')+'</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="df-roster-add" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 7px;min-width:160px">'+dutyMemberOptions('')+'</select><button class="btn-ghost" onclick="dfRosterAdd(document.getElementById(\'df-roster-add\').value)">＋ 追加</button></div>'+
+      '<div style="margin-top:10px;font-size:12px">回し方：'+
+        '<label style="margin-right:12px"><input type="radio" name="df-ru" '+(DF.rotateUnit==='week'?'checked':'')+' onchange="dfRotateUnit(\'week\')"> 週ごとに交代</label>'+
+        '<label><input type="radio" name="df-ru" '+(DF.rotateUnit==='occurrence'?'checked':'')+' onchange="dfRotateUnit(\'occurrence\')"> 1回ごとに交代</label>'+
+      '</div>';
+  }
+  b.innerHTML=
+    '<div class="fld"><label>当番名</label><input id="df-name" type="text" value="'+esc(DF.name||'')+'" placeholder="例：ゴミ出し当番" oninput="dfText(\'name\',this.value)" style="width:100%"></div>'+
+    '<div class="fld"><label>色</label><div>'+sw+'</div></div>'+
+    '<div class="fld"><label>曜日（複数可）</label><div class="mpick-chips">'+dows+'</div></div>'+
+    '<div class="fld"><label>担当の決め方</label><div class="seg" style="display:inline-flex">'+
+      '<button class="'+(DF.mode==='fixed'?'active':'')+'" onclick="dfMode(\'fixed\')">曜日ごとに固定</button>'+
+      '<button class="'+(DF.mode==='rotate'?'active':'')+'" onclick="dfMode(\'rotate\')">担当を回す（ローテ）</button>'+
+    '</div></div>'+
+    '<div class="fld" style="background:var(--bg3);border-radius:10px;padding:12px">'+assign+'</div>'+
+    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap">'+
+      '<label style="font-size:13px">開始日 <input type="date" value="'+esc(DF.start||'')+'" onchange="dfText(\'start\',this.value)" style="margin-left:4px"></label>'+
+      '<label style="font-size:13px">終了日（任意） <input type="date" value="'+esc(DF.until||'')+'" onchange="dfText(\'until\',this.value)" style="margin-left:4px"></label>'+
+      '<label style="font-size:13px">間隔 <select onchange="dfInterval(this.value)" style="margin-left:4px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 6px"><option value="1"'+(DF.interval===1?' selected':'')+'>毎週</option><option value="2"'+(DF.interval===2?' selected':'')+'>隔週</option><option value="3"'+(DF.interval===3?' selected':'')+'>3週ごと</option><option value="4"'+(DF.interval===4?' selected':'')+'>4週ごと</option></select></label>'+
+    '</div>'+
+    '<div class="fld" style="display:flex;gap:14px;flex-wrap:wrap"><label style="font-size:13px">時間（任意） <input type="time" value="'+esc(DF.time||'')+'" onchange="dfText(\'time\',this.value)" style="margin-left:4px"></label><label style="font-size:13px">終了時間 <input type="time" value="'+esc(DF.endTime||'')+'" onchange="dfText(\'endTime\',this.value)" style="margin-left:4px"></label><span style="font-size:11px;color:var(--text3);align-self:center">空欄なら終日</span></div>'+
+    '<div class="fld"><label>メモ（任意）</label><input type="text" value="'+esc(DF.memo||'')+'" placeholder="補足があれば" oninput="dfText(\'memo\',this.value)" style="width:100%"></div>';
+}
+function saveDutyForm(){
+  if(!DF)return;
+  if(!DF.name||!DF.name.trim()){ toast('当番名を入力してください'); return; }
+  if(!DF.dows||!DF.dows.length){ toast('曜日を1つ以上選んでください'); return; }
+  if(!DF.start){ toast('開始日を選んでください'); return; }
+  if(DF.mode==='rotate' && (!DF.roster||!DF.roster.length)){ toast('ローテのメンバーを追加してください'); return; }
+  // fixedMapは選択曜日のぶんだけ残す
+  if(DF.mode==='fixed'){ var fm={}; DF.dows.forEach(function(dw){ var v=(DF.fixedMap||{})[String(dw)]; if(v)fm[String(dw)]=v; }); DF.fixedMap=fm; }
+  dutySave(DF); closeDutyForm(); toast('当番を保存しました');
+}
+function dutyDeleteFromModal(){ if(!DF)return; if(!confirm('この当番を削除しますか？'))return; dutyDelete(DF.id); closeDutyForm(); toast('削除しました'); }
 
 /* 定期予定の展開（指定範囲の各日にイベント化） */
 function nthOfMonth(d){return Math.floor((d.getDate()-1)/7)+1;}
@@ -1215,14 +1472,38 @@ let curWeek=startOfWeek(TODAY);
 let curAxis='member';
 let curView='brief';
 
+/* カレンダーのスコープ：schedule=スケジュールのみ／duty=当番のみ／master=全部重ね。
+   月/週/日グリッドの描画先(host/label/layers)と、表示するデータをこれで切り替える。 */
+let CAL_SCOPE='schedule';
+function calIds(){
+  if(CAL_SCOPE==='master') return {host:'mcal-host', label:'mcal-label', layers:'layers-master'};
+  if(CAL_SCOPE==='duty')   return {host:'dcal-host', label:'dcal-label', layers:null};
+  return {host:'cal-host', label:'cal-label', layers:'layers-month'};
+}
+/* スコープに応じて、その範囲に出すイベント群を返す */
+function scopeEvents(start,end){
+  if(CAL_SCOPE==='duty') return dutyOccurrences(start,end);
+  var list=getEvents(start,end);
+  if(CAL_SCOPE==='master' && layerOn['duty']!==false) list=list.concat(dutyOccurrences(start,end));
+  return list;
+}
+/* チップのクリック先：当番は読み取り専用詳細(openDuty)、それ以外は通常の予定詳細(openEv) */
+function openChipAttr(e){ if(e.source==='duty') return jsAttr("event.stopPropagation();openDuty('"+escA(e.dutyId)+"','"+escA(e.date)+"')"); return openEvAttr(e); }
+function dutyChip(e,cls){ return '<div class="'+(cls||'ev')+'" style="background:'+(e.color||'#0ea5e9')+'" onclick="'+openChipAttr(e)+'">'+evLead(e,15)+'：'+esc(e.title)+'</div>'; }
+/* 月セル用の小さな休みアバター列（マスターのシフト重ね） */
+function offAvatarsSmall(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; var av=off.slice(0,6).map(function(v){ var info=shiftEntryInfo(v); return memberAvatar(info.member,14); }).join(''); return '<div class="cell-off" title="休み">🛌'+av+(off.length>6?'<span style="font-size:9px">+'+(off.length-6)+'</span>':'')+'</div>'; }
+
 function showView(v){
   curView=v;
+  CAL_SCOPE = (v==='master')?'master':(v==='duty')?'duty':'schedule';
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.si-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(i=>i.classList.add('active'));
   if(v==='dash')   renderDash();
   if(v==='brief')  renderBrief();
+  if(v==='master') renderCal();
+  if(v==='duty')   renderDuty();
   if(v==='month')  renderCal();
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
@@ -1234,10 +1515,11 @@ document.getElementById('cal-mode-seg').addEventListener('click',function(e){ if
 
 function renderLayers(containerId){
   const c=document.getElementById(containerId); if(!c)return;
-  c.innerHTML=LAYERS.map(l=>('<span class="layer '+(layerOn[l.key]?'':'off')+'" data-k="'+l.key+'" style="color:'+l.hex+'"><span class="dot" style="background:'+l.hex+'"></span><span style="color:var(--text)">'+l.name+'</span></span>')).join('');
+  const set=(containerId==='layers-master')?MASTER_LAYERS:LAYERS;
+  c.innerHTML=set.map(l=>('<span class="layer '+(layerOn[l.key]?'':'off')+'" data-k="'+l.key+'" style="color:'+l.hex+'"><span class="dot" style="background:'+l.hex+'"></span><span style="color:var(--text)">'+l.name+'</span></span>')).join('');
   c.querySelectorAll('.layer').forEach(el=>el.addEventListener('click',()=>{
     const k=el.dataset.k; layerOn[k]=!layerOn[k];
-    renderLayers('layers-month'); renderLayers('layers-axis');
+    renderLayers('layers-month'); renderLayers('layers-axis'); renderLayers('layers-master');
     renderCal(); renderAxis(); renderBrief();
   }));
 }
@@ -1380,7 +1662,7 @@ function subscribeShifts(){
   _shiftUnsub=shiftCol().onSnapshot(function(snap){
     var m={}; snap.forEach(function(d){ if(d.id==='_aliases')return; var x=d.data()||{}; if(Array.isArray(x.off)) m[d.id]=x.off; });
     SHIFT_BYDATE=m;
-    if(curView==='month') renderCal();
+    if(curView==='month'||curView==='master') renderCal();
     if(curView==='shift') renderShiftView();
   }, function(err){ console.warn('[MHS] シフト購読エラー',err); });
 }
@@ -1394,12 +1676,35 @@ function shiftEntryInfo(v){
 function offAvatarsBig(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; return off.map(function(v){ var info=shiftEntryInfo(v); return '<span class="off-av-b" title="休：'+esc(info.label)+'">'+memberAvatar(info.member,28)+'<span class="off-nm">'+esc(info.label)+'</span></span>'; }).join(''); }
 function isOff(m,ds){ var off=SHIFT_BYDATE[ds]; if(!off||!m)return false; for(var i=0;i<off.length;i++){ var v=off[i]; if(v&&typeof v==='object'){ if(v.id&&v.id===m.id)return true; if(!v.id&&v.nm&&normName(v.nm)===normName(m.name))return true; } else { if(v===m.id||v==='name:'+m.name)return true; } } return false; }
 let shiftCursor=null;
+let shiftMode='grid';   // 'grid'=人×日の表 / 'cal'=月カレンダー
+function setShiftMode(m){ shiftMode=m; document.querySelectorAll('#shift-mode-seg button').forEach(function(b){ b.classList.toggle('active',b.dataset.sm===m); }); renderShiftView(); }
 function shiftMonthMove(n){ var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1); shiftCursor=new Date(base.getFullYear(),base.getMonth()+n,1); renderShiftView(); }
+/* シフトをカレンダー（月）で：各日の休みの人を表示 */
+function renderShiftCalendar(host,base){
+  var cur=new Date(base.getFullYear(),base.getMonth(),1);
+  var start=startOfWeek(cur), any=false;
+  var h='<div class="cal"><div class="cal-dow"><div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div></div><div class="cal-grid">';
+  for(var i=0;i<42;i++){
+    var d=addDays(start,i), key=ymd(d), inMonth=d.getMonth()===cur.getMonth();
+    var isToday=key===ymd(TODAY), hol=holName(key), ev=evalDay(key,d);
+    var off=offAvatarsBig(key); if(off)any=true;
+    h+='<div class="cell'+(inMonth?'':' other')+(d.getDay()===0?' sun':(d.getDay()===6?' sat':''))+(isToday?' today':'')+(ev.closed?' closed':'')+(hol?' holiday':'')+'">';
+    h+='<div class="dnum">'+d.getDate()+'</div>';
+    if(ev.closed) h+='<div class="closed-badge">休</div>';
+    if(hol) h+='<div class="hol-name" title="'+hol+'">'+hol+'</div>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px">'+(ev.closed?'<span class="off-closed">定休</span>':off)+'</div>';
+    h+='</div>';
+  }
+  h+='</div></div>';
+  var note=any?'':'<div style="font-size:12px;color:var(--text3);padding:10px">この月の取り込み済みシフトがありません（管理▸シフトPDF入力で取り込んでください）。</div>';
+  host.innerHTML=h+note;
+}
 function renderShiftView(){
   var host=document.getElementById('shift-body'); if(!host)return;
   var base=shiftCursor||new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
   var y=base.getFullYear(), mo=base.getMonth(), dim=new Date(y,mo+1,0).getDate();
   var lab=document.getElementById('shift-label'); if(lab)lab.textContent=y+'年'+(mo+1)+'月';
+  if(shiftMode==='cal'){ renderShiftCalendar(host,base); return; }
   var head='<div class="shv-row shv-head"><div class="shv-name">メンバー</div>';
   for(var d=1;d<=dim;d++){ var dt=new Date(y,mo,d), wd=dt.getDay(); head+='<div class="shv-c'+(wd===0?' sun':(wd===6?' sat':''))+'">'+d+'<br><span class="shv-w">'+DOW[wd]+'</span></div>'; }
   head+='</div>';
@@ -1428,7 +1733,7 @@ function evChip(e,cls){
   const manual=e.source==='manual' && !rep && !span && !e._occ;   // 繰り返し・複数日はドラッグ不可（単発のみ）
   return '<div class="'+cls+'" style="background:'+eventColor(e)+'"'+(manual?' draggable="true" ondragstart="evDragStart(event,\''+escA(e.id)+'\')" ondragend="evDragEnd(event)"':'')+' onclick="'+openEvAttr(e)+'">'+evIcons(e)+evLead(e,15)+'：'+evTitleW(e)+evTrail(e,15)+'</div>';
 }
-function setCalMode(m){ calMode=m; document.querySelectorAll('#cal-mode-seg button').forEach(function(b){b.classList.toggle('active',b.dataset.m===m);}); renderCal(); }
+function setCalMode(m){ calMode=m; document.querySelectorAll('#cal-mode-seg button, .cal-mode-seg button').forEach(function(b){b.classList.toggle('active',b.dataset.m===m);}); renderCal(); }
 function calMove(n){
   if(calMode==='month') calCursor=new Date(calCursor.getFullYear(),calCursor.getMonth()+n,1);
   else if(calMode==='week') calCursor=addDays(calCursor,7*n);
@@ -1437,11 +1742,12 @@ function calMove(n){
 }
 function calToday(){ calCursor=new Date(TODAY); renderCal(); }
 function renderCal(){
-  renderLayers('layers-month');
+  var ids=calIds();
+  if(ids.layers) renderLayers(ids.layers);
   if(calMode==='month') renderMonthGrid();
   else if(calMode==='week') renderWeekGrid();
   else renderDayGrid();
-  renderChecklist();
+  if(CAL_SCOPE==='schedule') renderChecklist();   // 確認リストはスケジュールカレンダーだけ
 }
 /* ===== カレンダー下部 確認リスト（ダブり・不在予定・自動振替／承認で消える） ===== */
 var APPROVED=(function(){ try{ return JSON.parse(localStorage.getItem('mhs_approved')||'[]'); }catch(e){ return []; } })();
@@ -1474,10 +1780,13 @@ function approveItem(idx){ var it=_checklist[idx]; if(!it)return; var key=checkl
 function renderMonth(){ renderCal(); }
 
 function renderMonthGrid(){
+  const ids=calIds();
   const cur=new Date(calCursor.getFullYear(),calCursor.getMonth(),1);
-  document.getElementById('cal-label').textContent=cur.getFullYear()+'年 '+(cur.getMonth()+1)+'月';
+  document.getElementById(ids.label).textContent=cur.getFullYear()+'年 '+(cur.getMonth()+1)+'月';
   const start=startOfWeek(cur);
-  const byDate={}; getEvents(start,addDays(start,41)).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  const showAdd=(CAL_SCOPE==='schedule');                          // ＋（予定追加）はスケジュールカレンダーのみ
+  const showOff=(CAL_SCOPE==='master' && layerOn['shift']!==false); // シフト（休み）の重ねはマスターのみ
+  const byDate={}; scopeEvents(start,addDays(start,41)).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
   let h='<div class="cal"><div class="cal-dow"><div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div></div><div class="cal-grid">';
   for(let i=0;i<42;i++){
     const d=addDays(start,i), key=ymd(d), inMonth=d.getMonth()===cur.getMonth();
@@ -1488,13 +1797,14 @@ function renderMonthGrid(){
     if(ev.closed) h+='<div class="closed-badge">休</div>';
     else if(ev.openWin) h+='<div class="closed-badge" style="color:#16a34a;border-color:rgba(22,163,74,.4)">営</div>';
     if(hol) h+='<div class="hol-name" title="'+hol+'">'+hol+'</div>';
-    evs.slice(0,3).forEach(function(e){ h+=evChip(e,'ev'); });
+    evs.slice(0,3).forEach(function(e){ h+=(e.source==='duty'?dutyChip(e,'ev'):evChip(e,'ev')); });
     if(evs.length>3) h+='<div class="more">＋'+(evs.length-3)+'件（マウスオーバーで全件）</div>';
-    h+='<div class="daycell-add" title="この日に社内予定を追加" onclick="event.stopPropagation();openEventForm(null,\''+key+'\')">＋</div>';
+    if(showOff) h+=offAvatarsSmall(key);
+    if(showAdd) h+='<div class="daycell-add" title="この日に社内予定を追加" onclick="event.stopPropagation();openEventForm(null,\''+key+'\')">＋</div>';
     h+='</div>';
   }
   h+='</div></div>';
-  document.getElementById('cal-host').innerHTML=h;
+  document.getElementById(ids.host).innerHTML=h;
 }
 
 /* 週/日＝営業時間ベースの時間グリッド */
@@ -1513,6 +1823,7 @@ function timeGridHTML(days,byDate,ncol){
   if(lo<0)lo=0; if(hi>24)hi=24; if(hi<=lo)hi=lo+1;
   var nh=hi-lo;
   var full=(ncol===1);   // 日ビューは横幅に余裕があるので担当をフルアバター表示（+Nで省略しない）
+  var addOk=(CAL_SCOPE==='schedule');   // 予定の追加はスケジュールカレンダーのみ
   var gridCols='var(--tg-axw) repeat('+ncol+',minmax(92px,1fr))';
   var h='<div class="tg2"><div class="tg2-scroll">';
   h+='<div class="tg2-head" style="grid-template-columns:'+gridCols+'"><div class="corner"></div>';
@@ -1523,8 +1834,8 @@ function timeGridHTML(days,byDate,ncol){
   h+='<div class="tg2-allday" style="grid-template-columns:'+gridCols+'"><div class="lab">終日<br>AM/PM</div>';
   days.forEach(function(d){ var key=ymd(d); var evs=(byDate[key]||[]).filter(function(e){return !isTimedEvent(e);}).sort(byTime);
     h+='<div class="tg2-adcell">';
-    evs.forEach(function(e){ var tl=(e.time==='AM'?'AM':e.time==='PM'?'PM':'終日'); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+tl+'</span>'+evTrail(e,15,full)+'</div></div>'; });
-    h+='<div class="tg2-addbtn" onclick="openEventForm(null,\''+key+'\')">＋</div>';
+    evs.forEach(function(e){ var tl=(e.time==='AM'?'AM':e.time==='PM'?'PM':'終日'); h+='<div class="tg2-adchip" style="background:'+eventColor(e)+'" onclick="'+openChipAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+tl+'</span>'+evTrail(e,15,full)+'</div></div>'; });
+    if(addOk) h+='<div class="tg2-addbtn" onclick="openEventForm(null,\''+key+'\')">＋</div>';
     h+='</div>';
   });
   h+='</div>';
@@ -1533,11 +1844,11 @@ function timeGridHTML(days,byDate,ncol){
   for(var hr=lo;hr<hi;hr++){ h+='<div class="tg2-hour" style="height:'+hpx+'px"><span>'+String(hr).padStart(2,'0')+':00</span></div>'; }
   h+='</div>';
   days.forEach(function(d){ var key=ymd(d),t=(key===ymd(TODAY)),ev=evalDay(key,d);
-    h+='<div class="tg2-col'+(t?' today':'')+(ev.closed?' closed':'')+'" style="height:'+(nh*hpx)+'px" onclick="tgColAdd(event,\''+key+'\','+lo+','+hpx+')">';
+    h+='<div class="tg2-col'+(t?' today':'')+(ev.closed?' closed':'')+'" style="height:'+(nh*hpx)+'px"'+(addOk?' onclick="tgColAdd(event,\''+key+'\','+lo+','+hpx+')"':'')+'>';
     for(var i=1;i<nh;i++){ h+='<div class="tg2-line" style="top:'+(i*hpx)+'px"></div>'; }
     var timed=(byDate[key]||[]).filter(isTimedEvent).sort(byTime);
     timed.forEach(function(e){ var st=parseHM(e.time), en=parseHM(e.endTime); var dur=(en!=null&&en>st)?(en-st):0.75; var top=(st-lo)*hpx, height=Math.max(dur*hpx,36); if(top<0){height+=top;top=0;} if(top>=nh*hpx)return; if(top+height>nh*hpx)height=nh*hpx-top;
-      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15,full)+'</div></div>';
+      h+='<div class="tg2-ev" style="top:'+top+'px;height:'+(height-2)+'px;background:'+eventColor(e)+'" onclick="'+openChipAttr(e)+'"><div class="l1">'+evIcons(e)+evLead(e,15,full)+'：'+evTitleW(e)+'</div><div class="l2"><span class="et">'+e.time+(en!=null?'-'+e.endTime:'')+'</span>'+evTrail(e,15,full)+'</div></div>';
     });
     h+='</div>';
   });
@@ -1550,16 +1861,18 @@ function timeGridHTML(days,byDate,ncol){
   return h;
 }
 function renderWeekGrid(){
+  const ids=calIds();
   const ws=startOfWeek(calCursor); const days=[]; for(let i=0;i<7;i++)days.push(addDays(ws,i));
-  document.getElementById('cal-label').textContent=(ws.getMonth()+1)+'/'+ws.getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
-  const byDate={}; getEvents(ws,addDays(ws,6)).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
-  document.getElementById('cal-host').innerHTML=timeGridHTML(days,byDate,7);
+  document.getElementById(ids.label).textContent=(ws.getMonth()+1)+'/'+ws.getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
+  const byDate={}; scopeEvents(ws,addDays(ws,6)).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  document.getElementById(ids.host).innerHTML=timeGridHTML(days,byDate,7);
 }
 function renderDayGrid(){
+  const ids=calIds();
   const d=new Date(calCursor.getFullYear(),calCursor.getMonth(),calCursor.getDate());
-  document.getElementById('cal-label').textContent=(d.getMonth()+1)+'/'+d.getDate()+'（'+DOW[d.getDay()]+'）';
-  const byDate={}; getEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
-  document.getElementById('cal-host').innerHTML=timeGridHTML([d],byDate,1);
+  document.getElementById(ids.label).textContent=(d.getMonth()+1)+'/'+d.getDate()+'（'+DOW[d.getDay()]+'）';
+  const byDate={}; scopeEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  document.getElementById(ids.host).innerHTML=timeGridHTML([d],byDate,1);
 }
 function tgColAdd(ev,key,baseHour,hpx){ var r=ev.currentTarget.getBoundingClientRect(); var y=ev.clientY-r.top; var hr=baseHour+Math.floor(y/hpx); if(hr<baseHour)hr=baseHour; openEventForm(null,key,String(hr).padStart(2,'0')+':00'); }
 
@@ -1584,12 +1897,12 @@ let popHold=false, popTimer=null;
 function dayPopHold(v){ popHold=v; if(!v) dayPopHide(); }
 function dayPopShow(ev,dateStr){
   const d=new Date(dateStr+'T00:00:00');
-  const list=getEvents(d,d).sort(byTime);
+  const list=scopeEvents(d,d).sort(byTime);
   if(list.length<=3){ dayPopHide(); return; }
   clearTimeout(popTimer);
   const p=document.getElementById('day-pop');
   let h='<div class="pop-h">'+dateStr.slice(5).replace('-','/')+' の予定（'+list.length+'件）</div>';
-  list.forEach(function(e){ h+='<div class="pop-ev" style="background:'+eventColor(e)+'" onclick="'+openEvAttr(e)+'">'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12,e.date)+dispTitle(e)+'</div>'; });
+  list.forEach(function(e){ h+='<div class="pop-ev" style="background:'+eventColor(e)+'" onclick="'+openChipAttr(e)+'">'+(e.time==='終日'||e.time==='—'?'':e.time+' ')+whoAvatars(e.who,12,e.date)+dispTitle(e)+'</div>'; });
   p.innerHTML=h;
   const r=ev.currentTarget.getBoundingClientRect();
   p.style.left=Math.max(8,Math.min(r.left, window.innerWidth-332))+'px';
@@ -1603,10 +1916,10 @@ let _dayModalDate=null;
 function renderDayModalBody(){
   if(!_dayModalDate)return;
   var dateStr=_dayModalDate, d=new Date(dateStr+'T00:00:00');
-  var byDate={}; getEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  var byDate={}; scopeEvents(d,d).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
   var hol=holName(dateStr), ev=evalDay(dateStr,d);
   document.getElementById('daymodal-title').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'+(hol?' '+hol:'')+(ev.closed?' 休業':(ev.openWin?' 特別営業':''));
-  document.getElementById('daymodal-add').setAttribute('onclick','openEventForm(null,\''+dateStr+'\')');
+  var dadd=document.getElementById('daymodal-add'); if(dadd){ dadd.style.display=(CAL_SCOPE==='schedule')?'':'none'; dadd.setAttribute('onclick','openEventForm(null,\''+dateStr+'\')'); }
   document.getElementById('daymodal-body').innerHTML=timeGridHTML([d],byDate,1);
 }
 function dayModalOpen(){ return _dayModalDate && document.getElementById('day-modal').classList.contains('show'); }
