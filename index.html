@@ -644,7 +644,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.47.1</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.48.0</div>
   </div>
 </div>
 
@@ -662,10 +662,11 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.47.1</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.48.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
+    <button class="tb-btn" id="tb-quick" onclick="openQuickForm()" style="line-height:1.05;text-align:center">＋ クイック入力<br><span style="font-size:9px;color:var(--text3);font-weight:400">タイトルと日時だけ</span></button>
     <div class="topbar-user">
       <span class="av" id="u-av"></span>
       <span class="uname" id="me-name"></span>
@@ -950,6 +951,19 @@
       <button class="btn-ghost" onclick="closeDutyForm()">キャンセル</button>
       <button class="btn-save" onclick="saveDutyForm()">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- クイック入力モーダル（タイトルと日時だけ） -->
+<div class="mbg" id="quick-modal" onclick="if(event.target.id==='quick-modal')closeQuickForm()">
+  <div class="mbox">
+    <div class="mhead"><span class="mt">＋ クイック入力</span><button class="x" onclick="closeQuickForm()">✕</button></div>
+    <div class="mbody">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">タイトルと日時だけでOK。あとで分かる人が部署・担当・TODOなどを仕上げて正式な予定にします。</div>
+      <div class="fld"><label>タイトル *</label><input type="text" id="quick-title" placeholder="例：○○様 来店 / 部品屋へ" style="width:100%;font-size:15px"></div>
+      <div class="fld" style="display:flex;gap:12px;flex-wrap:wrap"><label style="font-size:13px">日付 * <input type="date" id="quick-date" style="margin-left:4px"></label><label style="font-size:13px">時間（任意） <input type="time" id="quick-time" style="margin-left:4px"></label></div>
+    </div>
+    <div class="mfoot"><div class="grow"></div><button class="btn-ghost" onclick="closeQuickForm()">キャンセル</button><button class="btn-save" onclick="saveQuickForm()">保存</button></div>
   </div>
 </div>
 
@@ -1924,6 +1938,7 @@ function getEvents(start,end){
   const s=ymd(start), e=ymd(end);
   let list=EVENTS.filter(function(ev){return ev.date>=s&&ev.date<=e;});
   USER_EVENTS.forEach(function(ev){
+    if(ev.draft) return;   // クイック予定（未仕上げ）はカレンダーに出さない
     if(ev.repeat && ev.repeat.freq && ev.repeat.freq!=='none'){ list=list.concat(eventOccurrences(ev,start,end)); }
     else if(ev.endDate && ev.endDate>ev.date){ list=list.concat(spanOccurrences(ev,start,end)); }
     else if(ev.date>=s && ev.date<=e){ list.push(ev); }
@@ -2003,6 +2018,23 @@ function offAvatarsSmall(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)ret
 
 /* 上の「＋」ボタン＝今いるカレンダーに連動（ルーティン画面＝＋ルーティン／当番画面＝＋当番／それ以外＝社内予定） */
 function quickAdd(){ if(curView==='routine')return openRoutineForm(); if(curView==='duty')return openDutyForm(); return openEventForm(); }
+/* クイック入力：タイトルと日時だけのドラフト。ダッシュボードで仕上げて正式化 */
+function openQuickForm(){ var q=document.getElementById('quick-modal'); if(!q)return; document.getElementById('quick-title').value=''; document.getElementById('quick-date').value=ymd(TODAY); document.getElementById('quick-time').value=''; q.classList.add('show'); setTimeout(function(){var t=document.getElementById('quick-title');if(t)t.focus();},50); }
+function closeQuickForm(){ var q=document.getElementById('quick-modal'); if(q)q.classList.remove('show'); }
+function saveQuickForm(){
+  var title=(document.getElementById('quick-title').value||'').trim();
+  var date=document.getElementById('quick-date').value||'';
+  var time=document.getElementById('quick-time').value||'';
+  if(!title){ toast('タイトルを入れてください'); return; }
+  if(!date){ toast('日付を入れてください'); return; }
+  var me=myCoreMember();
+  var ev={ id:'e'+Date.now()+Math.floor(Math.random()*1000), source:'manual', draft:true,
+    title:title, date:date, time:time?time:'終日', timeMode:time?'time':'allday', endTime:'', endDate:'',
+    etype:'社内予定', layer:'company', kind:'all', dept:'', who:[], memo:'', secret:false, repeat:null, remind:[], remindCustom:[], todo:false, approvers:[],
+    ownerUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null,
+    createdByUid:(window.fb.currentUser&&window.fb.currentUser.uid)||null, createdByMemberId:(me&&me.id)||null, createdByName:(me?memSurname(me):myName()) };
+  schedSave(ev); closeQuickForm(); toast('クイック予定を保存しました（ダッシュボードで仕上げ）'); showView('dash');
+}
 function showView(v){
   curView=v;
   CAL_SCOPE = (v==='master')?'master':(v==='duty')?'duty':(v==='routine')?'routine':'schedule';
@@ -2530,6 +2562,23 @@ function dashApprovalCards(items){
     '</div>'; }).join('');
   return '<div class="dash-card">'+head+cards+'</div>';
 }
+/* クイック予定（要仕上げ）カード */
+function dashQuickCards(){
+  var drafts=(USER_EVENTS||[]).filter(function(e){return e.draft;});
+  drafts.sort(function(a,b){return (a.date<b.date?-1:1);});
+  var head='<div class="dash-h">📝 クイック予定（要仕上げ） <span style="color:var(--acc2)">'+drafts.length+'</span></div>';
+  if(!drafts.length) return '<div class="dash-card">'+head+'<div style="font-size:12px;color:var(--text3);padding:4px 2px">未仕上げのクイック予定はありません。</div></div>';
+  var cards=drafts.map(function(e){
+    var cm=e.createdByMemberId?memberById(e.createdByMemberId):null;
+    var av=cm?memberAvatar(cm,18):'';
+    var tm=(e.time&&e.time!=='終日'&&e.time!=='—')?(' '+esc(e.time)):' 終日';
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid #f59e0b;border-radius:0 10px 10px 0;padding:9px 11px;margin-bottom:8px;cursor:pointer" onclick="dashOpenQuick(\''+escA(e.id)+'\')">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(e.title||'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)">🗓 '+e.date.slice(5).replace('-','/')+tm+'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px">'+av+esc(e.createdByName||'')+'</span></div>'+
+    '</div>'; }).join('');
+  return '<div class="dash-card">'+head+cards+'</div>';
+}
+function dashOpenQuick(id){ var e=(USER_EVENTS||[]).find(function(x){return x.id===id;}); if(e)openEventForm(e); }
 /* 明日・明後日（左右2カラム） */
 function dashTwoDayHTML(me, myDeptName){
   function dayCard(d, lbl){
@@ -2572,7 +2621,7 @@ function renderDash(){
   host.innerHTML=
     '<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:start">'+
       '<div class="dash-card"><div class="dash-h">👤 '+dayHead+'</div>'+dayView+'</div>'+
-      '<div>'+dashOverdueCards(overdue)+dashApprovalCards(pending)+'</div>'+
+      '<div>'+dashOverdueCards(overdue)+dashApprovalCards(pending)+dashQuickCards()+'</div>'+
     '</div>'+
     '<div class="dash-card"><div class="dash-h">📅 明日・明後日</div>'+dashTwoDayHTML(me,myDeptName)+'</div>'+
     deptCard+
@@ -3320,7 +3369,9 @@ function renderEventForm(){
   const DOWJ=['日','月','火','水','木','金','土'];
   const rdayPick=DOWJ.map(function(d,x){return pickHTML('rday',String(x),d,EF.repeat.days.indexOf(x)>=0);}).join('');
   var notDeadline=(EF.etype!=='締切り');
+  var draftBanner = EF.draft ? ('<div style="background:rgba(245,158,11,.12);border:1px solid #f59e0b;border-radius:9px;padding:8px 11px;margin-bottom:10px;font-size:12px"><b>📝 クイック予定の仕上げ</b>'+(EF.createdByName?'　作成：<span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle">'+((EF.createdByMemberId&&memberById(EF.createdByMemberId))?memberAvatar(memberById(EF.createdByMemberId),18):'')+esc(EF.createdByName)+'</span>':'')+'<br><span style="color:var(--text3)">部署・担当・TODO・リマインドなどを設定して保存すると、正式な予定になります。</span></div>') : '';
   b.innerHTML=
+    draftBanner+
     '<div class="fld"><label>予定 *</label><input type="text" id="ef-titlein" value="'+esc(EF.title||'')+'" placeholder="例：E社商談 / 田中様 来社 / 月末締め" style="font-size:15px;font-weight:600"></div>'+
     '<div class="ef-2col">'+
       '<div class="ef-c">'+
@@ -3439,6 +3490,7 @@ function saveEventForm(){
   EF.layer=(EF.etype==='締切り')?'deadline':'company';
   EF.memo=document.getElementById('ef-memo').value.trim();
   EF.source='manual';
+  if(EF.draft){ EF.draft=false; }   // クイック予定を仕上げ＝正式化（カレンダーに出るようになる）
   EF.prefix=''; EF.place=''; EF.tags=[];   // 廃止項目をクリア
   if(EF.layer!=='company'){ EF.kind='all'; EF.dept=''; EF.secret=false; }
   if(EF.kind!=='dept') EF.dept='';
