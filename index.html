@@ -360,6 +360,9 @@
   .tod-break .today-row,.tod-break .today-row.in-break{background:transparent}
   .tod-break .today-row:hover{background:rgba(110,140,180,.12)}
   .tod-break .today-row{border-bottom:1px dashed rgba(110,140,180,.28);height:56px}
+  .tod-break-pad{height:56px;box-sizing:border-box;border-bottom:1px dashed rgba(110,140,180,.28);background:transparent}
+  .tod-break-pad:last-child{border-bottom:none}
+  .tod-seg-pad{height:56px;box-sizing:border-box;border-bottom:1px solid var(--border);background:repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(128,128,128,.04) 12px, rgba(128,128,128,.04) 24px)}
   body.board-portrait .tr-customer{font-size:19px}
   body.board-portrait .tr-carname{font-size:17px}
   body.board-portrait .tr-time{font-size:17px}
@@ -634,7 +637,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.46.0</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.46.1</div>
   </div>
 </div>
 
@@ -652,7 +655,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.46.0</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.46.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -2679,7 +2682,7 @@ function noteToggleDone(id,app){ var n=findNote(id,app); if(!n)return; var done=
 function noteDelete(id,app){ var n=findNote(id,app); if(!n||!noteCanEdit(n)){ toast('削除権限がありません'); return; } if(!confirm('この付箋を削除しますか？'))return; noteColRef(app).doc(id).delete().catch(function(e){ console.error(e); toast('⚠ 削除に失敗（権限）'); }); }
 
 /* ===== Todayボード（店頭ボードの電子版） ===== */
-function togglePortrait(){ document.body.classList.toggle('board-portrait'); var on=document.body.classList.contains('board-portrait'); var sw=document.getElementById('portrait-sw'); if(sw)sw.classList.toggle('on',on); if(on)showView('brief'); }
+function togglePortrait(){ document.body.classList.toggle('board-portrait'); var on=document.body.classList.contains('board-portrait'); var sw=document.getElementById('portrait-sw'); if(sw)sw.classList.toggle('on',on); if(on){ showView('brief'); } else if(curView==='brief'){ renderBrief(); } }
 let boardCursor=new Date(TODAY);
 function boardMove(n){ boardCursor=addDays(boardCursor,n); renderBrief(); }
 function boardToday(){ boardCursor=new Date(TODAY); renderBrief(); }
@@ -2697,15 +2700,26 @@ var CARFLOW_BASE='https://carflow.kobayashi-motors.com';
 /* 入庫・返車＝PitFlow当日ビューを移植（仮データ・PitFlow本実装で実カードに差し替え） */
 var PIT_BREAKS=[{from:'12:00',to:'13:00',label:'休憩'},{from:'15:30',to:'16:30',label:'休憩'}];
 var BOARD_PIT_INTAKE=[
-  {customer:'ナカムラ',car:'モコ/ラパン',time:'17:00',team:'domestic',front:'専務',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6',loaner:true},
-  {customer:'ハスミ',car:'ソリオ',time:'18:00',team:'domestic',front:'椎名',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'},
-  {customer:'コンドウ',maker:'MINI',car:'F56',time:'18:30',team:'import',front:'菅谷',drop:'wait',dropLabel:'預',work:'一般',workColor:'#64748b'},
-  {customer:'東洋コーポレーション',car:'荷ハイゼット',time:'14:00',team:'domestic',front:'社長',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'}
+  {customer:'タナカ',car:'ノート',time:'09:00',team:'domestic',front:'椎名',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6',loaner:true},
+  {customer:'スズキ',maker:'BMW',car:'320i',time:'09:30',team:'import',front:'菅谷',drop:'drop',dropLabel:'引取',work:'一般',workColor:'#64748b'},
+  {customer:'ヤマモト',car:'タント',time:'10:00',team:'domestic',front:'専務',drop:'wait',dropLabel:'預',work:'板金',workColor:'#f59e0b',consult:true},
+  {customer:'コバヤシ',car:'プリウス',time:'11:30',team:'domestic',front:'蓮沼',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'},
+  {customer:'ナカムラ',car:'モコ',time:'12:30',team:'domestic',front:'箱崎',drop:'sameDay',dropLabel:'当',work:'一般',workColor:'#64748b'},
+  {customer:'サトウ',maker:'MINI',car:'F56',time:'13:30',team:'import',front:'菅谷',drop:'wait',dropLabel:'預',work:'コーティング',workColor:'#a855f7'},
+  {customer:'イトウ',car:'ハイゼット',time:'14:00',team:'domestic',front:'社長',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'},
+  {customer:'ワタナベ',car:'フィット',time:'15:00',team:'domestic',front:'椎名',drop:'wait',dropLabel:'預',work:'整備',workColor:'#1db97a'},
+  {customer:'タカハシ',maker:'アウディ',car:'A3',time:'16:00',team:'import',front:'菅谷',drop:'drop',dropLabel:'引取',work:'板金',workColor:'#f59e0b',loaner:true},
+  {customer:'ハスミ',car:'ソリオ',time:'18:00',team:'domestic',front:'蓮沼',drop:'wait',dropLabel:'預',work:'車検',workColor:'#3b82f6'}
 ];
 var BOARD_PIT_RETURN=[
-  {customer:'イシイ',car:'ジムニーノマド',time:'17:00',team:'domestic',front:'社長',drop:'sameDay',dropLabel:'当'},
-  {customer:'マキイ',maker:'メルセデス',car:'W176',time:'',team:'import',front:'菅谷',loaner:true,wash:true},
-  {customer:'イシイ',car:'セレナ',time:'',team:'domestic',front:'菅谷',wash:true,work:'車検',workColor:'#3b82f6'}
+  {customer:'モリ',car:'アクア',time:'09:00',team:'domestic',front:'椎名',drop:'sameDay',dropLabel:'当',wash:true},
+  {customer:'イシイ',car:'ジムニー',time:'10:30',team:'domestic',front:'社長',work:'車検',workColor:'#3b82f6'},
+  {customer:'マキイ',maker:'メルセデス',car:'W176',time:'11:00',team:'import',front:'菅谷',loaner:true,wash:true},
+  {customer:'オオニシ',car:'ルークス',time:'12:15',team:'domestic',front:'蓮沼',wash:true},
+  {customer:'フクミツ',car:'セレナ',time:'13:30',team:'domestic',front:'箱崎',work:'整備',workColor:'#1db97a'},
+  {customer:'カトウ',maker:'VW',car:'ゴルフ',time:'14:30',team:'import',front:'菅谷',wash:true},
+  {customer:'シイナ',car:'N-BOX',time:'16:00',team:'domestic',front:'専務',loaner:true},
+  {customer:'ヤマネ',car:'インプレッサ',time:'18:00',team:'domestic',front:'蓮沼',work:'車検',workColor:'#3b82f6',wash:true}
 ];
 var BOARD_PIT_DONE={};
 function pitMin(t){ var m=String(t||'').match(/(\d{1,2}):(\d{2})/); return m?(+m[1]*60+ +m[2]):99999; }
@@ -2739,6 +2753,7 @@ function pitBuildRows(cards){
   }
   return blocks;
 }
+/* コンパクト（既定）：詰めて積む */
 function pitColBody(cards,isReturn){
   var h='';
   pitBuildRows(cards).forEach(function(b){
@@ -2747,20 +2762,55 @@ function pitColBody(cards,isReturn){
   });
   return h;
 }
+/* フルビュー（縦表示）：左右で休憩バー・行を揃える（少ない側を空き行で埋める） */
+function pitSegHtml(block,rows,isReturn){
+  var cards=(block&&block.cards)?block.cards:[], h='';
+  cards.forEach(function(c){ h+=pitRow(c,isReturn,false); });
+  for(var k=cards.length;k<rows;k++) h+='<div class="tod-seg-pad"></div>';
+  return h;
+}
+function pitBreakRowsHtml(block,rows,isReturn){
+  var cards=(block&&block.cards)?block.cards:[];
+  var h='<div class="tod-break"><div class="tod-break-bar">☕ '+block.from+'〜'+block.to+' 休憩</div>';
+  cards.forEach(function(c){ h+=pitRow(c,isReturn,true); });
+  for(var k=cards.length;k<rows;k++) h+='<div class="tod-break-pad"></div>';
+  return h+'</div>';
+}
+function pitMergeAlign(left,right){
+  var L='',R='',n=Math.max(left.length,right.length);
+  for(var i=0;i<n;i++){
+    var lb=left[i], rb=right[i];
+    var lc=(lb&&lb.cards)?lb.cards.length:0, rc=(rb&&rb.cards)?rb.cards.length:0;
+    if((lb&&lb.type==='break')||(rb&&rb.type==='break')){
+      var rows=Math.max(lc,rc,1);
+      L+=pitBreakRowsHtml(lb||rb,rows,false); R+=pitBreakRowsHtml(rb||lb,rows,true);
+    } else {
+      var rows2=Math.max(lc,rc);
+      L+=pitSegHtml(lb,rows2,false); R+=pitSegHtml(rb,rows2,true);
+    }
+  }
+  return {left:L,right:R};
+}
 function pitTodayHTML(){
   BOARD_PIT_INTAKE.forEach(function(c,i){c._id='in'+i;});
   BOARD_PIT_RETURN.forEach(function(c,i){c._id='rt'+i;});
   var intake=BOARD_PIT_INTAKE.slice().sort(function(a,b){return pitMin(a.time)-pitMin(b.time);});
   var returns=BOARD_PIT_RETURN.slice().sort(function(a,b){return pitMin(a.time)-pitMin(b.time);});
+  var full=document.body.classList.contains('board-portrait');
+  var leftBody, rightBody;
+  if(full){ var m=pitMergeAlign(pitBuildRows(intake), pitBuildRows(returns)); leftBody=m.left; rightBody=m.right; }
+  else { leftBody=pitColBody(intake,false); rightBody=pitColBody(returns,true); }
+  leftBody=intake.length?leftBody:'<div class="today-empty">入庫予定なし</div>';
+  rightBody=returns.length?rightBody:'<div class="today-empty">返車予定なし</div>';
   var inDone=intake.filter(function(c){return BOARD_PIT_DONE[c._id];}).length;
   var outDone=returns.filter(function(c){return BOARD_PIT_DONE[c._id];}).length;
   var counts='<div class="pit-counts">'+
     '<div class="count-chip in"><span class="num">'+intake.length+'</span><span class="lbl">入庫</span>'+(inDone?'<span class="rem">残'+(intake.length-inDone)+'</span>':'')+'</div>'+
     '<div class="count-chip out"><span class="num">'+returns.length+'</span><span class="lbl">返車</span>'+(outDone?'<span class="rem">残'+(returns.length-outDone)+'</span>':'')+'</div>'+
-    '<span class="bsrc" style="background:var(--bg4);color:var(--text2);align-self:center">PitFlow当日ビュー（仮）</span></div>';
-  return counts+'<div class="today-cols">'+
-    '<div class="today-col"><div class="today-col-head intake"><span class="ic">📥</span>入庫 <span class="cnt">'+intake.length+'</span></div><div class="today-col-body">'+(pitColBody(intake,false)||'<div class="today-empty">入庫予定なし</div>')+'</div></div>'+
-    '<div class="today-col"><div class="today-col-head return"><span class="ic">📤</span>返車 <span class="cnt">'+returns.length+'</span></div><div class="today-col-body">'+(pitColBody(returns,true)||'<div class="today-empty">返車予定なし</div>')+'</div></div>'+
+    '<span class="bsrc" style="background:var(--bg4);color:var(--text2);align-self:center">PitFlow当日ビュー（仮）'+(full?'・フルビュー':'')+'</span></div>';
+  return counts+'<div class="today-cols'+(full?' full':'')+'">'+
+    '<div class="today-col"><div class="today-col-head intake"><span class="ic">📥</span>入庫 <span class="cnt">'+intake.length+'</span></div><div class="today-col-body">'+leftBody+'</div></div>'+
+    '<div class="today-col"><div class="today-col-head return"><span class="ic">📤</span>返車 <span class="cnt">'+returns.length+'</span></div><div class="today-col-body">'+rightBody+'</div></div>'+
   '</div>';
 }
 function boardWho(e){ var ws=(e.who||[]).filter(function(w){return memberVisibility(w,e.date)!=='hide';}); return ws.length?ws.map(function(w){return memberLabel(w);}).join('、'):''; }
