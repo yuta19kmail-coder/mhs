@@ -534,7 +534,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.41.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.41.3</div>
   </div>
 </div>
 
@@ -552,10 +552,10 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.41.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
-    <button class="tb-btn primary" onclick="openEventForm()">＋ 新規予定</button>
+    <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
     <div class="topbar-user">
       <span class="av" id="u-av"></span>
       <span class="uname" id="me-name"></span>
@@ -1717,6 +1717,8 @@ function dutyChip(e,cls){ return '<div class="'+(cls||'ev')+'" style="background
 /* 月セル用の小さな休みアバター列（マスターのシフト重ね） */
 function offAvatarsSmall(ds){ var off=SHIFT_BYDATE[ds]; if(!off||!off.length)return ''; var av=off.slice(0,6).map(function(v){ var info=shiftEntryInfo(v); return memberAvatar(info.member,14); }).join(''); return '<div class="cell-off" title="休み">🛌'+av+(off.length>6?'<span style="font-size:9px">+'+(off.length-6)+'</span>':'')+'</div>'; }
 
+/* 上の「＋」ボタン＝今いるカレンダーに連動（ルーティン画面＝＋ルーティン／当番画面＝＋当番／それ以外＝社内予定） */
+function quickAdd(){ if(curView==='routine')return openRoutineForm(); if(curView==='duty')return openDutyForm(); return openEventForm(); }
 function showView(v){
   curView=v;
   CAL_SCOPE = (v==='master')?'master':(v==='duty')?'duty':(v==='routine')?'routine':'schedule';
@@ -1730,6 +1732,7 @@ function showView(v){
   if(v==='duty')   renderDuty();
   if(v==='routine') renderRoutine();
   if(v==='month')  renderCal();
+  var _ab=document.getElementById('tb-add'); if(_ab){ _ab.textContent=(v==='routine')?'＋ ルーティンを追加':(v==='duty')?'＋ 当番を追加':'＋ 新規予定'; }
   if(v==='axis')   renderAxis();
   if(v==='calset') renderCalSet();
   if(v==='shiftpdf') renderShiftPdf();
