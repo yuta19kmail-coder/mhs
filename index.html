@@ -557,6 +557,8 @@
   .shv-c.off{background:rgba(220,38,38,.20);color:#f3a4b5;font-weight:600}
   .shv-w{font-size:9px;color:var(--text3)}
   .shv-grp{padding:5px 8px;font-size:11px;font-weight:700;color:var(--text2);background:var(--bg3);display:flex;align-items:center;gap:6px;position:sticky;left:0}
+  .shv-subgrp{padding:3px 8px 3px 18px;font-size:10.5px;font-weight:600;color:var(--text3);background:var(--bg2);display:flex;align-items:center;gap:5px;position:sticky;left:0}
+  .shv-subgrp .dot2{width:6px;height:6px;border-radius:50%;background:var(--text3);opacity:.6;flex:none}
   .m-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:700;flex:none}
   .m-av img{width:100%;height:100%;object-fit:cover;display:block}
   .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
@@ -1361,6 +1363,30 @@ function membersGrouped(){
   return out.length?out:[{dept:null, members:list}];
 }
 function _hasDeptGroups(g){ return !(g.length===1 && !g[0].dept); }
+/* シフト表用：CoreMembers「部署ビュー」と同じ並び＝部（CORE_DEPTS order順）→ 課なし → 各課（order順）、各集合内は共通の sortOrder 順。
+   返り値＝[{dept, rows:[{section, members:[]}]}]。MEMBERS は読込時に sortOrder→名前 で並べ済み（CoreMembers _cmpOrder と同等）。 */
+function membersBySection(){
+  var list=memberList();
+  var tops=CORE_DEPTS.filter(function(d){ return !d.parentId; });
+  if(!tops.length) return [{dept:null, rows:[{section:null, members:list}]}];
+  var byId={}, groups=[];
+  tops.forEach(function(d){ var g={dept:d, _ms:[]}; byId[d.id]=g; groups.push(g); });
+  var none={dept:null, _ms:[]};
+  list.forEach(function(m){ var did=memberDeptIds(m).deptId; var g=(did&&byId[did])?byId[did]:none; g._ms.push(m); });
+  function buildRows(g){
+    var rows=[];
+    if(!g.dept){ if(g._ms.length) rows.push({section:null, members:g._ms}); return rows; }
+    var subs=CORE_DEPTS.filter(function(d){ return d.parentId===g.dept.id; });   // この部の課（CORE_DEPTS＝order順）
+    if(!subs.length){ if(g._ms.length) rows.push({section:null, members:g._ms}); return rows; }
+    var noSec=g._ms.filter(function(m){ return !memberDeptIds(m).sectionId; });   // 課なし（部直属）は先頭
+    if(noSec.length) rows.push({section:null, members:noSec});
+    subs.forEach(function(sd){ var sm=g._ms.filter(function(m){ return memberDeptIds(m).sectionId===sd.id; }); if(sm.length) rows.push({section:sd, members:sm}); });
+    return rows;
+  }
+  var out=groups.filter(function(g){ return g._ms.length; }).map(function(g){ return {dept:g.dept, rows:buildRows(g)}; });
+  if(none._ms.length) out.push({dept:null, rows:buildRows(none)});
+  return out.length?out:[{dept:null, rows:[{section:null, members:list}]}];
+}
 /* 担当チップ1個 */
 function whoChip(m,on,onclickAttr,sz){ return '<span class="mpick'+(on?' on':'')+'" onclick="'+onclickAttr+'">'+memberAvatar(m,sz)+'<span>'+esc(memDisp(m))+'</span></span>'; }
 /* 担当ピッカー（部署見出し＋チップ群）。isOn(m)→bool、onclickOf(m)→onclick文字列 */
@@ -2416,13 +2442,16 @@ function renderShiftView(){
   var head='<div class="shv-row shv-head"><div class="shv-name">メンバー</div>';
   for(var d=1;d<=dim;d++){ var dt=new Date(y,mo,d), wd=dt.getDay(); head+='<div class="shv-c'+(wd===0?' sun':(wd===6?' sat':''))+'">'+d+'<br><span class="shv-w">'+DOW[wd]+'</span></div>'; }
   head+='</div>';
-  var groups=membersGrouped(), body='', any=false;
+  var groups=membersBySection(), body='', any=false;   // CoreMembers部署ビューと同じ並び（部→課→sortOrder）
   groups.forEach(function(g){
     if(g.dept){ body+='<div class="shv-grp"><span class="mpick-dot" style="background:'+((g.dept&&g.dept.color)||'#94a3b8')+'"></span>'+esc(g.dept.name)+'</div>'; }
-    g.members.forEach(function(m){
-      body+='<div class="shv-row"><div class="shv-name">'+memberAvatar(m,18)+'<span>'+esc(memSurname(m))+'</span></div>';
-      for(var d2=1;d2<=dim;d2++){ var ds=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(d2).padStart(2,'0'); var off=isOff(m,ds); if(off)any=true; body+='<div class="shv-c'+(off?' off':'')+'">'+(off?'休':'')+'</div>'; }
-      body+='</div>';
+    g.rows.forEach(function(row){
+      if(row.section){ body+='<div class="shv-subgrp"><span class="dot2"></span>'+esc(row.section.name)+'</div>'; }
+      row.members.forEach(function(m){
+        body+='<div class="shv-row"><div class="shv-name">'+memberAvatar(m,18)+'<span>'+esc(memSurname(m))+'</span></div>';
+        for(var d2=1;d2<=dim;d2++){ var ds=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(d2).padStart(2,'0'); var off=isOff(m,ds); if(off)any=true; body+='<div class="shv-c'+(off?' off':'')+'">'+(off?'休':'')+'</div>'; }
+        body+='</div>';
+      });
     });
   });
   var note=any?'':'<div style="font-size:12px;color:var(--text3);padding:10px">この月の取り込み済みシフトがありません（管理▸シフトPDF入力で取り込んでください）。</div>';
