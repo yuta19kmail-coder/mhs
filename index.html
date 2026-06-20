@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json?v=1">
 <meta name="theme-color" content="#dc2626">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Great+Vibes&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
   :root{
@@ -243,6 +243,25 @@
   .bd-nm{position:absolute;left:0;right:0;top:70%;text-align:center;z-index:5;font-family:'Mochiy Pop One',sans-serif;font-size:25px;color:#fff;text-shadow:0 2px 12px rgba(224,33,138,.6);animation:bdPopName .8s 1.9s cubic-bezier(.22,1.6,.36,1) both}
   .bd-nm small{font-size:14px;color:#f3a4c8}
   @keyframes bdPopName{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+  /* 🎖️ 入社節目 お祝い演出 */
+  .anv-stage{background:radial-gradient(circle at 50% 38%,#2a1838,#141019 70%)}
+  .anv-stage.anv-deluxe{background:radial-gradient(circle at 50% 36%,#3a2410,#160f1c 68%);box-shadow:0 24px 80px rgba(245,197,66,.16),0 24px 80px rgba(0,0,0,.6)}
+  .anv-stage.anv-deluxe::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 40%,rgba(245,197,66,.16),transparent 60%);z-index:0;animation:anvGlow 3.2s ease-in-out infinite;pointer-events:none}
+  @keyframes anvGlow{0%,100%{opacity:.55}50%{opacity:1}}
+  .anv-bunting{top:15%!important}
+  .anv-icon{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);z-index:3;animation:bdBoing2 1.4s .7s cubic-bezier(.34,1.56,.64,1) both}
+  .anv-icon svg{width:150px;height:auto;display:block;filter:drop-shadow(0 10px 26px rgba(245,197,66,.4))}
+  .anv-icon .sparkle{transform-origin:center;animation:anvTwinkle 1.1s ease-in-out infinite alternate}
+  @keyframes anvTwinkle{0%{opacity:.3;transform:scale(.7)}100%{opacity:1;transform:scale(1.1)}}
+  .anv-icon .yearbadge{font-family:'Mochiy Pop One',sans-serif;font-weight:700;fill:#5b3d10}
+  .anv-msg{position:absolute;left:0;right:0;bottom:6%;text-align:center;z-index:5;padding:0 16px}
+  .anv-hb{font-family:'Great Vibes','Pacifico',cursive;font-size:46px;line-height:1;color:#f5c542;text-shadow:0 3px 0 #b9821f,0 4px 16px rgba(245,197,66,.5)}
+  .anv-stage:not(.anv-deluxe) .anv-hb{font-size:36px}
+  .anv-hb .bd-letter{display:inline-block}
+  .anv-nm{font-family:'Mochiy Pop One',sans-serif;font-size:23px;color:#fff;margin-top:8px;text-shadow:0 2px 12px rgba(224,33,138,.55);animation:bdPopName .8s 1.9s cubic-bezier(.22,1.6,.36,1) both}
+  .anv-nm small{font-size:14px;color:#f3a4c8}
+  .anv-line{font-size:14px;color:#ffe9b0;margin-top:10px;line-height:1.55;animation:anvLineIn .7s 2.4s ease both}
+  @keyframes anvLineIn{0%{transform:translateY(8px);opacity:0}100%{transform:translateY(0);opacity:1}}
   .sw-line{display:inline-flex;align-items:center;gap:10px;cursor:pointer}
   /* カレンダー下部 確認リスト */
   .ckl{margin-top:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:10px 12px}
@@ -678,7 +697,7 @@
     <div class="sub">MHS ─ 全社時間マスター・社内スケジュール（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">MasterHub Schedule (MHS) v0.50.2</div>
+    <div class="ver">MasterHub Schedule (MHS) v0.51.0</div>
   </div>
 </div>
 
@@ -696,7 +715,7 @@
   <!-- ===== トップバー ===== -->
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバーを開閉">☰</button>
-    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.50.2</span></div>
+    <div class="logo"><span>📅</span><span><span class="sf">MasterHub</span> Schedule</span><span class="ver">v0.51.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替（ダーク/ライト）">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="tb-add" onclick="quickAdd()">＋ 新規予定</button>
@@ -1164,6 +1183,7 @@ function eventColor(e){
   if(e.source==='duty') return e.color||'#0ea5e9';                   // 🔁当番＝当番ごとの色
   if(e.source==='reminder'||e.kind==='reminder') return '#f59e0b';   // 🔔リマインド＝アンバー
   if(e.source==='birthday'||e.kind==='birthday') return '#e0218a';   // 🎂誕生日＝マゼンタ（専用色）
+  if(e.source==='anniv'||e.kind==='anniv') return e.annivBack ? '#64748b' : '#f0a81e';   // 🎖️入社節目＝金（裏メモ＝スレート）
   if(e.layer==='company'){
     if(e.kind==='all') return '#dc2626';                 // 全体＝赤
     if(e.kind==='personal') return '#64748b';            // 個人＝グレー
@@ -1380,6 +1400,7 @@ function evLead(e,sz,full){
   if(e.source==='duty') return '<span class="grp">🔁</span>'+(whoAvatars(e.who,sz,e.date,full)||'<span class="grp">未定</span>');
   if(e.source==='reminder'||e.kind==='reminder') return '<span class="grp">🔔</span>'+whoAvatars(e.who,sz,e.date,full);
   if(e.source==='birthday'||e.kind==='birthday') return '<span class="grp">🎂</span>';
+  if(e.source==='anniv'||e.kind==='anniv') return '<span class="grp">'+(e.annivBack?'🗒️':'🎖️')+'</span>';
   if(e.layer==='deadline'||e.etype==='締切り') return '<span class="grp">締切</span>';
   if(e.kind==='personal') return whoAvatars(e.who,sz,e.date,full)||'<span class="grp">個人</span>';
   if(e.kind==='dept') return '<span class="grp">'+esc(e.dept||'部署')+'</span>';
@@ -1390,7 +1411,7 @@ function occIsRec(e){ return !!(e&&e.repeat&&e.repeat.freq&&e.repeat.freq!=='non
 function occDone(e){ if(occIsRec(e)) return !!(e.doneDates&&e.doneDates[e.date]); return !!e.done; }
 function occDoneInfo(e){ if(occIsRec(e)){ var d=(e.doneDates&&e.doneDates[e.date])||null; return d?{by:d.by,at:d.at,note:d.note}:null; } return e.done?{by:e.reportedBy,at:e.reportedAt,note:e.reportNote}:null; }
 function evTitleW(e){ var done=(e.todo&&occDone(e))?'<span class="done-pill">済</span>':''; return done+esc(e.title||'')+(((e.source==='reminder'||e.kind==='reminder')&&e.remLabel)?'（'+esc(e.remLabel)+'）':''); }
-function evTrail(e,sz,full){ return (e.source==='routine'||e.source==='duty'||e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday')?'':whoAvatars(e.who,sz,e.date,full); }
+function evTrail(e,sz,full){ return (e.source==='routine'||e.source==='duty'||e.kind==='personal'||e.kind==='reminder'||e.source==='reminder'||e.kind==='birthday'||e.source==='birthday'||e.kind==='anniv'||e.source==='anniv')?'':whoAvatars(e.who,sz,e.date,full); }
 
 /* 社内予定（Firestore: companies/kobayashi_motors/scheduleEvents） */
 let USER_EVENTS=[];
@@ -2018,10 +2039,92 @@ function getEvents(start,end){
     for(var y=start.getFullYear(); y<=end.getFullYear(); y++){ var ds=y+'-'+mo+'-'+da; if(ds<s||ds>e) continue;
       list.push({ id:'bday_'+m.id+'_'+ds, source:'birthday', layer:'company', kind:'birthday', date:ds, time:'終日', allDay:true, title:memSurname(m)+'さん 誕生日', bMember:m.id, bName:m.name }); }
   });
+  // 🎖️ 入社節目（CoreMembers.joinedAt → 1ヶ月/3ヶ月/半年/1周年/N周年）
+  MEMBERS.forEach(function(m){
+    var jt=String(m.joinedAt||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(!jt) return;
+    var sn=memSurname(m);
+    var defs=[
+      {k:'m1',  d:annivAddMonths(m.joinedAt,1),  label:'入社1ヶ月', tone:'soft',   back:true},
+      {k:'m3',  d:annivAddMonths(m.joinedAt,3),  label:'入社3ヶ月', tone:'soft',   back:true},
+      {k:'half',d:annivAddMonths(m.joinedAt,6),  label:'入社半年',  tone:'normal', back:false},
+      {k:'y1',  d:annivAddMonths(m.joinedAt,12), label:'入社1周年', tone:'deluxe', back:false}
+    ];
+    var maxN=end.getFullYear()-(+jt[1]);                 // 2年目以降の周年
+    for(var yy=2; yy<=maxN; yy++){ defs.push({k:'yN', n:yy, d:annivAddMonths(m.joinedAt,12*yy), label:'入社'+yy+'周年', tone:'deluxe', back:false}); }
+    var seeBack=null;   // 遅延評価（裏がある時だけ判定）
+    defs.forEach(function(df){
+      if(!df.d || df.d<s || df.d>e) return;
+      var base={ source:'anniv', layer:'company', kind:'anniv', date:df.d, time:'終日', allDay:true,
+                 annivKind:df.k, annivN:df.n||null, annivLabel:df.label, annivTone:df.tone, aMember:m.id, aName:m.name };
+      // 表（ちょい祝い／お祝い）＝全社に表示
+      list.push(Object.assign({}, base, { id:'anniv_'+m.id+'_'+df.k+(df.n?('_'+df.n):'')+'_'+df.d, annivBack:false, title:sn+'さん '+df.label }));
+      // 裏（業務メモ）＝m1/m3のみ・直属上司＋幹部以上だけ
+      if(df.back){
+        if(seeBack===null) seeBack=annivCanSeeBack(m);
+        if(seeBack) list.push(Object.assign({}, base, { id:'anniv_'+m.id+'_'+df.k+'_'+df.d+'_b', annivBack:true, title:sn+'さん '+df.label+'（業務メモ）', annivNote:ANNIV_BACK_NOTE[df.k]||'' }));
+      }
+    });
+  });
   list=list.concat(expandRecurring(start,end));
   return list.filter(function(ev){return layerOn[ev.layer];});
 }
-function dispTitle(e){ if(e.source==='birthday'||e.kind==='birthday') return '🎂 '+e.title; if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&occDone(e)?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
+function dispTitle(e){ if(e.source==='birthday'||e.kind==='birthday') return '🎂 '+e.title; if(e.source==='anniv'||e.kind==='anniv') return (e.annivBack?'🗒️ ':'🎖️ ')+e.title; if(e.source==='reminder'||e.kind==='reminder') return '🔔 '+e.title+(e.remLabel?'（'+e.remLabel+'）':''); return (e.todo&&occDone(e)?'✅ ':'')+(e.prefix?e.prefix+'：':'')+e.title; }
+/* ===== 🎖️ 入社節目（CoreMembers.joinedAt から各節目を自動生成） ===== */
+// 入社日(YYYY-MM-DD)に months ヶ月 を足した日付(YYYY-MM-DD)。末日クランプ（1/31+1ヶ月=2末 等）。
+function annivAddMonths(base, months){
+  var mt=String(base||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(!mt) return null;
+  var y=+mt[1], mo=(+mt[2]-1)+months, da=+mt[3];
+  var ty=y+Math.floor(mo/12), tm=((mo%12)+12)%12;
+  var last=new Date(ty, tm+1, 0).getDate();           // 対象月の末日
+  var td=Math.min(da, last);
+  return ty+'-'+String(tm+1).padStart(2,'0')+'-'+String(td).padStart(2,'0');
+}
+// 1ヶ月・3ヶ月の「裏」業務メモ（上司＋幹部以上だけに見せる）
+var ANNIV_BACK_NOTE={
+  m1:'各上司と連携し、任せられる業務の棚卸し・次の割り振りを整理しましょう。',
+  m3:'試用期間満了の時期。本採用の可否・処遇について上長間で報告・意思決定をお願いします。'
+};
+// 閲覧者が「幹部以上」か（オーナー/管理者/幹部 or master/admin）。currentMember(=portalMembersドキュメント)で判定。
+function mhsViewerIsExec(){
+  var p=(window.fb&&window.fb.currentMember)||{};
+  if(p.master===true||p.admin===true) return true;
+  var cm=p.coremembers||{};
+  var r=(cm.on&&cm.role)||'';
+  return r==='オーナー'||r==='管理者'||r==='幹部';
+}
+// その新人(m)の裏メモを今の閲覧者が見られるか＝幹部以上 or 直属上司(managerId)
+function annivCanSeeBack(m){
+  if(mhsViewerIsExec()) return true;
+  var me=myCoreMember();
+  return !!(me && m.managerId && m.managerId===me.id);
+}
+// トロフィー中央バッジの表記
+function annivBadge(e){
+  switch(e.annivKind){ case 'm1':return '1m'; case 'm3':return '3m'; case 'half':return '½'; case 'y1':return '1'; case 'yN':return String(e.annivN||''); }
+  return '';
+}
+// お祝い系ランダム一言（{姓}{節目}差し込み）
+var ANNIV_LINES=[
+  '{姓}さん、入社{節目}おめでとう！これからも一緒に頑張ろう🔧',
+  'ここまでお疲れさま！次の1年も{姓}さんと走っていこう🚗',
+  '{姓}さんがいてくれて心強いです。次のステージも一緒に！',
+  '節目おめでとう！これからも小林モータースを盛り上げよう🎉',
+  '日々の頑張りに感謝！次の1年も全力でいこう💪',
+  '{姓}さんの成長、みんな見てます。この調子で行こう！',
+  'いい{節目}でした！来年も最高のチームでいこう😊'
+];
+var ANNIV_SOFT_LINES={
+  m1:['{姓}さん 入社1ヶ月！お疲れさま！','まずは1ヶ月、よく頑張りました🎈'],
+  m3:['{姓}さん 入社3ヶ月！ここまでよく頑張りました','3ヶ月おつかれさま！いい調子です🎈']
+};
+function _annivHash(s){ s=String(s||''); var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
+function annivLine(e){
+  var m=memberById(e.aMember), sn=m?memSurname(m):surname(e.aName||'');
+  var node=String(e.annivLabel||'').replace('！','');
+  var pool=(e.annivTone==='soft')?(ANNIV_SOFT_LINES[e.annivKind]||['{姓}さん おめでとう！']):ANNIV_LINES;
+  var t=pool[_annivHash(e.id)%pool.length];
+  return t.replace(/\{姓\}/g,sn).replace(/\{節目\}/g,node);
+}
 /* ===== リマインド（当日朝/前日/3日前/1週間前＋カスタムn日前） ===== */
 const REMIND_OPTS=[{k:'morning',label:'当日朝',days:0,morning:true},{k:'d1',label:'前日',days:1},{k:'d3',label:'3日前',days:3},{k:'w1',label:'1週間前',days:7}];
 function remDate(dt){ var w=['日','月','火','水','木','金','土']; return (dt.getMonth()+1)+'/'+dt.getDate()+'('+w[dt.getDay()]+')'; }
@@ -3395,10 +3498,83 @@ function openBirthdayDetail(e){
   _bdTimers.push(setInterval(bdSpawnBalloon,1000));
 }
 function closeBirthday(){ var ov=document.getElementById('bd-overlay'); if(ov)ov.classList.remove('show'); bdClearTimers(); }
+/* ===== 🎖️ 入社節目 お祝い演出（誕生日演出を流用・トロフィー/メダル＋一言＋節目別レベル） ===== */
+function annivTrophySVG(badge){
+  badge=String(badge||'');
+  var fs=badge.length>2?13:(badge==='½'?22:20), by=badge.length>1?69:70;
+  return '<svg width="150" height="155" viewBox="0 0 150 155">'
+    +'<g class="sparkle"><path d="M30 26 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#fff3b0"/></g>'
+    +'<g class="sparkle" style="animation-delay:.4s"><path d="M120 34 l2.4 5.6 5.6 2.4 -5.6 2.4 -2.4 5.6 -2.4 -5.6 -5.6 -2.4 5.6 -2.4z" fill="#fff3b0"/></g>'
+    +'<g class="sparkle" style="animation-delay:.7s"><circle cx="112" cy="86" r="2.6" fill="#fff"/></g>'
+    +'<path d="M44 44 C24 44 24 78 50 80" fill="none" stroke="#e7a92b" stroke-width="7"/>'
+    +'<path d="M106 44 C126 44 126 78 100 80" fill="none" stroke="#e7a92b" stroke-width="7"/>'
+    +'<path d="M42 38 H108 V58 C108 84 92 96 75 96 C58 96 42 84 42 58 Z" fill="url(#anvG)"/>'
+    +'<path d="M42 38 H108 V44 H42 Z" fill="#ffe9a8"/>'
+    +'<rect x="69" y="96" width="12" height="16" fill="#e7a92b"/>'
+    +'<rect x="54" y="112" width="42" height="9" rx="3" fill="#d99a22"/>'
+    +'<rect x="48" y="121" width="54" height="12" rx="4" fill="#c98a1c"/>'
+    +'<circle cx="75" cy="64" r="18" fill="#fff7df" stroke="#e7a92b" stroke-width="2"/>'
+    +'<text class="yearbadge" x="75" y="'+by+'" font-size="'+fs+'" text-anchor="middle">'+esc(badge)+'</text>'
+    +'<defs><linearGradient id="anvG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34d"/><stop offset="1" stop-color="#f0a81e"/></linearGradient></defs>'
+    +'</svg>';
+}
+function annivMedalSVG(badge){
+  badge=String(badge||'');
+  var fs=badge.length>2?16:22, by=badge.length>2?101:104;
+  return '<svg width="140" height="150" viewBox="0 0 140 150">'
+    +'<g class="sparkle"><path d="M28 30 l2.6 6 6 2.6 -6 2.6 -2.6 6 -2.6 -6 -6 -2.6 6 -2.6z" fill="#fff3b0"/></g>'
+    +'<path d="M52 14 L62 70 L70 60 L78 70 L88 14 Z" fill="#7fb2ff"/>'
+    +'<path d="M52 14 L70 50 L88 14 Z" fill="#5b8de0"/>'
+    +'<circle cx="70" cy="96" r="34" fill="url(#anvGm)" stroke="#e7a92b" stroke-width="3"/>'
+    +'<circle cx="70" cy="96" r="25" fill="none" stroke="#fff2c2" stroke-width="2" opacity=".7"/>'
+    +'<text class="yearbadge" x="70" y="'+by+'" font-size="'+fs+'" text-anchor="middle">'+esc(badge)+'</text>'
+    +'<defs><linearGradient id="anvGm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34d"/><stop offset="1" stop-color="#f0a81e"/></linearGradient></defs>'
+    +'</svg>';
+}
+function anvBuildBunting(n){ var b=document.getElementById('bd-bunting'); if(!b)return; var h=bdRopeSVG(); for(var i=0;i<n;i++){ var xi=(i+0.5)*(100/n), wd=-(0.0389*xi); h+='<span class="bd-flag-wrap" style="animation-delay:'+(0.5+i*0.14).toFixed(2)+'s"><span class="bd-flag" style="--c:'+BD_COLORS[i%BD_COLORS.length]+';animation-delay:'+wd.toFixed(3)+'s"></span></span>'; } b.innerHTML=h; }
+function anvBuildText(txt){ var el=document.getElementById('bd-hb'); if(!el)return; var h=''; for(var i=0;i<txt.length;i++){ var ch=txt[i]; if(ch===' '){ h+='<span style="display:inline-block;width:.28em"></span>'; continue; } h+='<span class="bd-letter" style="animation-delay:'+(1.2+i*0.06).toFixed(2)+'s">'+esc(ch)+'</span>'; } el.innerHTML=h; }
+function anvCelebrate(e){ var tone=e.annivTone||'deluxe'; var flags=tone==='deluxe'?13:(tone==='normal'?9:6); anvBuildBunting(flags); bdRestart('.anv-icon'); anvBuildText(tone==='soft'?'Thank You':'Congratulations'); bdSpawnConfetti(tone==='deluxe'?56:(tone==='normal'?34:20)); if(tone!=='soft') fireConfetti(); }
+function openAnnivDetail(e){
+  curEv=e; var m=memberById(e.aMember);
+  var tone=e.annivTone||'deluxe', badge=annivBadge(e);
+  var iconSvg=(tone==='soft')?annivMedalSVG(badge):annivTrophySVG(badge);
+  var ov=document.getElementById('bd-overlay');
+  ov.innerHTML=
+    '<div class="bd-stage anv-stage'+(tone==='deluxe'?' anv-deluxe':'')+'" id="bd-stage">'+
+      '<button class="bd-close" onclick="closeBirthday()" title="閉じる">✕</button>'+
+      '<div class="anv-bunting bd-bunting" id="bd-bunting"></div>'+
+      '<div class="anv-icon">'+iconSvg+'</div>'+
+      '<div class="anv-msg">'+
+        '<div class="anv-hb" id="bd-hb"></div>'+
+        '<div class="anv-nm">'+esc((m?m.name:e.aName)||'')+' <small>さん　'+esc(e.annivLabel||'')+'</small></div>'+
+        '<div class="anv-line">'+esc(annivLine(e))+'</div>'+
+      '</div>'+
+      '<div class="bd-hint">タップで閉じる</div>'+
+    '</div>';
+  ov.classList.add('show');
+  bdClearTimers();
+  anvCelebrate(e);
+  if(tone!=='soft'){
+    _bdTimers.push(setInterval(function(){ bdSpawnConfetti(tone==='deluxe'?14:8); },1500));
+    _bdTimers.push(setInterval(bdSpawnBalloon,1100));
+  }
+}
+/* 裏（業務メモ）＝幹部/上司だけに出る。お祝い演出ではなく通常モーダルで業務メモを表示 */
+function openAnnivNote(e){
+  curEv=e; var m=memberById(e.aMember);
+  document.getElementById('ev-title').textContent='🗒️ '+(m?memSurname(m):surname(e.aName||''))+'さん '+(e.annivLabel||'')+'（業務メモ）';
+  document.getElementById('ev-body').innerHTML=
+    '<div class="rem-banner">🔒 これは上司・幹部だけに表示される業務メモです（本人・一般スタッフには出ません）。</div>'+
+    '<div class="fr"><span class="k">対象</span><span style="font-weight:700">'+esc((m?m.name:e.aName)||'')+' さん（'+esc(e.annivLabel||'')+'）</span></div>'+
+    '<div class="fr"><span class="k">日付</span><span>'+esc(e.date)+'</span></div>'+
+    '<div class="rem-note" style="margin-top:8px;line-height:1.7">'+esc(e.annivNote||'')+'</div>';
+  document.getElementById('ev-modal').classList.add('show');
+}
 function openEv(json){
   const e=JSON.parse(json);
   if(e.source==='reminder'){ openReminderDetail(e); return; }
   if(e.source==='birthday'){ openBirthdayDetail(e); return; }
+  if(e.source==='anniv'){ if(e.annivBack){ openAnnivNote(e); } else { openAnnivDetail(e); } return; }
   curEv=e;
   const manual=(e.source==='manual');
   document.getElementById('ev-title').textContent=dispTitle(e);

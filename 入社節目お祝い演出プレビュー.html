@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>入社節目お祝い演出プレビュー（MHS）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Great+Vibes&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+<style>
+  :root{--pink:#e0218a;--gold:#f5c542;--cyan:#7fd1ff;--green:#b6f5a0;--purple:#a78bfa;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0f1115;color:#e8edf5;font-family:-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px}
+  h1{font-size:16px;margin:2px 0;color:#aeb8c7;font-weight:600;text-align:center}
+  .lvl-tag{font-size:12px;color:#7a8696}
+
+  .stage{position:relative;width:min(92vw,480px);height:min(92vw,480px);max-height:520px;background:radial-gradient(circle at 50% 38%,#2a1838,#141019 70%);border:1px solid #2b3240;border-radius:20px;overflow:hidden;box-shadow:0 16px 56px rgba(0,0,0,.55)}
+  .stage.deluxe{background:radial-gradient(circle at 50% 36%,#3a2410,#160f1c 68%);box-shadow:0 18px 64px rgba(245,197,66,.18),0 16px 56px rgba(0,0,0,.6)}
+  .stage.deluxe::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 40%,rgba(245,197,66,.16),transparent 60%);z-index:0;animation:glowPulse 3.2s ease-in-out infinite}
+  @keyframes glowPulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+  /* 旗 */
+  .bunting{position:absolute;top:23%;left:0;width:100%;height:62px;display:flex;justify-content:space-around;align-items:flex-start;padding:0 6px;z-index:2}
+  .rope{position:absolute;top:-2px;left:0;width:100%;height:26px;z-index:1;pointer-events:none;animation:ropeIn 1s cubic-bezier(.22,1.5,.4,1) both}
+  @keyframes ropeIn{0%{transform:translateY(-48px);opacity:0}70%{transform:translateY(5px);opacity:1}100%{transform:translateY(0)}}
+  .flag-wrap{display:inline-block;position:relative;z-index:2;margin-top:6px;transform-origin:top center;animation:flagIn .7s cubic-bezier(.22,1.6,.36,1) both}
+  .flag{display:block;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid var(--c);transform-origin:top center;animation:wave 2.6s linear infinite;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  @keyframes flagIn{0%{transform:translateY(-30px) scale(.2);opacity:0}70%{transform:translateY(4px) scale(1.12);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
+  @keyframes wave{0%{transform:translateY(0) rotate(0)}25%{transform:translateY(5px) rotate(4deg)}50%{transform:translateY(0) rotate(0)}75%{transform:translateY(-5px) rotate(-4deg)}100%{transform:translateY(0) rotate(0)}}
+
+  /* 風船 */
+  .balloon{position:absolute;bottom:-80px;width:46px;height:58px;border-radius:50% 50% 48% 48%;opacity:.95;animation:floatUp linear infinite;z-index:1}
+  .balloon::after{content:"";position:absolute;bottom:-7px;left:50%;width:2px;height:34px;background:rgba(255,255,255,.4);transform:translateX(-50%)}
+  .balloon::before{content:"";position:absolute;top:9px;left:11px;width:13px;height:17px;background:rgba(255,255,255,.35);border-radius:50%}
+  @keyframes floatUp{0%{transform:translateY(0) translateX(0)}50%{transform:translateY(-300px) translateX(14px)}100%{transform:translateY(-560px) translateX(-6px);opacity:0}}
+
+  /* トロフィー／メダル */
+  .icon-wrap{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);animation:iconIn 1.4s .7s cubic-bezier(.34,1.56,.64,1) both;z-index:3}
+  @keyframes iconIn{0%{transform:translateX(-50%) scale(.08) rotate(-12deg);opacity:0}50%{transform:translateX(-50%) scale(1.2) rotate(3deg);opacity:1}68%{transform:translateX(-50%) scale(.9) rotate(0)}82%{transform:translateX(-50%) scale(1.07)}92%{transform:translateX(-50%) scale(.97)}100%{transform:translateX(-50%) scale(1)}}
+  .sparkle{transform-origin:center;animation:twinkle 1.1s ease-in-out infinite alternate}
+  @keyframes twinkle{0%{opacity:.3;transform:scale(.7)}100%{opacity:1;transform:scale(1.1)}}
+  .yearbadge{font-family:'Mochiy Pop One',sans-serif;font-weight:700;fill:#5b3d10}
+
+  /* 紙吹雪 */
+  .confetti{position:absolute;top:-14px;width:9px;height:14px;opacity:.95;animation:fall linear infinite;z-index:4}
+  @keyframes fall{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(560px) rotate(560deg)}}
+
+  /* メッセージ */
+  .msg{position:absolute;left:0;right:0;bottom:14px;text-align:center;z-index:5;padding:0 14px}
+  .hb{font-family:'Great Vibes',cursive;font-size:40px;line-height:1;color:var(--gold);text-shadow:0 3px 0 #b9821f,0 4px 14px rgba(245,197,66,.5)}
+  .hb .letter{display:inline-block;animation:letterPop .7s cubic-bezier(.22,1.7,.36,1) both}
+  @keyframes letterPop{0%{transform:scale(0) translateY(14px);opacity:0}60%{transform:scale(1.3) translateY(-5px);opacity:1}100%{transform:scale(1) translateY(0)}}
+  .nm{font-family:'Mochiy Pop One',sans-serif;font-size:21px;margin-top:6px;text-shadow:0 2px 10px rgba(224,33,138,.55);animation:popName .8s 1.9s cubic-bezier(.22,1.6,.36,1) both}
+  .nm small{font-size:13px;color:#f3a4c8}
+  @keyframes popName{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+  .oneliner{font-size:13px;color:#ffe9b0;margin-top:8px;line-height:1.5;animation:popLine .7s 2.5s ease both;min-height:1.2em}
+  @keyframes popLine{0%{transform:translateY(8px);opacity:0}100%{transform:translateY(0);opacity:1}}
+
+  /* コントロール */
+  .ctl{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:520px}
+  .seg{display:flex;gap:0;border:1px solid #2b3240;border-radius:10px;overflow:hidden}
+  .seg button{border-radius:0;border:0;border-right:1px solid #2b3240}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--gold);color:#3a2a08}
+  button{background:#1b2230;color:#cdd6e4;border:1px solid #2b3240;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  button.primary{background:var(--pink);color:#fff;border-color:transparent}
+  .note{font-size:12px;color:#7a8696;max-width:500px;text-align:center;line-height:1.65}
+  .legend{font-size:12px;color:#9aa6b6;max-width:500px;line-height:1.7;background:#161a22;border:1px solid #232a36;border-radius:12px;padding:12px 14px}
+  .legend b{color:#e8edf5}
+  .lv-pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;margin-right:4px}
+  .lv-soft{background:#23303a;color:#9fd6f5}
+  .lv-normal{background:#2a2340;color:#c9b6ff}
+  .lv-deluxe{background:#3a2c10;color:#ffd86b}
+</style>
+</head>
+<body>
+  <h1>🎖️ 入社節目 お祝い演出プレビュー <span class="lvl-tag">（誕生日演出を流用・MHS実装前の確認用）</span></h1>
+
+  <div class="ctl seg" id="seg">
+    <button data-k="m1">入社1ヶ月</button>
+    <button data-k="m3">入社3ヶ月</button>
+    <button data-k="half">入社半年</button>
+    <button data-k="y1" class="on">入社1周年</button>
+    <button data-k="y3">入社3周年</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="bunting" id="bunting"></div>
+    <div class="icon-wrap" id="iconWrap"></div>
+    <div class="msg">
+      <div class="hb" id="hb"></div>
+      <div class="nm" id="nm"></div>
+      <div class="oneliner" id="oneliner"></div>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <button class="primary" onclick="celebrate()">🎊 もう一回</button>
+    <button onclick="nextLine()">💬 一言を変える</button>
+    <button onclick="toggleBalloons()">🎈 風船 ON/OFF</button>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div class="note">演出は誕生日と同じ自前実装（外部画像・JSライブラリ無し／フォントだけGoogle Fonts）。本実装では各社員の入社日(joinedAt)から節目を自動算出してこの演出を出します。<br>※「1ヶ月／3ヶ月」は表のちょい祝い演出のみここで確認。裏（上司・幹部だけに見える業務メモ）は別途カード側で出し分けます。</div>
+
+<script>
+  var COLORS=['#e0218a','#f5c542','#7fd1ff','#b6f5a0','#ff9ec7','#a78bfa'];
+  var SURNAME='小林';
+
+  // 節目ごとの演出プロファイル
+  var LEVELS={
+    m1:  {label:'入社1ヶ月', text:'Thank You',       sub:'入社1ヶ月！', tone:'soft',   flags:5,  confetti:18, confInterval:0, balloons:false, badge:'1m',  glow:false},
+    m3:  {label:'入社3ヶ月', text:'Thank You',       sub:'入社3ヶ月！', tone:'soft',   flags:7,  confetti:24, confInterval:0, balloons:false, badge:'3m',  glow:false},
+    half:{label:'入社半年',  text:'Congratulations', sub:'入社半年',   tone:'normal', flags:9,  confetti:36, confInterval:1800, balloons:true, badge:'1/2', glow:false},
+    y1:  {label:'入社1周年', text:'Congratulations', sub:'入社1周年',  tone:'deluxe', flags:11, confetti:60, confInterval:1500, balloons:true, badge:'1',   glow:true},
+    y3:  {label:'入社3周年', text:'Congratulations', sub:'入社3周年',  tone:'deluxe', flags:11, confetti:60, confInterval:1500, balloons:true, badge:'3',   glow:true}
+  };
+
+  // ランダム一言（半年/周年系）。{姓}{節目}差し込み
+  var LINES_CELEB=[
+    '{姓}さん、入社{節目}おめでとう！これからも一緒に頑張ろう🔧',
+    'ここまでお疲れさま！次の1年も{姓}さんと走っていこう🚗',
+    '{姓}さんがいてくれて心強いです。次のステージも一緒に！',
+    '節目おめでとう！これからも小林モータースを盛り上げよう🎉',
+    '日々の頑張りに感謝！次の1年も全力でいこう💪',
+    '{姓}さんの成長、みんな見てます。この調子で行こう！',
+    'いい{節目}でした！来年も最高のチームでいこう😊'
+  ];
+  // 1ヶ月/3ヶ月の表は短い労い（固定寄り）
+  var LINES_SOFT={
+    m1:['{姓}さん 入社1ヶ月！お疲れさま！','まずは1ヶ月、よく頑張りました🎈'],
+    m3:['{姓}さん 入社3ヶ月！ここまでよく頑張りました','3ヶ月おつかれさま！いい調子です🎈']
+  };
+
+  var curKey='y1', balloonsOn=true, lineIdx=0, confTimer=null, balTimer=null;
+
+  function curLevel(){ return LEVELS[curKey]; }
+  function fillLine(t){ return t.replace(/\{姓\}/g,SURNAME).replace(/\{節目\}/g,curLevel().sub.replace('！','')); }
+
+  /* ===== トロフィー / メダル SVG ===== */
+  function trophySVG(badge){
+    return '<svg width="150" height="155" viewBox="0 0 150 155">'
+      +'<g class="sparkle" style="animation-delay:0s"><path d="M30 26 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#fff3b0"/></g>'
+      +'<g class="sparkle" style="animation-delay:.4s"><path d="M120 34 l2.4 5.6 5.6 2.4 -5.6 2.4 -2.4 5.6 -2.4 -5.6 -5.6 -2.4 5.6 -2.4z" fill="#fff3b0"/></g>'
+      +'<g class="sparkle" style="animation-delay:.7s"><circle cx="112" cy="86" r="2.6" fill="#fff"/></g>'
+      // handles
+      +'<path d="M44 44 C24 44 24 78 50 80" fill="none" stroke="#e7a92b" stroke-width="7"/>'
+      +'<path d="M106 44 C126 44 126 78 100 80" fill="none" stroke="#e7a92b" stroke-width="7"/>'
+      // cup
+      +'<path d="M42 38 H108 V58 C108 84 92 96 75 96 C58 96 42 84 42 58 Z" fill="url(#g)"/>'
+      +'<path d="M42 38 H108 V44 H42 Z" fill="#ffe9a8"/>'
+      // stem + base
+      +'<rect x="69" y="96" width="12" height="16" fill="#e7a92b"/>'
+      +'<rect x="54" y="112" width="42" height="9" rx="3" fill="#d99a22"/>'
+      +'<rect x="48" y="121" width="54" height="12" rx="4" fill="#c98a1c"/>'
+      // year badge on cup
+      +'<circle cx="75" cy="64" r="18" fill="#fff7df" stroke="#e7a92b" stroke-width="2"/>'
+      +'<text class="yearbadge" x="75" y="'+(badge.length>1?'69':'70')+'" font-size="'+(badge.length>2?13:badge==='1/2'?12:20)+'" text-anchor="middle">'+badge+'</text>'
+      +'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34d"/><stop offset="1" stop-color="#f0a81e"/></linearGradient></defs>'
+      +'</svg>';
+  }
+  function medalSVG(badge){
+    return '<svg width="140" height="150" viewBox="0 0 140 150">'
+      +'<g class="sparkle"><path d="M28 30 l2.6 6 6 2.6 -6 2.6 -2.6 6 -2.6 -6 -6 -2.6 6 -2.6z" fill="#fff3b0"/></g>'
+      // ribbons
+      +'<path d="M52 14 L62 70 L70 60 L78 70 L88 14 Z" fill="#7fb2ff"/>'
+      +'<path d="M52 14 L70 50 L88 14 Z" fill="#5b8de0"/>'
+      // medal
+      +'<circle cx="70" cy="96" r="34" fill="url(#gm)" stroke="#e7a92b" stroke-width="3"/>'
+      +'<circle cx="70" cy="96" r="25" fill="none" stroke="#fff2c2" stroke-width="2" opacity=".7"/>'
+      +'<text class="yearbadge" x="70" y="'+(badge.length>2?'101':'104')+'" font-size="'+(badge==='1/2'?16:22)+'" text-anchor="middle">'+badge+'</text>'
+      +'<defs><linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34d"/><stop offset="1" stop-color="#f0a81e"/></linearGradient></defs>'
+      +'</svg>';
+  }
+
+  /* ===== ロープ波形（誕生日と同一データ） ===== */
+  var ROPE='M 0 8 Q 25 16 50 8 Q 75 16 100 8';
+  function buildBunting(n){
+    var b=document.getElementById('bunting');
+    var rope='<svg class="rope" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="'+ROPE+'" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>';
+    var h=rope;
+    for(var i=0;i<n;i++){ var wd=-(0.04*i); h+='<span class="flag-wrap" style="animation-delay:'+(0.5+i*0.16).toFixed(2)+'s"><span class="flag" style="--c:'+COLORS[i%COLORS.length]+';animation-delay:'+wd.toFixed(3)+'s"></span></span>'; }
+    b.innerHTML=h;
+  }
+  function buildText(){
+    var lv=curLevel(); var el=document.getElementById('hb'); var txt=lv.text; var h='';
+    for(var i=0;i<txt.length;i++){ var ch=txt[i]; if(ch===' '){ h+='<span style="display:inline-block;width:.3em"></span>'; continue; } h+='<span class="letter" style="animation-delay:'+(1.2+i*0.06).toFixed(2)+'s">'+ch+'</span>'; }
+    el.innerHTML=h;
+    el.style.fontSize=(lv.tone==='deluxe'?40:lv.tone==='normal'?34:30)+'px';
+    document.getElementById('nm').innerHTML=SURNAME+' <small>さん　'+lv.sub+'</small>';
+  }
+  function setLine(){
+    var lv=curLevel(), pool;
+    if(lv.tone==='soft'){ pool=LINES_SOFT[curKey]||['{姓}さん おめでとう！']; }
+    else { pool=LINES_CELEB; }
+    lineIdx=lineIdx%pool.length;
+    document.getElementById('oneliner').textContent=fillLine(pool[lineIdx]);
+  }
+  function nextLine(){ lineIdx++; setLine(); var o=document.getElementById('oneliner'); o.style.animation='none'; void o.offsetWidth; o.style.animation=''; }
+
+  function spawnConfetti(n){ var st=document.getElementById('stage'); for(var i=0;i<n;i++){ (function(){ var c=document.createElement('div'); c.className='confetti'; c.style.left=(Math.random()*100)+'%'; c.style.background=COLORS[(Math.random()*COLORS.length)|0]; var dur=2.4+Math.random()*1.8; c.style.animationDuration=dur+'s'; c.style.animationDelay=(Math.random()*0.5)+'s'; if(Math.random()<.5)c.style.borderRadius='50%'; st.appendChild(c); setTimeout(function(){c.remove();},(dur+1)*1000); })(); } }
+  function spawnBalloon(){ if(!balloonsOn||!curLevel().balloons)return; var st=document.getElementById('stage'); var b=document.createElement('div'); b.className='balloon'; b.style.left=(8+Math.random()*84)+'%'; b.style.background=COLORS[(Math.random()*COLORS.length)|0]; var dur=5+Math.random()*3; b.style.animationDuration=dur+'s'; st.appendChild(b); setTimeout(function(){b.remove();},dur*1000); }
+
+  function applyStage(){
+    var st=document.getElementById('stage');
+    st.className='stage'+(curLevel().glow?' deluxe':'');
+  }
+  function setIcon(){
+    var lv=curLevel();
+    var b=lv.badge;
+    document.getElementById('iconWrap').innerHTML=(lv.tone==='soft'?medalSVG(b):trophySVG(b));
+  }
+  function restartIcon(){ var el=document.getElementById('iconWrap'); el.style.animation='none'; void el.offsetWidth; el.style.animation=''; }
+
+  function celebrate(){
+    var lv=curLevel();
+    applyStage();
+    buildBunting(lv.flags);
+    setIcon(); restartIcon();
+    buildText();
+    setLine();
+    spawnConfetti(lv.confetti);
+    // 継続演出のタイマー貼り直し
+    if(confTimer){clearInterval(confTimer);confTimer=null;}
+    if(lv.confInterval){ confTimer=setInterval(function(){spawnConfetti(lv.tone==='deluxe'?14:8);},lv.confInterval); }
+  }
+  function toggleBalloons(){ balloonsOn=!balloonsOn; }
+
+  // セグメント切替
+  document.getElementById('seg').addEventListener('click',function(e){
+    var btn=e.target.closest('button[data-k]'); if(!btn)return;
+    curKey=btn.getAttribute('data-k'); lineIdx=0;
+    [].forEach.call(this.querySelectorAll('button'),function(b){b.classList.toggle('on',b===btn);});
+    celebrate();
+  });
+
+  document.getElementById('legend').innerHTML=
+    '<b>演出レベル（仕様メモ準拠）</b><br>'
+    +'<span class="lv-pill lv-soft">軽め</span> 入社1ヶ月・3ヶ月＝メダル＋ちょい祝い（旗少なめ・紙吹雪少・風船なし）。表のちょい祝いのみ。<br>'
+    +'<span class="lv-pill lv-normal">通常</span> 入社半年＝トロフィー＋お祝い（旗・風船あり・紙吹雪中）。<br>'
+    +'<span class="lv-pill lv-deluxe">豪華</span> 入社1周年・以降毎年＝<b>誕生日レベル</b>（グロー＋旗フル＋風船＋紙吹雪多＋Congratulations）。';
+
+  // 初期表示
+  curKey='y1';
+  celebrate();
+  balTimer=setInterval(spawnBalloon,1100);
+</script>
+</body>
+</html>
